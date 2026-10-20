@@ -1,0 +1,35 @@
+import { getSource } from "@/lib/ramp/source";
+import { buildIndex, runRequest } from "@/lib/engine/run";
+import { AuditRequestSchema } from "@/lib/parse/schema";
+import { z } from "zod";
+
+export const maxDuration = 120;
+
+const Body = z.object({ requests: z.array(AuditRequestSchema).min(1).max(100) });
+
+function periodOf(reqs: z.infer<typeof Body>["requests"]) {
+  const from = reqs.map((r) => r.period_from).filter(Boolean).sort()[0] ?? "2025-01-01";
+  const to = reqs.map((r) => r.period_to).filter(Boolean).sort().at(-1) ?? "2025-12-31";
+  return { from: from!, to: to! };
+}
+
+export async function POST(req: Request) {
+  const parsed = Body.safeParse(await req.json());
+  if (!parsed.success) return Response.json({ error: "Invalid requests" }, { status: 400 });
+  const source = getSource();
+  try {
+    const t0 = Date.now();
+    const snap = await source.snapshot(periodOf(parsed.data.requests));
+    const ix = buildIndex(snap);
+    const results = parsed.data.requests.map((r) => runRequest(r, ix));
+    return Response.json({
+      results,
+      business: snap.business_name,
+      source: source.info,
+      counts: { transactions: snap.transactions.length, bills: snap.bills.length, receipts: snap.receipts.length, vendors: snap.vendors.length, users: snap.users.length },
+      ms: Date.now() - t0,
+    });
+  } catch (err) {
+    return Response.json({ error: `Could not read from ${source.info.label}: ${String(err).slice(0, 300)}` }, { status: 502 });
+  }
+}

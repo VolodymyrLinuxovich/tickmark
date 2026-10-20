@@ -1,0 +1,10 @@
+Ref,Area,Request,Period start,Period end,Due
+PBC-01,Cash,"Bank reconciliations for all operating accounts as of December 31, 2025.",01/01/2025,12/31/2025,02/06/2026
+PBC-02,Expenses,"For the card transactions selected on the Selections tab, provide the receipt, evidence of approval and the business purpose.",01/01/2025,12/31/2025,02/06/2026
+PBC-03,Accounts payable,"Provide the invoice, evidence of approval and proof of payment for all vendor bills over $10,000 paid during FY2025.",01/01/2025,12/31/2025,02/06/2026
+PBC-04,Expenses,"Provide a listing of card transactions over $75 without an attached receipt for the year ended December 31, 2025.",01/01/2025,12/31/2025,02/06/2026
+PBC-05,Controls,Provide evidence that purchases were not split to avoid approval limits and that no employee approved their own spend.,01/01/2025,12/31/2025,02/06/2026
+PBC-06,Accounts payable,Provide your analysis of duplicate vendor payments for FY2025.,01/01/2025,12/31/2025,02/06/2026
+PBC-07,Accounts payable,"Provide the vendor master listing, identifying new vendors added during the year.",01/01/2025,12/31/2025,02/06/2026
+PBC-08,IT general controls,Provide a listing of users with administrator access to the spend management system.,01/01/2025,12/31/2025,02/06/2026
+PBC-09,Fixed assets,"Provide the fixed asset roll-forward and support for additions over $5,000.",01/01/2025,12/31/2025,02/06/2026

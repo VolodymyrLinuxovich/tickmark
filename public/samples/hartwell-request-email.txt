@@ -1,0 +1,29 @@
+Hi Priya,
+
+As discussed at planning, please provide the items below for the FY2025 audit of Acme Robotics by February 6.
+
+PBC-01: Bank reconciliations for all operating accounts as of December 31, 2025.
+PBC-02: For the card transactions selected below, provide the receipt, evidence of approval and the business purpose.
+  S-01 | 12/14/2025 | GOOGLE ADS SILVA | $4,641.49
+  S-02 | 03/19/2025 | GOOGLE ADS BROOKS | $4,403.47
+  S-03 | 04/18/2025 | THE CAPITAL GR ROMERO | $1,240.00
+  S-04 | 12/17/2025 | AMAZON WEB SER BRENNAN | $4,012.39
+  S-05 | 06/12/2025 | AMAZON WEB SER ELLIS | $3,659.32
+  S-06 | 08/29/2025 | AMAZON WEB SER VARGA | $3,510.38
+  S-07 | 09/24/2025 | MARRIOTT NAKAMURA | $839.00
+  S-08 | 10/06/2025 | GOOGLE ADS BROOKS | $3,083.67
+  S-09 | 03/18/2025 | AMAZON WEB SER WEISS | $2,694.74
+  S-10 | 03/06/2025 | GOOGLE ADS BROOKS | $1,998.25
+  S-11 | 08/22/2025 | UNITED AIRLINE KAUR | $1,338.79
+  S-12 | 12/28/2025 | FIGMA WEISS | $1,050.77
+PBC-03: Provide the invoice, evidence of approval and proof of payment for all vendor bills over $10,000 paid during FY2025.
+PBC-04: Provide a listing of card transactions over $75 without an attached receipt for the year ended December 31, 2025.
+PBC-05: Provide evidence that purchases were not split to avoid approval limits and that no employee approved their own spend.
+PBC-06: Provide your analysis of duplicate vendor payments for FY2025.
+PBC-07: Provide the vendor master listing, identifying new vendors added during the year.
+PBC-08: Provide a listing of users with administrator access to the spend management system.
+PBC-09: Provide the fixed asset roll-forward and support for additions over $5,000.
+
+Thanks,
+Jordan Reyes, Senior Associate
+Hartwell & Co. LLP
