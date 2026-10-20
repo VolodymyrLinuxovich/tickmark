@@ -1,0 +1,13 @@
+{
+  "input": "ia_request_list.csv",
+  "about": "Internal audit / SOC-style CSV with Control Ref, Period, Threshold and multi-line Notes columns; policy limit in notes is not a filter",
+  "requests": [
+    { "ref": "IA-01", "type": "control_testing", "period_from": "2025-01-01", "period_to": "2025-09-30", "min_amount": null, "selections": 0 },
+    { "ref": "IA-02", "type": "control_testing", "period_from": "2025-01-01", "period_to": "2025-09-30", "min_amount": null, "selections": 0 },
+    { "ref": "IA-03", "type": "control_testing", "period_from": "2025-01-01", "period_to": "2025-09-30", "min_amount": 10000, "selections": 0 },
+    { "ref": "IA-04", "type": "duplicate_payments", "period_from": "2025-01-01", "period_to": "2025-09-30", "min_amount": null, "selections": 0 },
+    { "ref": "IA-05", "type": "user_access", "period_from": "2025-01-01", "period_to": "2025-09-30", "min_amount": null, "selections": 0 },
+    { "ref": "IA-06", "type": "unsupported", "period_from": "2025-01-01", "period_to": "2025-09-30", "min_amount": null, "selections": 0 },
+    { "ref": "IA-07", "type": "receipt_completeness", "period_from": "2025-01-01", "period_to": "2025-09-30", "min_amount": 75, "selections": 0 }
+  ]
+}
