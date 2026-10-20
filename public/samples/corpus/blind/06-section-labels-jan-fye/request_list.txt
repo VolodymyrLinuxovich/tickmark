@@ -1,0 +1,51 @@
+Pinecrest Home Goods, Inc.
+Audit of the consolidated financial statements
+Fiscal year ended January 31, 2026
+
+Year-end document request list (issued February 17, 2026)
+
+Unless noted, all requests cover the twelve months ended January 31, 2026. Please
+reference the request number in the file name when uploading (e.g. "AP-1 invoices.pdf").
+
+ACCOUNTS PAYABLE
+
+AP-1   Vendor bills of $5,000+ : vendor invoice, approval evidence and payment
+       confirmation (check image, ACH or wire detail).
+
+AP-2   New vendors added during the year, with the W-9 and the vendor setup
+       approval for each.
+
+AP-3   Duplicate payment report or any review performed over duplicate vendor
+       payments, with resolution of items identified.
+
+CORPORATE CARD PROGRAM
+
+CC-1   Listing of card transactions over USD 750 where the receipt is missing.
+
+CC-2   Receipt, approval and business purpose for the sample selections below.
+
+       Txn Date     Cardholder      Merchant                    Amount      Card
+       03/11/2025   L. Ferreira     HOME DEPOT #6612            $3,412.08   x4471
+       04/29/2025   D. Nakamura     DELTA AIR 0062391185        $1,089.40   x2290
+       07/15/2025   L. Ferreira     ULINE *SHIP SUPPLIES        $2,760.00   x4471
+       09/02/2025   K. Boyle        HILTON GARDEN INN           $  918.22   x8813
+       11/24/2025   K. Boyle        STAPLES 00119               $  405.17   x8813
+       12/19/2025   M. Ortiz        EVENTBRITE HOLIDAY PARTY    $4,950.00   x1057
+
+CC-3   Card transactions approved after they were paid, and transactions where the
+       cardholder was also the approver, for the holiday season (November 1, 2025
+       through January 31, 2026).
+
+IT
+
+IT-1   Users with admin access to the spend management platform (cards, bills and
+       reimbursements), with date granted and who approved the access.
+
+GENERAL
+
+GEN-1  Inventory reserve analysis and the year-end physical count reconciliation.
+
+GEN-2  Sales and use tax returns filed for the fiscal year and the reconciliation to
+       the tax payable account.
+
+Please reach out to Rachel Ng (rng@coastalassurance-cpa.example) with any questions.

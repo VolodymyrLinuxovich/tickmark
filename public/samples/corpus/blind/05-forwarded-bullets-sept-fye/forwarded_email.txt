@@ -1,0 +1,51 @@
+Subject: FW: PBC requests - Redwood Analytics - FY25 year-end
+
+Hey team, forwarding the request list from the auditors. Jess can you take the card
+items? I'll handle AP and the rest.
+-Tom
+
+---------- Forwarded message ---------
+From: Alex Kim <akim@barlowfitch.example>
+Date: Thu, Oct 9, 2025 at 4:15 PM
+Subject: PBC requests - Redwood Analytics - FY25 year-end
+To: Tom Becker <tom.becker@redwoodanalytics.example>
+
+Hi Tom,
+
+Hope the close is going smoothly. Here is our initial list for the FY25 audit (fiscal
+year end September 30). Feel free to send things over as they're ready through the
+AuditDashboard link.
+
+Spend / AP
+  •  Invoice and proof of payment for all AP disbursements over $50K in FY25
+  •  Vendor listing showing vendors created between July 1 and September 30, 2025 (Q4)
+  •  Results of any duplicate payment review run in the AP system
+
+Corporate cards
+  •  Support for the selected corporate card charges below (receipt + approver +
+     what it was for):
+
+       Date         Merchant                     Amount
+       10/14/2024   WeWork                       $4,850.00
+       12/03/2024   United Airlines              $1,126.70
+       02/18/2025   Best Buy #1043               $2,499.99
+       05/22/2025   The Capital Grille           $1,317.45
+       09/26/2025   Adobe Inc                      $659.88
+
+  •  Split purchases, i.e. any charges that look like they were broken up to get
+     around approval thresholds
+  •  Missing receipt report for card spend above $250 (FY25)
+
+Other
+  •  Debt rollforward and the year-end covenant compliance certificate
+  •  Deferred revenue rollforward with contract support for the top 10 customers
+  •  Federal and state income tax provision workpapers
+
+Thanks!
+Alex
+
+--
+Alex Kim, CPA | Audit Senior
+Barlow & Fitch LLP
+1 Market St, Suite 900, San Francisco, CA 94105
+o: 415.555.0119

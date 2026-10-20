@@ -1,0 +1,14 @@
+{
+  "input": "pbc_tracker.csv",
+  "about": "Firm PBC tracker CSV with one title row, A.1-style refs and explicit Period Start/End columns (some blank, some overriding the calendar-2025 audit period)",
+  "requests": [
+    { "ref": "A.1", "type": "bill_support", "period_from": "2025-01-01", "period_to": "2025-12-31", "min_amount": null, "selections": 0 },
+    { "ref": "A.2", "type": "bill_support", "period_from": "2025-01-01", "period_to": "2025-12-31", "min_amount": 5000, "selections": 0 },
+    { "ref": "A.3", "type": "vendor_listing", "period_from": "2025-07-01", "period_to": "2025-12-31", "min_amount": null, "selections": 0 },
+    { "ref": "B.1", "type": "control_testing", "period_from": "2025-01-01", "period_to": "2025-12-31", "min_amount": null, "selections": 0 },
+    { "ref": "B.2", "type": "receipt_completeness", "period_from": "2025-01-01", "period_to": "2025-12-31", "min_amount": 2500, "selections": 0 },
+    { "ref": "C.1", "type": "unsupported", "period_from": "2025-12-22", "period_to": "2026-01-10", "min_amount": null, "selections": 0 },
+    { "ref": "C.2", "type": "unsupported", "period_from": "2025-01-01", "period_to": "2025-12-31", "min_amount": null, "selections": 0 },
+    { "ref": "D.1", "type": "user_access", "period_from": "2025-01-01", "period_to": "2025-12-31", "min_amount": null, "selections": 0 }
+  ]
+}

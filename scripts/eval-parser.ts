@@ -2,7 +2,7 @@
 // Run: npm run eval:parser   (add -- --verbose to list every miss, -- --dir <path> for another corpus)
 // The Claude parser is scored only when ANTHROPIC_API_KEY is set and a first call succeeds.
 
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { normalizeFile, normalizeText, type NormalizedInput } from "../src/lib/parse/input";
 import { parseWithRules } from "../src/lib/parse/rules";
 import { MODEL, parseRequests } from "../src/lib/parse/claude";
@@ -13,6 +13,16 @@ const dirArg = process.argv.indexOf("--dir");
 const ROOT = dirArg > 0 ? process.argv[dirArg + 1] : "public/samples/corpus";
 const FIELDS = ["found", "ref", "type", "period_from", "period_to", "min_amount", "selections"] as const;
 type Field = (typeof FIELDS)[number];
+
+/** Case folders: generated ones at the top level, hand-written ones one level down (blind/). */
+function listCases(root: string): string[] {
+  const out: string[] = [];
+  for (const d of readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+    if (existsSync(`${root}/${d.name}/expected.json`)) out.push(d.name);
+    else for (const sub of readdirSync(`${root}/${d.name}`, { withFileTypes: true })) if (sub.isDirectory()) out.push(`${d.name}/${sub.name}`);
+  }
+  return out.sort();
+}
 
 async function load(name: string): Promise<{ expected: Expected; input: NormalizedInput }> {
   const expected = JSON.parse(readFileSync(`${ROOT}/${name}/expected.json`, "utf8")) as Expected;
@@ -70,7 +80,7 @@ function table(scores: Record<string, Score>) {
 
 async function main() {
   const verbose = process.argv.includes("--verbose");
-  const cases = readdirSync(ROOT, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort();
+  const cases = listCases(ROOT);
   const scores: Record<string, Score> = { rules: empty() };
   let claude = Boolean(process.env.ANTHROPIC_API_KEY) && process.env.TICKMARK_PARSER !== "rules";
   if (!claude) console.log("ANTHROPIC_API_KEY not set: scoring the rules parser only.\n");

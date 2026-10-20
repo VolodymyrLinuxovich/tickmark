@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { getFixture } from "../src/lib/fixtures/generate";
 import { buildIndex, matchSelection } from "../src/lib/engine/run";
@@ -7,7 +7,16 @@ import { findPeriod, findThreshold, parseWithRules } from "../src/lib/parse/rule
 import type { Expected } from "../scripts/make-corpus";
 
 const ROOT = "public/samples/corpus";
-const CASES = readdirSync(ROOT, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort();
+/** Case folders: generated ones at the top level, hand-written ones one level down (blind/). */
+function listCases(root: string): string[] {
+  const out: string[] = [];
+  for (const d of readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+    if (existsSync(`${root}/${d.name}/expected.json`)) out.push(d.name);
+    else for (const sub of readdirSync(`${root}/${d.name}`, { withFileTypes: true })) if (sub.isDirectory()) out.push(`${d.name}/${sub.name}`);
+  }
+  return out.sort();
+}
+const CASES = listCases(ROOT);
 
 async function parseCase(name: string) {
   const expected = JSON.parse(readFileSync(`${ROOT}/${name}/expected.json`, "utf8")) as Expected;
