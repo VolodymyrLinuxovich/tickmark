@@ -6,16 +6,29 @@ import { money, monthNumber, toIsoDate, type InputRow, type NormalizedInput } fr
 
 // Topics Ramp data cannot answer, even when the request mentions invoices, receipts or vendors.
 const OUTSIDE_RAMP =
-  /\b(payroll|w-[23]\b|fixed assets?|capital(ized)? assets?|pp&e|depreciation|bank (rec|statement|confirmation|accounts?)|revenue|customers?\b|sales invoices?|accounts receivable|receivables?|inventory|debt\b|loans?\b|notes payable|lease|equity|stock|board minutes|legal letters?|attorney|tax (returns?|filings?)|income tax|sales and use tax|accru|prepaid|insurance polic|deferred)/;
+  /\b((?<!non-)payroll|w-[23]\b|fixed assets?|capital(ized)? assets?|pp&e|property and equipment|depreciation|bank (rec|statement|confirmation)|confirmation of (all )?bank|(all|operating) bank accounts?|covenant|revenue|customers?\b|sales invoices?|accounts receivable|receivables?|inventory|debt\b|loans?\b|notes payable|lease|equity|stock|board minutes|legal letters?|attorney|tax (returns?|filings?)|income tax|sales and use tax|accru|prepaid|insurance polic|deferred)/;
+
+// Shorthand auditors use in terse lists.
+const SHORTHAND: [RegExp, string][] = [
+  [/\btxns?\b/g, "transactions"],
+  [/\bpmts?\b/g, "payments"],
+  [/\bdup\b/g, "duplicate"],
+  [/\binvs?\b/g, "invoices"],
+  [/\bw\//g, "with "],
+  [/\bqtr\b/g, "quarter"],
+];
+export const expandShorthand = (t: string) => SHORTHAND.reduce((s, [re, to]) => s.replace(re, to), t.toLowerCase());
 
 export function classify(text: string, hasSelections: boolean, area = ""): RequestType {
-  const t = text.toLowerCase();
+  const t = expandShorthand(text);
   if (OUTSIDE_RAMP.test(t) || OUTSIDE_RAMP.test(area.toLowerCase())) return "unsupported";
   if (/duplicate/.test(t)) return "duplicate_payments";
   if (/receipt/.test(t) && /(without|missing|no receipt|lack|not attached|n[o']t have|absent|unsupported by)/.test(t)) return "receipt_completeness";
-  if (/(split|their own|own (spend|purchases|transactions)|self[- ]?approv|segregation of duties|restricted|prohibited|merchant categor|\bmcc|circumvent|out[- ]of[- ]policy|policy violation|approved after|after (they were |it was )?paid|also the approver|approved by the (same|cardholder))/.test(t)) return "control_testing";
+  if (/(split|their own|own (spend|purchases|transactions)|self[- ]?approv|segregation of duties|restricted|prohibited|merchant categor|\bmcc|circumvent|out[- ]of[- ]policy|policy violation|approved after|after (they were |it was )?paid|also the approver|approved by the (same (person|individual)|cardholder(?!'s))|approver is the same|approv\w*[^.]{0,40}(after|later than) the payment)/.test(t)) return "control_testing";
   if (/(vendor master|vendor list|list(ing)? of vendors|new vendors|vendors (created|added|onboarded|set up)|vendor additions)/.test(t)) return "vendor_listing";
-  if (/(user access|administrator|admin (access|rights|roles?)|access (listing|rights|review)|users with|users and their roles|user listing|system access)/.test(t)) return "user_access";
+  if (/(user access|administrator|admin (access|rights|roles?|permissions|privileges)|access (listing|rights|review)|users with|users and their roles|user listing|system access|list of users|users (in|of) the)/.test(t)) return "user_access";
+  // A sample of vendor bills or disbursements with no card wording is bill support.
+  if (/(\bbills?\b|vendor invoice|disbursement|accounts payable|\bap\b)/.test(t) && !/(card|amex|p-?card)/.test(t)) return "bill_support";
   if (/(selected|selection|sample|\bselect\b|following)/.test(t) && /(transaction|card|expense|charge|spend|refund|credit)/.test(t)) return "transaction_support";
   if (/(\bbills?\b|invoice|vendor payment|accounts payable|disbursement|payments? to vendors)/.test(t)) return "bill_support";
   if (hasSelections && /(transaction|card|expense|charge|spend)/.test(t)) return "transaction_support";
@@ -26,7 +39,9 @@ export function classify(text: string, hasSelections: boolean, area = ""): Reque
 
 const AMOUNT = String.raw`(?:\$|usd\s?)\s?(\d[\d,]*(?:\.\d+)?)\s?(k|m|mm|thousand|million)?\b`;
 const BEFORE = new RegExp(String.raw`(?:over|above|exceed(?:ing|s)?|in excess of|greater than|more than|larger than|at least|at or above|equal to or greater than|>=?|≥)\s*` + AMOUNT, "i");
-const AFTER = new RegExp(AMOUNT + String.raw`\s?(?:\+|or more|and above|and over|or greater|and greater|or higher|plus)`, "i");
+const AFTER = new RegExp(AMOUNT + String.raw`\)?\s?(?:\+|or more|and above|and over|or greater|and greater|or higher|plus)`, "i");
+// "Card txns 100+": a bare number with a plus sign
+const BARE_PLUS = /(?:^|\s)(\d{2,3}(?:,\d{3})*(?:\.\d+)?)\s?(k|m)?\+(?=\s|$)/i;
 
 const scaled = (n: string, unit: string | undefined) => {
   const v = money(n);
@@ -42,7 +57,7 @@ const IN_WORDS = new RegExp(String.raw`(?:over|above|exceed(?:ing|s)?|in excess 
 
 export function findThreshold(text: string): number | null {
   const words = text.match(IN_WORDS);
-  const hits = [BEFORE, AFTER].map((re) => text.match(re)).filter((m): m is RegExpMatchArray => !!m);
+  const hits = [BEFORE, AFTER, BARE_PLUS].map((re) => text.match(re)).filter((m): m is RegExpMatchArray => !!m);
   if (words && !hits.some((h) => h.index! < words.index!)) return COUNT_WORDS[words[1].toLowerCase()] * (/thousand/i.test(words[2]) ? 1000 : 1_000_000);
   if (!hits.length) return null;
   const m = hits.sort((a, b) => a.index! - b.index!)[0];
@@ -124,6 +139,18 @@ const PERIOD_RULES: Rule[] = [
       const from = wordDate(m[1]);
       const to = wordDate(m[2]);
       return from && to && from < to ? { from, to } : null;
+    },
+  },
+  {
+    // April through September 2025
+    re: new RegExp(String.raw`\b(${MONTH})\s*(?:through|thru|to|until|-|–)\s*(${MONTH})\s+(\d{4})\b`, "i"),
+    read: (m) => {
+      const a = monthNumber(m[1].replace(".", ""));
+      const b = monthNumber(m[2].replace(".", ""));
+      const y = Number(m[3]);
+      if (!a || !b) return null;
+      const fromYear = a > b ? y - 1 : y;
+      return { from: dateOf(fromYear, a, 1), to: dateOf(y, b, lastDay(y, b)) };
     },
   },
   {
@@ -242,12 +269,16 @@ export function selectionFromLine(line: string): Selection | null {
   const date = t.match(SEL_DATE);
   if (!amt || !date || date.index! > amt.index!) return null;
   const head = t.slice(0, date.index).replace(/[\s|,:;-]+$/, "").trim();
-  if (head && !SEL_REF.test(head)) return null;
-  const description = t.slice(date.index! + date[0].length, amt.index).replace(/^[\s|,:;-]+|[\s|,:;-]+$/g, "").trim();
-  if (!description || SEL_DATE.test(description)) return null;
+  const after = t.slice(date.index! + date[0].length, amt.index).replace(/^[\s|,:;-]+|[\s|,:;-]+$/g, "").trim();
   const amount = money(amt[1]);
-  if (!Number.isFinite(amount) || !toIsoDate(date[1])) return null;
-  return { ref: head ? head.match(SEL_REF)![1] : "", date: date[1], description, amount };
+  if (!Number.isFinite(amount) || !toIsoDate(date[1]) || SEL_DATE.test(after)) return null;
+  if (!head || SEL_REF.test(head)) {
+    if (!after) return null;
+    return { ref: head ? head.match(SEL_REF)![1] : "", date: date[1], description: after, amount };
+  }
+  // "Kessler Mechanical, 07/18/2025, $48,250.00": a short description before the date
+  if (after || head.length > 45 || head.split(/\s+/).length > 7) return null;
+  return { ref: "", date: date[1], description: head, amount };
 }
 
 function selectionsFromText(text: string): Selection[] {
@@ -282,8 +313,10 @@ function marker(line: string): Marker | null {
   if (m) return { ref: m[1], bullet: false, rest: m[2] };
   m = line.match(/^\s*(\d{1,2}\.\d{1,2})[.)]?\s+(.*)$/);
   if (m) return { ref: m[1], bullet: false, rest: m[2] };
-  m = line.match(/^\s*(\d{1,2})[.)]\s+(.*)$/);
+  m = line.match(/^\s*\(?(\d{1,2})[.)]\s+(.*)$/);
   if (m) return { ref: `PBC-${pad(Number(m[1]))}`, bullet: false, rest: m[2] };
+  m = line.match(/^\s*\(?((?:x{0,3})(?:ix|iv|v?i{1,3}|v))[.)]\s+(.*)$/);
+  if (m) return { ref: m[1], bullet: false, rest: m[2] };
   m = line.match(/^\s*\(?([a-z])\)\s+(.*)$/) ?? line.match(/^\s*([a-z])\.\s+(.*)$/);
   if (m) return { ref: m[1], bullet: false, rest: m[2] };
   m = line.match(/^\s*[-*•▪◦–]\s+(.*)$/);
@@ -363,9 +396,12 @@ export function parseWithRules(input: NormalizedInput): ParsedList {
     // Dated amounts listed under a request are card selections, unless the topic is outside Ramp.
     const inScope = !OUTSIDE_RAMP.test(text.toLowerCase());
     if (type === "unsupported" && inScope && (inline.length || (attached.length && /transaction|card/i.test(text)))) type = "transaction_support";
-    const selections = type === "transaction_support" ? ownSelections : [];
-    const period = row.period_from && row.period_to ? { from: row.period_from, to: row.period_to } : findPeriod(text, fye) ?? globalPeriod;
-    const min = findThreshold(text);
+    // Sheet selections go to card requests; selections typed under a bill request stay with it.
+    const selections = type === "transaction_support" ? ownSelections : type === "bill_support" ? inline : [];
+    const columnPeriod = row.period_text ? findPeriod(row.period_text, fye) : null;
+    const period = row.period_from && row.period_to ? { from: row.period_from, to: row.period_to } : columnPeriod ?? findPeriod(text, fye) ?? globalPeriod;
+    const columnMin = row.threshold ? findThreshold(row.threshold) ?? (money(row.threshold) > 0 ? money(row.threshold) : null) : null;
+    const min = columnMin ?? findThreshold(text);
     return {
       ref: row.ref,
       text,

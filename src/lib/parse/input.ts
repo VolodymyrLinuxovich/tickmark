@@ -8,6 +8,8 @@ export interface InputRow {
   text: string;
   period_from: string | null;
   period_to: string | null;
+  period_text?: string; // a single "Period" cell, e.g. "Jan 1 2025 to Sep 30 2025"
+  threshold?: string; // a "Threshold" cell, e.g. "$10,000 and above"
 }
 
 export interface RawSelection {
@@ -104,7 +106,7 @@ export function money(s: string | number): number {
 
 // ---------- tables ----------
 
-type Role = "ref" | "text" | "request" | "title" | "area" | "from" | "to" | "other";
+type Role = "ref" | "text" | "request" | "title" | "area" | "from" | "to" | "period" | "threshold" | "other";
 type SelRole = "amount" | "date" | "desc" | "ref" | "link";
 
 /** What a request-list column holds, from its header. */
@@ -113,8 +115,10 @@ function requestRole(header: string): Role | null {
   if (!h) return null;
   if (/period (start|from|begin)|^(start|from|begin)( date)?$/.test(h)) return "from";
   if (/period (end|to|through)|^(end|to|through)( date)?$/.test(h)) return "to";
+  if (/^(period|period covered|audit period|period of review|coverage period)$/.test(h)) return "period";
+  if (/threshold|minimum|min\.? amount|scope amount/.test(h)) return "threshold";
   if (/date|due|status|contact|owner|assigned|prepared|responsib|comment|received|follow|priority|notes?$/.test(h)) return "other";
-  if (/^(ref|reference|index|#|no\.?|id|number|pbc)\b|^(request|req|item|pbc) ?(#|no\.?|num|number|id|ref)/.test(h)) return "ref";
+  if (/^(#|no\.?)$/.test(h) || /^(ref|reference|index|id|number|pbc)\b|^(request|req|item|pbc) ?(#|no\.?|num|number|id|ref)/.test(h)) return "ref";
   if (/title|subject|summary|name/.test(h)) return "title";
   if (/descr|details|document|information/.test(h)) return "text";
   if (/request|^item$/.test(h)) return "request";
@@ -206,6 +210,8 @@ function requestRows(table: string[][]): InputRow[] | null {
       text: full,
       period_from: toIsoDate(dateCell(cell(r, c.get("from")))),
       period_to: toIsoDate(dateCell(cell(r, c.get("to")))),
+      period_text: cell(r, c.get("period")) || undefined,
+      threshold: cell(r, c.get("threshold")) || undefined,
     });
   }
   rows.forEach((row, i) => (row.ref ||= `PBC-${String(i + 1).padStart(2, "0")}`));
@@ -289,6 +295,9 @@ export function normalizeText(text: string): NormalizedInput {
   for (const delimiter of ["\t", ","]) {
     if (lines.filter((l) => l.includes(delimiter)).length < 3) continue;
     const table = delimiter === "\t" ? clean.split("\n").map((l) => l.split("\t")) : parseCsv(clean);
+    // Prose with commas is not a table: most lines must split into three or more cells.
+    const filled = table.filter((r) => r.some((c) => c.trim()));
+    if (filled.filter((r) => r.filter((c) => c.trim()).length >= 3).length < filled.length * 0.5) continue;
     const parsed = fromTables([{ name: "pasted", rows: table }]);
     if (parsed.rows.length >= 2) return { ...parsed, text: clean };
   }
