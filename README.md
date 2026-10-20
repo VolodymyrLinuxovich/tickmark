@@ -89,6 +89,15 @@ Next.js 16 (App Router), TypeScript, `@anthropic-ai/sdk`, zod, exceljs, pdf-lib,
 - Receipt checks use the OCR total Ramp already stores. Tickmark does not re-read receipt images.
 - In demo mode, receipts and invoices in the binder are rendered from the record fields and labeled as such.
 
+## Recording the demo
+
+```bash
+npm run build && npx next start -p 3790
+node scripts/record-demo.mjs http://localhost:3790 demo-out
+```
+
+This drives the app in Chrome with a visible cursor and writes `demo-out/tickmark-demo.webm` plus `chapters.json` with a timestamp for each step.
+
 ## Demo script (3 minutes)
 
 1. **The problem (20 s).** "It's January. Hartwell & Co. sent Acme's controller nine requests and twelve sampled transactions. Today that means two weeks of screenshots and email."

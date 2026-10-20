@@ -384,11 +384,11 @@ function RequestDetail({ r, openRecord, sent, setSent, source }: { r: RequestRes
                       {r.rows.map((row, i) => (
                         <tr key={row.record.id + i} className={row.finding_ids.some((id) => flagged.has(id)) ? "flag" : ""}>
                           {row.cells.map((c, k) => (
-                            <td key={k} className={/^\$|^-\$/.test(c) ? "num" : ""}>
+                            <td key={k} className={/^\$|^-\$/.test(c) ? "num" : c.length <= 14 ? "nw" : ""}>
                               {k === (r.request.type === "control_testing" ? 1 : 0) && row.record.id ? <button className="rec" onClick={() => openRecord(row.record)}>{c}</button> : c}
                             </td>
                           ))}
-                          <td className="ticks">{row.tickmarks.map((t) => <span key={t} className={t === "X" ? "x" : "ok"}>{t} </span>)}</td>
+                          <td className="ticks">{row.tickmarks.map((t) => <span key={t} className={t === "X" ? "x" : "ok"}>{t}</span>)}</td>
                         </tr>
                       ))}
                     </tbody>

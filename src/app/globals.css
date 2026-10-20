@@ -167,11 +167,11 @@ select { font: inherit; font-size: 13px; border: 1px solid var(--line-2); border
 
 .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; max-height: 460px; overflow-y: auto; }
 table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
-th { position: sticky; top: 0; background: var(--surface-2); text-align: left; font-weight: 600; color: var(--ink-2); padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-td { padding: 7px 10px; border-top: 1px solid var(--line); vertical-align: top; }
+th { position: sticky; top: 0; background: var(--surface-2); text-align: left; font-weight: 600; color: var(--ink-2); padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 7px 8px; border-top: 1px solid var(--line); vertical-align: top; }
 tr.flag td { background: var(--warn-bg); }
 td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.ticks { font: 600 11.5px var(--font-mono), monospace; letter-spacing: .05em; white-space: nowrap; }
+.ticks { font: 600 11.5px var(--font-mono), monospace; white-space: nowrap; }
 .ticks .x { color: var(--warn); }
 .ticks .ok { color: var(--tick); }
 .rec { background: none; border: none; padding: 0; text-align: left; cursor: pointer; text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
@@ -220,3 +220,5 @@ pre { font: 11.5px/1.5 var(--font-mono), monospace; background: var(--surface-2)
 .agent p { margin: 2px 0 0; color: var(--ink-2); font-size: 13.5px; }
 .agent code { font-size: 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; white-space: nowrap; overflow-x: auto; max-width: 100%; }
 @media (max-width: 760px) { .agent { grid-template-columns: 1fr; } .agent code { white-space: pre-wrap; word-break: break-all; } }
+td.nw { white-space: nowrap; }
+.ticks span { margin-right: 4px; }
