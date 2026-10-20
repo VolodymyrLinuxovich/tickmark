@@ -4,6 +4,8 @@ Every year a company's auditor sends a "PBC" list: 30 to 100 requests like *"sup
 
 Ramp already holds the receipts, approvals, bills and payments. Tickmark reads the auditor's list, pulls the evidence from Ramp, runs the control tests auditors run, and returns a binder where every line traces to a Ramp record. Exceptions come with a drafted Ramp comment to the right person, sent only after you approve it.
 
+Live demo: https://tickmark-eta.vercel.app
+
 Built for the BBS x Ramp Hackathon (Build track): *pick an outdated financial workflow and rebuild it with the newest AI tools.*
 
 ## What it does
