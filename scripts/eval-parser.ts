@@ -1,5 +1,5 @@
 // Scores the request parsers against public/samples/corpus.
-// Run: npm run eval:parser            (add -- --verbose to list every miss)
+// Run: npm run eval:parser   (add -- --verbose to list every miss, -- --dir <path> for another corpus)
 // The Claude parser is scored only when ANTHROPIC_API_KEY is set and a first call succeeds.
 
 import { readdirSync, readFileSync } from "node:fs";
@@ -9,7 +9,8 @@ import { MODEL, parseRequests } from "../src/lib/parse/claude";
 import type { ParsedList } from "../src/lib/parse/schema";
 import type { Expected } from "./make-corpus";
 
-const ROOT = "public/samples/corpus";
+const dirArg = process.argv.indexOf("--dir");
+const ROOT = dirArg > 0 ? process.argv[dirArg + 1] : "public/samples/corpus";
 const FIELDS = ["found", "ref", "type", "period_from", "period_to", "min_amount", "selections"] as const;
 type Field = (typeof FIELDS)[number];
 
