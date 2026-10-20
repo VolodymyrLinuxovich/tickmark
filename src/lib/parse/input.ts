@@ -104,7 +104,7 @@ export function money(s: string | number): number {
 
 // ---------- tables ----------
 
-type Role = "ref" | "text" | "title" | "area" | "from" | "to" | "other";
+type Role = "ref" | "text" | "request" | "title" | "area" | "from" | "to" | "other";
 type SelRole = "amount" | "date" | "desc" | "ref" | "link";
 
 /** What a request-list column holds, from its header. */
@@ -115,8 +115,9 @@ function requestRole(header: string): Role | null {
   if (/period (end|to|through)|^(end|to|through)( date)?$/.test(h)) return "to";
   if (/date|due|status|contact|owner|assigned|prepared|responsib|comment|received|follow|priority|notes?$/.test(h)) return "other";
   if (/^(ref|reference|index|#|no\.?|id|number|pbc)\b|^(request|req|item|pbc) ?(#|no\.?|num|number|id|ref)/.test(h)) return "ref";
-  if (/title|subject|summary/.test(h)) return "title";
-  if (/descr|request|details|document|information|^item$/.test(h)) return "text";
+  if (/title|subject|summary|name/.test(h)) return "title";
+  if (/descr|details|document|information/.test(h)) return "text";
+  if (/request|^item$/.test(h)) return "request";
   if (/area|categor|section|account|cycle/.test(h)) return "area";
   return null;
 }
@@ -156,6 +157,12 @@ function findRequestHeader(table: string[][]): { at: number; cols: Map<Role, num
     if (isBanner(row)) continue;
     if (row.some((c) => c.trim().length > 50)) continue;
     const cols = roles(row, requestRole);
+    // "Description" beats "Request" when both are present; a lone "Request" column holds the text.
+    if (cols.has("request")) {
+      if (!cols.has("text")) cols.set("text", cols.get("request")!);
+      else if (!cols.has("title")) cols.set("title", cols.get("request")!);
+      cols.delete("request");
+    }
     if (cols.size >= 2 && (cols.has("text") || cols.has("title")) && !roles(row, selectionRole).has("amount")) return { at: i, cols };
   }
   return null;

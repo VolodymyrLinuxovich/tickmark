@@ -12,8 +12,8 @@ export function classify(text: string, hasSelections: boolean, area = ""): Reque
   const t = text.toLowerCase();
   if (OUTSIDE_RAMP.test(t) || OUTSIDE_RAMP.test(area.toLowerCase())) return "unsupported";
   if (/duplicate/.test(t)) return "duplicate_payments";
-  if (/receipt/.test(t) && /(without|missing|no receipt|lack|not attached|not have|absent|unsupported by)/.test(t)) return "receipt_completeness";
-  if (/(split|their own|own (spend|purchases|transactions)|self[- ]?approv|segregation of duties|restricted|prohibited|merchant categor|\bmcc|circumvent|out[- ]of[- ]policy|policy violation)/.test(t)) return "control_testing";
+  if (/receipt/.test(t) && /(without|missing|no receipt|lack|not attached|n[o']t have|absent|unsupported by)/.test(t)) return "receipt_completeness";
+  if (/(split|their own|own (spend|purchases|transactions)|self[- ]?approv|segregation of duties|restricted|prohibited|merchant categor|\bmcc|circumvent|out[- ]of[- ]policy|policy violation|approved after|after (they were |it was )?paid|also the approver|approved by the (same|cardholder))/.test(t)) return "control_testing";
   if (/(vendor master|vendor list|list(ing)? of vendors|new vendors|vendors (created|added|onboarded|set up)|vendor additions)/.test(t)) return "vendor_listing";
   if (/(user access|administrator|admin (access|rights|roles?)|access (listing|rights|review)|users with|users and their roles|user listing|system access)/.test(t)) return "user_access";
   if (/(selected|selection|sample|\bselect\b|following)/.test(t) && /(transaction|card|expense|charge|spend|refund|credit)/.test(t)) return "transaction_support";
@@ -36,8 +36,14 @@ const scaled = (n: string, unit: string | undefined) => {
   return v;
 };
 
+// "over ten thousand dollars"
+const COUNT_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, ten: 10, fifteen: 15, twenty: 20, "twenty-five": 25, fifty: 50, "one hundred": 100, hundred: 100 };
+const IN_WORDS = new RegExp(String.raw`(?:over|above|exceed(?:ing|s)?|in excess of|greater than|more than)\s+(${Object.keys(COUNT_WORDS).join("|")})\s+(thousand|million)\s+dollars`, "i");
+
 export function findThreshold(text: string): number | null {
+  const words = text.match(IN_WORDS);
   const hits = [BEFORE, AFTER].map((re) => text.match(re)).filter((m): m is RegExpMatchArray => !!m);
+  if (words && !hits.some((h) => h.index! < words.index!)) return COUNT_WORDS[words[1].toLowerCase()] * (/thousand/i.test(words[2]) ? 1000 : 1_000_000);
   if (!hits.length) return null;
   const m = hits.sort((a, b) => a.index! - b.index!)[0];
   return Math.round(scaled(m[1], m[2]) * 100) / 100;
@@ -99,6 +105,18 @@ interface Rule {
 }
 
 const PERIOD_RULES: Rule[] = [
+  {
+    // July 1 - December 31, 2025 / between January 1 and March 31, 2026: first date takes the second's year
+    re: new RegExp(String.raw`(?:from|between|period)?\s*(${MONTH})\s+(\d{1,2})(?:st|nd|rd|th)?\s*(?:through|thru|to|until|and|-|–)\s*${DATE}`, "i"),
+    read: (m) => {
+      const to = wordDate(m[3]);
+      const month = monthNumber(m[1].replace(".", ""));
+      if (!to || !month) return null;
+      let from = dateOf(Number(to.slice(0, 4)), month, Number(m[2]));
+      if (from > to) from = dateOf(Number(to.slice(0, 4)) - 1, month, Number(m[2]));
+      return toIsoDate(from) ? { from, to } : null;
+    },
+  },
   {
     // from October 1, 2024 through March 31, 2025 / between 1/1/2025 and 6/30/2025
     re: new RegExp(String.raw`(?:from|between|period)?\s*${DATE}\s*(?:through|thru|to|until|and|-|–)\s*${DATE}`, "i"),
@@ -183,7 +201,14 @@ export function findPeriod(text: string, fye: FiscalYearEnd = { month: 12, day: 
 export function findFiscalYearEnd(text: string): FiscalYearEnd | null {
   const m = text.match(new RegExp(String.raw`(?:\byear[- ]?end(?:ed|ing)?|\bFYE)[\s:|,]*(?:on\s+)?${DATE}`, "i"));
   const d = m ? wordDate(m[1]) : null;
-  if (!d) return null;
+  if (!d) {
+    // "fiscal year end September 30", "a June 30 year end"
+    const n =
+      text.match(new RegExp(String.raw`\b(?:fiscal )?year[- ]end(?:s|ing)?(?: is| of| on)?\s+(${MONTH})\s+(\d{1,2})\b(?!,?\s*\d{4})`, "i")) ??
+      text.match(new RegExp(String.raw`\b(${MONTH})\s+(\d{1,2})(?:st|nd|rd|th)?\s+(?:fiscal\s+)?year[- ]end`, "i"));
+    const month = n ? monthNumber(n[1].replace(".", "")) : null;
+    return month ? { month, day: Number(n![2]) } : null;
+  }
   const [, month, day] = d.split("-").map(Number);
   return { month, day };
 }
@@ -206,7 +231,7 @@ export const interpret = (type: RequestType, min: number | null, n: number) => I
 // ---------- selections typed into text ----------
 
 const SEL_DATE = /(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}-[A-Za-z]{3}-\d{2,4})/;
-const SEL_AMOUNT = /(\(?-?\s?(?:\$|usd)?\s?-?\d[\d,]*\.\d{2}\)?|\(?-?\$\s?\d[\d,]*\)?)\s*$/i;
+const SEL_AMOUNT = /(\(?-?\s?(?:\$|usd)?\s*-?\d[\d,]*\.\d{2}\)?|\(?-?\$\s*\d[\d,]*\)?)(?:\s+\S{1,8})?\s*$/i;
 const SEL_REF = /^(?:#\s?)?([A-Z]{1,3}-?\d{1,4}|\d{1,4})[.):]?$/i;
 
 /** One selection per line: "S-01 | 12/14/2025 | GOOGLE ADS | $4,641.49", "1  14-Dec-2025  GOOGLE ADS  $4,641.49". */
@@ -239,8 +264,10 @@ function selectionsFromText(text: string): Selection[] {
 const HEADER_LINE = /^(from|sent|to|cc|bcc|subject|date|reply-to|importance):/i;
 const WROTE_LINE = /^on .{6,120} wrote:\s*$/i;
 const SIGN_OFF = /^(thanks|thank you|many thanks|best|best regards|regards|kind regards|cheers|sincerely|sent from my|--\s*$|__+)/i;
-// An unnumbered bullet only counts as a request when it asks for a document.
-const ASKS_FOR = /\b(provide|listing|list|support|copy|copies|evidence|schedule|reconciliation|analysis|invoices?|bills?|register|statements?|agreements?|receipts?|approvals?|transactions?|report|ledger|documentation|confirm)/i;
+// Unnumbered bullets are requests unless they sit under a logistics heading or read like logistics.
+const LOGISTICS_HEADING = /^(logistics|timing|timeline|schedule|next steps|reminders?|notes?|agenda|key dates|other notes)\b/i;
+const LOGISTICS_BULLET = /^(fieldwork|please upload|upload|we('ll| will)|our (team|fieldwork)|let me know|feel free|the deadline|deadline|due date|call|meeting)\b/i;
+const isHeading = (line: string) => line.trim().length <= 40 && !/[.,;:]$/.test(line.trim()) && !/^\s/.test(line);
 
 interface Marker {
   ref: string | null; // null: number it in order
@@ -251,7 +278,7 @@ interface Marker {
 function marker(line: string): Marker | null {
   let m = line.match(/^\s*(?:PBC|Request|Req\.?|Item)\s*[-#.]?\s*(\d{1,3}(?:\.\d{1,2})?[a-z]?)\b\s*[:.)-]?\s*(.*)$/i);
   if (m) return { ref: `PBC-${/^\d$/.test(m[1]) ? pad(Number(m[1])) : m[1]}`, bullet: false, rest: m[2] };
-  m = line.match(/^\s*([A-Z]{1,4}-\d{1,3}(?:\.\d{1,2})?)\s*[:.)-]\s*(.*)$/);
+  m = line.match(/^\s*([A-Z]{1,4}-\d{1,3}(?:\.\d{1,2})?)(?:\s*[:.)-]\s*|\s+)(.*)$/);
   if (m) return { ref: m[1], bullet: false, rest: m[2] };
   m = line.match(/^\s*(\d{1,2}\.\d{1,2})[.)]?\s+(.*)$/);
   if (m) return { ref: m[1], bullet: false, rest: m[2] };
@@ -269,6 +296,7 @@ export function splitFreeText(text: string): InputRow[] {
   let cur: InputRow | null = null; // request still taking continuation lines
   let last: InputRow | null = null; // most recent request, for selection lines after a gap
   let gap = false;
+  let heading = "";
   const close = () => {
     cur = null;
   };
@@ -294,7 +322,7 @@ export function splitFreeText(text: string): InputRow[] {
       continue;
     }
     const mk = marker(line);
-    if (mk && mk.rest.trim() && (!mk.bullet || ASKS_FOR.test(mk.rest))) {
+    if (mk && mk.rest.trim() && (!mk.bullet || !(LOGISTICS_HEADING.test(heading) || LOGISTICS_BULLET.test(mk.rest.trim())))) {
       const row: InputRow = { ref: mk.ref ?? `PBC-${pad(rows.length + 1)}`, area: "", text: mk.rest.trim(), period_from: null, period_to: null };
       rows.push(row);
       cur = row;
@@ -304,7 +332,10 @@ export function splitFreeText(text: string): InputRow[] {
     }
     if (mk) close();
     else if (cur && !gap) cur.text += "\n" + line.trim();
-    else close();
+    else {
+      close();
+      if (isHeading(line)) heading = line.trim();
+    }
     gap = false;
   }
   return rows;
@@ -329,7 +360,9 @@ export function parseWithRules(input: NormalizedInput): ParsedList {
       .map(({ ref, date, description, amount }) => ({ ref, date, description, amount }));
     let type = classify(text, inline.length > 0, row.area);
     const ownSelections = inline.length ? inline : attached;
-    if (type === "unsupported" && attached.length && /transaction|card/i.test(text) && !OUTSIDE_RAMP.test(text.toLowerCase())) type = "transaction_support";
+    // Dated amounts listed under a request are card selections, unless the topic is outside Ramp.
+    const inScope = !OUTSIDE_RAMP.test(text.toLowerCase());
+    if (type === "unsupported" && inScope && (inline.length || (attached.length && /transaction|card/i.test(text)))) type = "transaction_support";
     const selections = type === "transaction_support" ? ownSelections : [];
     const period = row.period_from && row.period_to ? { from: row.period_from, to: row.period_to } : findPeriod(text, fye) ?? globalPeriod;
     const min = findThreshold(text);
