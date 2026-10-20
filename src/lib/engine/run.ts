@@ -8,9 +8,16 @@ import type { RampApproval, RampBill, RampReceipt, RampSnapshot, RampTransaction
 import { monetaryUnitSample } from "./sampling";
 import { findingId, type EvidenceRow, type Finding, type RecordRef, type RequestResult, type Tickmark } from "./types";
 
+function centsFromEnv(name: string, fallback: number): number {
+  const v = Number(process.env[name]);
+  return Number.isFinite(v) && v > 0 ? Math.round(v * 100) : fallback;
+}
+
 export const POLICY = {
-  cardApprovalLimit: 500000, // cents; card purchases above this need pre-approval
-  receiptThreshold: 7500, // cents; receipts required at $75 and above
+  // cents; card purchases above this need pre-approval
+  cardApprovalLimit: centsFromEnv("TICKMARK_CARD_APPROVAL_LIMIT", 500000),
+  // cents; receipts required at this amount and above
+  receiptThreshold: centsFromEnv("TICKMARK_RECEIPT_THRESHOLD", 7500),
   receiptTolerance: (cents: number) => Math.max(100, Math.round(cents * 0.01)),
   splitWindowHours: 48,
   duplicateWindowDays: 7,
@@ -61,11 +68,23 @@ function inPeriod(iso: string | null | undefined, req: AuditRequest) {
   return (!req.period_from || d >= req.period_from) && (!req.period_to || d <= req.period_to);
 }
 
-function lastApproval(ix: Index, id: string) {
+const APPROVED_STEP = /approv/i;
+const NOT_APPROVED_STEP = /(unapprov|not.?approv|reject|declin|cancel|terminat|pending)/i;
+
+/**
+ * Latest completed approval step. Ramp's step_status is a free string, so match loosely.
+ * Steps with no user are policy auto-approvals: they count as approved but trace to no person.
+ */
+export function lastApproval(ix: Index, id: string) {
   const a = ix.approval.get(id);
-  const steps = (a?.approval_history ?? []).filter((h) => h.step_status === "APPROVED" && h.user_id);
+  const steps = (a?.approval_history ?? [])
+    .filter((h) => APPROVED_STEP.test(h.step_status) && !NOT_APPROVED_STEP.test(h.step_status))
+    .sort((x, y) => x.action_at.localeCompare(y.action_at));
   return { record: a, steps, last: steps.at(-1) };
 }
+
+const approverName = (ix: Index, step: { user_id: string | null; user_email: string | null }) =>
+  step.user_id ? (ix.user.has(step.user_id) ? name(ix.user.get(step.user_id)) : step.user_email ?? "Unknown user") : "Auto-approved by policy";
 
 function receiptTotal(r: RampReceipt): number | null {
   const items = r.ocr?.line_items ?? [];
@@ -83,8 +102,10 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
   const cents = t.entity_amount.value;
   const receipts = ix.receiptsByTxn.get(t.id) ?? [];
   const files = receipts.map((r) => r.receipt_url);
+  // The transaction lists receipt ids even when the receipt objects were not loaded.
+  const hasReceipt = receipts.length > 0 || (t.receipts?.length ?? 0) > 0;
 
-  if (!receipts.length) {
+  if (!hasReceipt) {
     if (cents >= POLICY.receiptThreshold) {
       findings.push({
         id: findingId("MISSING_RECEIPT", [t.id]),
@@ -102,7 +123,7 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
         },
       });
     }
-  } else {
+  } else if (receipts.length) {
     const ocr = receipts.map(receiptTotal).filter((x): x is number => x != null);
     const matched = ocr.some((v) => Math.abs(v - cents) <= POLICY.receiptTolerance(cents));
     if (ocr.length && !matched) {
@@ -121,7 +142,7 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
           mention_user_ids: [t.card_holder.user_id],
         },
       });
-    } else ticks.push("R");
+    } else if (ocr.length) ticks.push("R");
   }
 
   if (opts.approvals) {
@@ -136,7 +157,7 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
         records: [txnRef(t)],
         owner,
       });
-    } else if (last.user_id === t.card_holder.user_id) {
+    } else if (last.user_id && last.user_id === t.card_holder.user_id) {
       findings.push({
         id: findingId("SELF_APPROVAL", [t.id]),
         code: "SELF_APPROVAL",
@@ -201,8 +222,7 @@ function checkBill(ix: Index, b: RampBill): { findings: Finding[]; ticks: Tickma
       owner,
     });
   } else {
-    const approver = ix.user.get(last.user_id!);
-    if (last.user_id === b.bill_owner.id) {
+    if (last.user_id && last.user_id === b.bill_owner.id) {
       findings.push({
         id: findingId("SELF_APPROVAL", [b.id]),
         code: "SELF_APPROVAL",
@@ -225,7 +245,7 @@ function checkBill(ix: Index, b: RampBill): { findings: Finding[]; ticks: Tickma
         code: "APPROVAL_AFTER_PAYMENT",
         severity: "high",
         title: `${b.vendor.name} bill paid ${shortDate(b.paid_at)}, approved ${shortDate(last.action_at)}`,
-        detail: `${usd(b.amount.amount)} left the account before ${name(approver)} approved it.`,
+        detail: `${usd(b.amount.amount)} left the account before ${approverName(ix, last)} approved it.`,
         records: [billRef(b)],
         owner,
         comment: {
@@ -287,14 +307,16 @@ export function splitPurchases(ix: Index, txns: RampTransaction[]): Finding[] {
   return out;
 }
 
-export function duplicateBills(bills: RampBill[]): Finding[] {
+export function duplicateBills(all: RampBill[]): Finding[] {
   const out: Finding[] = [];
   const seen = new Set<string>();
+  const byVendor = new Map<string, RampBill[]>();
+  for (const b of all) if (!b.archived_at) byVendor.set(b.vendor.id, [...(byVendor.get(b.vendor.id) ?? []), b]);
+  for (const bills of byVendor.values())
   for (let i = 0; i < bills.length; i++) {
     for (let j = i + 1; j < bills.length; j++) {
       const a = bills[i];
       const b = bills[j];
-      if (a.vendor.id !== b.vendor.id) continue;
       const sameInvoice = !!a.invoice_number && a.invoice_number === b.invoice_number;
       const days = Math.abs(new Date(a.issued_at).getTime() - new Date(b.issued_at).getTime()) / 864e5;
       const sameAmountNear = a.amount.amount === b.amount.amount && days <= POLICY.duplicateWindowDays;
@@ -393,8 +415,8 @@ const txnCells = (t: RampTransaction, ix: Index) => {
     t.merchant_name,
     name(t.card_holder),
     usd(t.entity_amount.value),
-    (ix.receiptsByTxn.get(t.id)?.length ?? 0) > 0 ? "Attached" : "None",
-    last ? `${name(ix.user.get(last.user_id!))}, ${shortDate(last.action_at)}` : "None",
+    (ix.receiptsByTxn.get(t.id)?.length ?? 0) > 0 || t.receipts?.length ? "Attached" : "None",
+    last ? `${approverName(ix, last)}, ${shortDate(last.action_at)}` : "None",
     t.memo ?? "",
   ];
 };
@@ -407,7 +429,7 @@ const billCells = (b: RampBill, ix: Index) => {
     b.invoice_number ?? "",
     shortDate(b.issued_at),
     usd(b.amount.amount),
-    last ? `${name(ix.user.get(last.user_id!))}, ${shortDate(last.action_at)}` : "None",
+    last ? `${approverName(ix, last)}, ${shortDate(last.action_at)}` : "None",
     b.paid_at ? `${shortDate(b.paid_at)} ${b.payment?.payment_method ?? ""}`.trim() : "Open",
   ];
 };
@@ -415,7 +437,7 @@ const BILL_COLS = ["Vendor", "Invoice", "Issued", "Amount", "Approved by", "Paid
 
 export function runRequest(req: AuditRequest, ix: Index): RequestResult {
   const snap = ix.snap;
-  const txns = snap.transactions.filter((t) => t.state === "CLEARED" && inPeriod(t.user_transaction_time, req));
+  const txns = snap.transactions.filter((t) => (t.state === "CLEARED" || t.state === "COMPLETION") && inPeriod(t.user_transaction_time, req));
   const bills = snap.bills.filter((b) => inPeriod(b.issued_at, req) || inPeriod(b.paid_at, req));
   const minCents = req.min_amount != null ? Math.round(req.min_amount * 100) : null;
 
@@ -487,7 +509,7 @@ export function runRequest(req: AuditRequest, ix: Index): RequestResult {
 
     case "receipt_completeness": {
       const threshold = minCents ?? POLICY.receiptThreshold;
-      const missing = txns.filter((t) => t.entity_amount.value >= threshold && !(ix.receiptsByTxn.get(t.id)?.length));
+      const missing = txns.filter((t) => t.entity_amount.value >= threshold && !(ix.receiptsByTxn.get(t.id)?.length) && !t.receipts?.length);
       const findings = missing.flatMap((t) => checkTransaction(ix, t, { approvals: false }).findings.filter((f) => f.code === "MISSING_RECEIPT"));
       return result(req, {
         headline: missing.length ? `${missing.length} of ${txns.filter((t) => t.entity_amount.value >= threshold).length} card transactions over ${usd(threshold)} have no receipt` : `Every card transaction over ${usd(threshold)} has a receipt`,

@@ -216,3 +216,7 @@ pre { font: 11.5px/1.5 var(--font-mono), monospace; background: var(--surface-2)
   .pill-short { display: inline; }
   .top nav { gap: 12px; }
 }
+.agent { max-width: 900px; margin: 32px auto 0; padding: 16px 18px; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+.agent p { margin: 2px 0 0; color: var(--ink-2); font-size: 13.5px; }
+.agent code { font-size: 12px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; white-space: nowrap; overflow-x: auto; max-width: 100%; }
+@media (max-width: 760px) { .agent { grid-template-columns: 1fr; } .agent code { white-space: pre-wrap; word-break: break-all; } }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import type { AuditRequest, ParsedList, RequestType } from "@/lib/parse/schema";
 import { REQUEST_TYPE_INFO, REQUEST_TYPES } from "@/lib/parse/schema";
 import type { Finding, RecordRef, RequestResult } from "@/lib/engine/types";
@@ -173,6 +173,7 @@ function Intake({ busy, error, onParse, claude, source }: { busy: string | null;
           <p>Exceptions come with a drafted Ramp comment to the right person. Nothing is sent until you approve it. Download the binder for the auditor.</p>
         </div>
       </div>
+      <AgentConnect />
     </div>
   );
 }
@@ -560,5 +561,23 @@ function Tick() {
     <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden>
       <path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+function AgentConnect() {
+  const origin = useSyncExternalStore(
+    () => () => {},
+    () => window.location.origin,
+    () => "http://localhost:3000",
+  );
+  const cmd = `claude mcp add --transport http tickmark ${origin}/api/mcp`;
+  return (
+    <div className="card agent">
+      <div>
+        <b>Use it from an agent</b>
+        <p>Tickmark is also an MCP server with three read-only tools: read_request_list, answer_audit_requests and get_ramp_record. Drafts come back for a person to send.</p>
+      </div>
+      <code className="mono">{cmd}</code>
+    </div>
   );
 }

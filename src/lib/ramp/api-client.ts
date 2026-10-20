@@ -25,6 +25,8 @@ export const READ_SCOPES = [
   "business:read",
 ].join(" ");
 
+const addDays = (iso: string, n: number) => new Date(new Date(iso).getTime() + n * 864e5).toISOString().replace(".000Z", "Z");
+
 export class RampApiClient {
   private token: { value: string; expires: number } | null = null;
 
@@ -79,7 +81,8 @@ export class RampApiClient {
       this.list<RampUser>("/developer/v1/users"),
       this.list<RampDepartment>("/developer/v1/departments"),
       this.list<RampTransaction>("/developer/v1/transactions", range),
-      this.list<RampReceipt>("/developer/v1/receipts", { ...range, include_ocr_data: "true" }),
+      // Receipts often arrive after the charge, so look 90 days past the period end.
+      this.list<RampReceipt>("/developer/v1/receipts", { from_date: range.from_date, to_date: addDays(range.to_date, 90), include_ocr_data: "true" }),
       this.list<RampBill>("/developer/v1/bills", { from_issued_date: range.from_date, to_issued_date: range.to_date }),
       this.list<RampVendor>("/developer/v1/vendors"),
     ]);
