@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "samples": "tsx scripts/make-samples.ts"
+    "samples": "tsx scripts/make-samples.ts",
+    "corpus": "tsx scripts/make-corpus.ts",
+    "eval:parser": "tsx scripts/eval-parser.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.136.0",

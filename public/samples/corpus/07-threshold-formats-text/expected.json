@@ -1,0 +1,86 @@
+{
+  "input": "pbc-fy2024.txt",
+  "about": "Pasted numbered list with '1)' markers up to 10) and thresholds as $10k+, greater than, in excess of, > $1,500, at least, exceeding $1.2M, >= $2,000, over USD 7,500, more than, $50K and above.",
+  "requests": [
+    {
+      "ref": "PBC-01",
+      "type": "bill_support",
+      "period_from": "2024-01-01",
+      "period_to": "2024-12-31",
+      "min_amount": 10000,
+      "selections": 0
+    },
+    {
+      "ref": "PBC-02",
+      "type": "receipt_completeness",
+      "period_from": "2024-01-01",
+      "period_to": "2024-12-31",
+      "min_amount": 5000,
+      "selections": 0
+    },
+    {
+      "ref": "PBC-03",
+      "type": "bill_support",
+      "period_from": "2024-12-01",
+      "period_to": "2024-12-31",
+      "min_amount": 25000,
+      "selections": 0
+    },
+    {
+      "ref": "PBC-04",
+      "type": "duplicate_payments",
+      "period_from": "2024-01-01",
+      "period_to": "2024-12-31",
+      "min_amount": 1500,
+      "selections": 0
+    },
+    {
+      "ref": "PBC-05",
+      "type": "receipt_completeness",
+      "period_from": "2024-01-01",
+      "period_to": "2024-12-31",
+      "min_amount": 500,
+      "selections": 0
+    },
+    {
+      "ref": "PBC-06",
+      "type": "bill_support",
+      "period_from": "2024-01-01",
+      "period_to": "2024-12-31",
+      "min_amount": 1200000,
+      "selections": 0
+    },
+    {
+      "ref": "PBC-07",
+      "type": "receipt_completeness",
+      "period_from": "2024-01-01",
+      "period_to": "2024-12-31",
+      "min_amount": 2000,
+      "selections": 0
+    },
+    {
+      "ref": "PBC-08",
+      "type": "bill_support",
+      "period_from": "2024-01-01",
+      "period_to": "2024-12-31",
+      "min_amount": 7500,
+      "selections": 0
+    },
+    {
+      "ref": "PBC-09",
+      "type": "receipt_completeness",
+      "period_from": "2024-01-01",
+      "period_to": "2024-12-31",
+      "min_amount": 250,
+      "selections": 0
+    },
+    {
+      "ref": "PBC-10",
+      "type": "bill_support",
+      "period_from": "2024-01-01",
+      "period_to": "2024-12-31",
+      "min_amount": 50000,
+      "selections": 0
+    }
+  ]
+}

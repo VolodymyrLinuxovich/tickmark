@@ -1,0 +1,72 @@
+{
+  "input": "Selections FYE 3-31-25.xlsx",
+  "about": "FYE March 31, 2025. Selections sheet links each item to its request with a 'PBC #' column. Dates as 3/14/25, 2024-11-02, 14-Mar-2025, 07-Feb-25, an Excel serial and a real date; amounts as $1,234.56, 1234.5, (1,234.56), ($15.99), -42.10 and plain numbers; a subtotal row.",
+  "selections_detail": [
+    {
+      "ref": "1",
+      "date": "2025-03-14",
+      "amount": 1234.56
+    },
+    {
+      "ref": "2",
+      "date": "2024-11-02",
+      "amount": 1234.5
+    },
+    {
+      "ref": "3",
+      "date": "2025-03-14",
+      "amount": 86.4
+    },
+    {
+      "ref": "4",
+      "date": "2024-09-30",
+      "amount": 2999
+    },
+    {
+      "ref": "5",
+      "date": "2024-06-05",
+      "amount": 4500
+    },
+    {
+      "ref": "6",
+      "date": "2025-01-07",
+      "amount": -1234.56
+    },
+    {
+      "ref": "7",
+      "date": "2025-02-11",
+      "amount": -42.1
+    },
+    {
+      "ref": "8",
+      "date": "2025-02-07",
+      "amount": -15.99
+    }
+  ],
+  "requests": [
+    {
+      "ref": "EXP-1",
+      "type": "transaction_support",
+      "period_from": "2024-04-01",
+      "period_to": "2025-03-31",
+      "min_amount": null,
+      "selections": 5
+    },
+    {
+      "ref": "EXP-2",
+      "type": "transaction_support",
+      "period_from": "2024-04-01",
+      "period_to": "2025-03-31",
+      "min_amount": null,
+      "selections": 3
+    },
+    {
+      "ref": "AP-1",
+      "type": "bill_support",
+      "period_from": "2024-04-01",
+      "period_to": "2025-03-31",
+      "min_amount": 2500,
+      "selections": 0
+    }
+  ]
+}

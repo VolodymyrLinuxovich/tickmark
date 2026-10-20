@@ -1,0 +1,102 @@
+{
+  "input": "pbc-list.csv",
+  "about": "Header on row 4 under client and year end lines. Most requests are outside Ramp but mention invoices, receipts, vendors or samples (fixed assets, payroll, revenue, accruals, prepaids, receivables, tax, debt); three supported requests mixed in.",
+  "requests": [
+    {
+      "ref": "D-1",
+      "type": "unsupported",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": 5000,
+      "selections": 0
+    },
+    {
+      "ref": "D-2",
+      "type": "unsupported",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "D-3",
+      "type": "unsupported",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "D-4",
+      "type": "unsupported",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "D-5",
+      "type": "unsupported",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "D-6",
+      "type": "bill_support",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": 50000,
+      "selections": 0
+    },
+    {
+      "ref": "D-7",
+      "type": "unsupported",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "D-8",
+      "type": "unsupported",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": 10000,
+      "selections": 0
+    },
+    {
+      "ref": "D-9",
+      "type": "receipt_completeness",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": 1000,
+      "selections": 0
+    },
+    {
+      "ref": "D-10",
+      "type": "unsupported",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "D-11",
+      "type": "unsupported",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "D-12",
+      "type": "vendor_listing",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    }
+  ]
+}

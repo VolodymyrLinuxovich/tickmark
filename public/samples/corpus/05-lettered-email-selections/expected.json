@@ -1,0 +1,31 @@
+{
+  "input": "additional-items.txt",
+  "about": "Email with a), b), c) requests, Acme selections as a space-aligned table with 14-Dec-2025 style dates under a header line, and a payroll distractor.",
+  "acme_selections": true,
+  "requests": [
+    {
+      "ref": "a",
+      "type": "transaction_support",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 12
+    },
+    {
+      "ref": "b",
+      "type": "receipt_completeness",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": 250,
+      "selections": 0
+    },
+    {
+      "ref": "c",
+      "type": "unsupported",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    }
+  ]
+}

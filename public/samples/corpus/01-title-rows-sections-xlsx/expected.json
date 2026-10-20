@@ -1,0 +1,63 @@
+{
+  "input": "Acme PBC List FY25.xlsx",
+  "about": "Header on row 6 under merged title rows, section rows (Cash, Accounts Payable), 'Request #' and 'Description of Item Requested' columns, Acme selections on a sheet with its own title and 'Sample #', 'Txn Date', 'Vendor/Payee', 'Amount (USD)' columns.",
+  "acme_selections": true,
+  "requests": [
+    {
+      "ref": "1.01",
+      "type": "unsupported",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "2.01",
+      "type": "bill_support",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": 10000,
+      "selections": 0
+    },
+    {
+      "ref": "2.02",
+      "type": "duplicate_payments",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "2.03",
+      "type": "vendor_listing",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "3.01",
+      "type": "transaction_support",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 12
+    },
+    {
+      "ref": "3.02",
+      "type": "receipt_completeness",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": 75,
+      "selections": 0
+    },
+    {
+      "ref": "4.01",
+      "type": "user_access",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    }
+  ]
+}

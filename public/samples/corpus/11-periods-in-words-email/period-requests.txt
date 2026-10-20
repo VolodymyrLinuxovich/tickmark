@@ -1,0 +1,14 @@
+Hi team,
+
+Our audit covers the fiscal year ending September 30, 2025. Please provide:
+
+1. Card transactions over $1,000 without receipts for the fourth quarter of fiscal 2025.
+2. Vendor bills over $5,000 for the period from October 1, 2024 through March 31, 2025.
+3. Duplicate payment analysis for the three months ended December 31, 2024.
+4. Vendor master listing as of fiscal year end.
+5. Split purchase analysis for calendar year 2024.
+6. Users with administrator access between 1/1/2025 and 6/30/2025.
+7. Missing receipts listing for FY24.
+
+Best,
+Ana

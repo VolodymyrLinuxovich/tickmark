@@ -1,0 +1,16 @@
+Client:,"Acme Robotics, Inc."
+Year end:,12/31/2025
+
+Ref,Area,Request
+D-1,Fixed Assets,"Invoices supporting fixed asset additions greater than $5,000"
+D-2,Payroll,Payroll register for the year and reconciliation to the W-3
+D-3,Revenue,Customer invoices and proof of delivery for the revenue sample
+D-4,Cash,Bank statements for all accounts as of year end
+D-5,Debt,Loan agreements and interest expense recalculation
+D-6,Accounts Payable,"Vendor bills over $50,000 with approvals"
+D-7,Accrued Liabilities,"Accrued expense rollforward, with vendor invoices supporting the five largest accruals"
+D-8,Prepaids,"Prepaid expense schedule and the invoices for amounts over $10,000"
+D-9,Expenses,"Listing of corporate card transactions over $1,000 lacking a receipt"
+D-10,Tax,Sales and use tax returns filed during the year
+D-11,Revenue,Accounts receivable aging and subsequent receipts testing
+D-12,Accounts Payable,Listing of vendors added during the year
