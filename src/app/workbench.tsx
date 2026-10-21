@@ -260,6 +260,7 @@ function Intake({ busy, error, onParse, models, source, scopes }: { busy: string
           </div>
         )}
         <div className="sr-only" role="status" aria-live="polite">{status}</div>
+        {busy && <LoadProgress live={source.kind !== "fixture"} sample={busy === "xlsx" || busy === "email"} />}
         {error && <div className="error" role="alert">{error}</div>}
       </div>
 
@@ -1029,3 +1030,38 @@ function Tick() {
   );
 }
 
+
+/**
+ * Shown while a list is being read. On a live Ramp source the first read pages through
+ * every transaction, which takes about half a minute, so say what is happening.
+ */
+function LoadProgress({ live, sample }: { live: boolean; sample: boolean }) {
+  const [secs, setSecs] = useState(0);
+  useEffect(() => {
+    const t0 = Date.now();
+    const id = setInterval(() => setSecs(Math.floor((Date.now() - t0) / 1000)), 250);
+    return () => clearInterval(id);
+  }, []);
+  const steps = [
+    "Reading the request list",
+    ...(live && sample ? ["Pulling transactions, receipts and approvals from Ramp", "Fitting the sample list to your company"] : []),
+  ];
+  // Rough timing: the list takes a few seconds; the Ramp read takes the rest.
+  const active = !live || !sample ? 0 : secs < 4 ? 0 : secs < 28 ? 1 : 2;
+  return (
+    <div className="load" aria-hidden>
+      <ol>
+        {steps.map((s, i) => (
+          <li key={s} className={i < active ? "done" : i === active ? "now" : ""}>
+            <span className={`status ${i < active ? "ok" : i === active ? "spin" : "wait"}`}>{i < active ? <Tick /> : null}</span>
+            {s}
+          </li>
+        ))}
+      </ol>
+      <div className="load-foot">
+        <span>{secs} s</span>
+        {live && sample && <span>The first read from Ramp takes about 30 seconds. After that it is instant.</span>}
+      </div>
+    </div>
+  );
+}

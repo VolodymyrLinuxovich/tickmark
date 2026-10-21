@@ -778,3 +778,12 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 .ex-page { width: 100%; justify-content: center; margin-top: 4px; }
 /* Stacked on narrow screens: the request list must scroll away, not cover the results. */
 @media (max-width: 900px) { .req-list { position: static; } }
+
+/* loading progress while a list is read */
+.load { margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: var(--surface-2); animation: rise .2s ease both; }
+.load ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.load li { display: flex; align-items: center; gap: 10px; color: var(--ink-3); font-size: 14px; }
+.load li.now { color: var(--ink); font-weight: 500; }
+.load li.done { color: var(--ink-2); }
+.load-foot { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; font-size: 12.5px; color: var(--ink-3); }
+.load-foot span:first-child { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink-2); }
