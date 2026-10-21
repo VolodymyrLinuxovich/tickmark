@@ -833,3 +833,20 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 @media (prefers-reduced-motion: reduce) {
   .live-reply, .live-status.ok, .live-dot { animation: none; }
 }
+
+/* hero flow cards: one shared structure so icon, title, text and tag line up across the row */
+.lp-flow { align-items: stretch; }
+.lp-flow li { height: 100%; }
+.lp-flow .mini.flow-card { display: grid; grid-template-columns: 32px 1fr; column-gap: 14px; align-items: start; flex-direction: row; height: 100%; }
+.lp-flow .flow-body { display: flex; flex-direction: column; min-height: 100%; }
+.lp-flow .flow-body .mini-t { min-height: 2.7em; display: flex; align-items: flex-start; }
+.lp-flow .flow-body .mini-k { margin-top: 6px; }
+.lp-flow .flow-body .mini-chip { margin-top: auto; align-self: flex-start; }
+.lp-flow .flow-body .mini-k { margin-bottom: 14px; }
+.lp-flow .flow-card .mini-icon { width: 32px; height: 32px; }
+.lp-flow .mini.ask .mini-icon { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); }
+.lp-flow .mini.ok .mini-chip { background: var(--tick-bg); color: var(--tick); }
+.lp-flow .mini.ask .mini-chip { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); }
+.lp-flow .mini.flow-card { align-items: stretch; }
+.lp-flow .flow-card .mini-icon { align-self: start; }
+.lp-flow .flow-body { min-height: 0; height: 100%; }

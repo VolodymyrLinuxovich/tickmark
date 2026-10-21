@@ -1,20 +1,21 @@
 "use client";
 
 // Animated stand-in for a product screenshot: the sample audit runs on a loop.
-// Numbers and text are the real results of the sample request list on the sample company.
+// Numbers and text are a real run of the sample request list on Ramp's sandbox company
+// Save Time Inc (Oct 2026), including the approval nudge Tickmark actually posted to Ramp.
 
 import { useEffect, useRef, useState } from "react";
 import "./product-demo.css";
 
 const REQUESTS: { ref: string; type: string; headline: string; status: "ok" | "ex" | "manual" }[] = [
   { ref: "PBC-01", type: "Manual", headline: "Outside Ramp data. Assigned to the team.", status: "manual" },
-  { ref: "PBC-02", type: "Transaction support", headline: "2 exceptions in 12 items tested", status: "ex" },
-  { ref: "PBC-03", type: "Bill support", headline: "2 exceptions in 31 items tested", status: "ex" },
-  { ref: "PBC-04", type: "Missing receipts", headline: "1 of 525 charges over $75 has no receipt", status: "ex" },
-  { ref: "PBC-05", type: "Control testing", headline: "4 control exceptions across 795 records", status: "ex" },
-  { ref: "PBC-06", type: "Duplicate payments", headline: "1 likely duplicate bill in 75", status: "ex" },
-  { ref: "PBC-07", type: "Vendor listing", headline: "16 vendors, 1 paid within 14 days of setup", status: "ex" },
-  { ref: "PBC-08", type: "User access", headline: "7 users with elevated access", status: "ok" },
+  { ref: "PBC-02", type: "Transaction support", headline: "10 exceptions in 12 items tested", status: "ex" },
+  { ref: "PBC-03", type: "Bill support", headline: "No bills over $10,000 in the period", status: "ok" },
+  { ref: "PBC-04", type: "Missing receipts", headline: "42 of 357 charges over $75 have no receipt", status: "ex" },
+  { ref: "PBC-05", type: "Control testing", headline: "113 control exceptions across 1,186 records", status: "ex" },
+  { ref: "PBC-06", type: "Duplicate payments", headline: "No duplicates in 6 bills", status: "ok" },
+  { ref: "PBC-07", type: "Vendor listing", headline: "419 vendors, 2 paid within 14 days of setup", status: "ex" },
+  { ref: "PBC-08", type: "User access", headline: "5 users with elevated access", status: "ok" },
   { ref: "PBC-09", type: "Manual", headline: "Outside Ramp data. Assigned to the team.", status: "manual" },
 ];
 
@@ -23,7 +24,7 @@ const START = 600;
 const STEP = 420;
 const DONE = START + REQUESTS.length * STEP;
 const FINDING = DONE + 500;
-const DRAFT = "Hi Avery, these Digi-Key charges add up to $9,585.50, above the limit that needs pre-approval. Was this one order?";
+const DRAFT = "Hi Michael, this $12,994.80 Asana charge is still waiting for your approval in Ramp. Our auditors are testing it. Could you review it this week?";
 const TYPE = FINDING + 700; // the follow-up starts typing
 const TYPE_MS = 1900;
 const APPROVE = TYPE + TYPE_MS + 600; // button press
@@ -66,8 +67,8 @@ export function ProductDemo() {
   const done = Math.max(0, Math.min(REQUESTS.length, Math.floor((t - START) / STEP) + 1));
   const p = Math.min(1, Math.max(0, (t - START) / (DONE - START)));
   const ease = 1 - Math.pow(1 - p, 3);
-  const exceptions = Math.round(8 * ease);
-  const rows = Math.round(78 * ease);
+  const exceptions = Math.round(157 * ease);
+  const rows = Math.round(596 * ease);
   const answered = REQUESTS.slice(0, done).filter((r) => r.status !== "manual").length;
   const typed = t < TYPE ? 0 : Math.min(DRAFT.length, Math.round(((t - TYPE) / TYPE_MS) * DRAFT.length));
   const typing = t >= TYPE && t < APPROVE;
@@ -81,8 +82,8 @@ export function ProductDemo() {
       <div className="demo-body">
         <div className="demo-head">
           <div>
-            <div className="demo-title">Evidence binder for Acme Robotics</div>
-            <div className="demo-sub">Hartwell &amp; Co. request list, FY2025</div>
+            <div className="demo-title">Evidence binder for Save Time Inc</div>
+            <div className="demo-sub">Live from Ramp: 1,180 transactions, last 12 months</div>
           </div>
           <span className={`demo-btn ${t >= DONE ? "on" : ""}`}>Download binder</span>
         </div>
@@ -108,10 +109,10 @@ export function ProductDemo() {
           </ul>
           <div className={`demo-finding ${t >= FINDING ? "in" : ""}`}>
             <div className="demo-ft">
-              <b>Possible split purchase</b>
+              <b>Approval still pending</b>
               <span className="demo-sev">High</span>
             </div>
-            <p>Two Digi-Key charges 17 minutes apart, $4,860.00 and $4,725.50. Each is under the $5,000 approval limit; together they exceed it.</p>
+            <p>$12,994.80 at Asana, above the $5,000 pre-approval limit. Ramp opened an approval, but Michael Scott has not signed off.</p>
             {/* The follow-up types itself, then flies into the Ramp thread once approved. */}
             <div className="demo-slot">
               <div className={`demo-draft ${t >= SENT ? "flying" : ""}`}>
@@ -119,10 +120,10 @@ export function ProductDemo() {
                 {typing && <span className="demo-caret" />}
               </div>
               <div className={`demo-thread ${t >= SENT ? "in" : ""}`}>
-                <span className="demo-thread-av">A</span>
+                <span className="demo-thread-av">M</span>
                 <div>
-                  <div className="demo-thread-k">Ramp thread · Digi-Key $4,860.00</div>
-                  <div className="demo-thread-t">Hi Avery, these Digi-Key charges add up to $9,585.50…</div>
+                  <div className="demo-thread-k">Ramp thread · Asana $12,994.80</div>
+                  <div className="demo-thread-t">@Michael Scott Hi Michael, this $12,994.80 Asana charge…</div>
                 </div>
               </div>
             </div>

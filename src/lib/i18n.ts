@@ -21,7 +21,7 @@ export interface Dict {
   meta: { title: string; description: string };
   nav: { problem: string; solution: string; accuracy: string; open: string; language: string };
   hero: { h1a: string; h1b: string; lede: string; try: string; upload: string; sample: string; connected: string };
-  flow: { aria: string; k1: string; from: string; ask: string; k2: string; t2: string; d2: string; k3: string; t3: string; d3: string; chip: string };
+  flow: { aria: string; k1: string; t1: string; from: string; ask: string; c2: string; k2: string; t2: string; d2: string; k3: string; t3: string; d3: string; chip: string };
   problem: { eyebrow: string; h2: string; items: { t: string; d: string }[] };
   quote: { text: string; note: string; source: string; translated: string };
   solution: { eyebrow: string; h2: string; steps: { t: string; d: string }[] };
@@ -54,11 +54,13 @@ const en: Dict = {
   flow: {
     aria: "What Tickmark does with one request",
     k1: "1 · The auditor asks",
+    t1: "PBC-03 · Bills over $10,000",
     from: "Request from Hartwell & Co.",
     ask: "Invoice, approval and proof of payment for every bill over $10,000.",
     k2: "2 · Tickmark tests it in Ramp",
     t2: "31 bills tested",
     d2: "Invoices attached, approvals traced, payments matched.",
+    c2: "Every bill checked, none sampled",
     k3: "3 · It flags what’s wrong",
     t3: "Paid Jun 2, approved Jun 9",
     d3: "Crestline Contract Manufacturing, $22,300.00",
@@ -118,11 +120,13 @@ const es: Dict = {
   flow: {
     aria: "Qué hace Tickmark con una solicitud",
     k1: "1 · El auditor pide",
+    t1: "PBC-03 · Facturas de más de 10.000 $",
     from: "Solicitud de Hartwell & Co.",
     ask: "Factura, aprobación y comprobante de pago de cada factura superior a 10.000 $.",
     k2: "2 · Tickmark lo comprueba en Ramp",
     t2: "31 facturas revisadas",
     d2: "Facturas adjuntas, aprobaciones rastreadas, pagos conciliados.",
+    c2: "Cada factura revisada, sin muestreo",
     k3: "3 · Señala lo que falla",
     t3: "Pagada el 2 jun, aprobada el 9 jun",
     d3: "Crestline Contract Manufacturing, 22.300,00 $",
@@ -199,11 +203,13 @@ const de: Dict = {
   flow: {
     aria: "Was Tickmark mit einer Anforderung macht",
     k1: "1 · Der Prüfer fragt",
+    t1: "PBC-03 · Rechnungen über 10.000 $",
     from: "Anforderung von Hartwell & Co.",
     ask: "Rechnung, Freigabe und Zahlungsnachweis für jede Rechnung über 10.000 $.",
     k2: "2 · Tickmark prüft es in Ramp",
     t2: "31 Rechnungen geprüft",
     d2: "Rechnungen angehängt, Freigaben nachverfolgt, Zahlungen abgeglichen.",
+    c2: "Jede Rechnung geprüft, keine Stichprobe",
     k3: "3 · Es meldet, was nicht stimmt",
     t3: "Bezahlt am 2. Juni, freigegeben am 9. Juni",
     d3: "Crestline Contract Manufacturing, 22.300,00 $",
@@ -280,11 +286,13 @@ const fr: Dict = {
   flow: {
     aria: "Ce que fait Tickmark d’une demande",
     k1: "1 · L’auditeur demande",
+    t1: "PBC-03 · Factures de plus de 10 000 $",
     from: "Demande de Hartwell & Co.",
     ask: "Facture, approbation et preuve de paiement pour chaque facture de plus de 10 000 $.",
     k2: "2 · Tickmark le vérifie dans Ramp",
     t2: "31 factures vérifiées",
     d2: "Factures jointes, approbations retracées, paiements rapprochés.",
+    c2: "Chaque facture vérifiée, sans échantillon",
     k3: "3 · Il signale ce qui cloche",
     t3: "Payée le 2 juin, approuvée le 9 juin",
     d3: "Crestline Contract Manufacturing, 22 300,00 $",
@@ -361,11 +369,13 @@ const uk: Dict = {
   flow: {
     aria: "Що Tickmark робить з одним запитом",
     k1: "1 · Аудитор запитує",
+    t1: "PBC-03 · Рахунки понад $10 000",
     from: "Запит від Hartwell & Co.",
     ask: "Рахунок, погодження і підтвердження оплати для кожного рахунку понад $10 000.",
     k2: "2 · Tickmark перевіряє це в Ramp",
     t2: "Перевірено 31 рахунок",
     d2: "Рахунки додані, погодження відстежені, оплати звірені.",
+    c2: "Перевірено кожен рахунок, без вибірки",
     k3: "3 · Позначає, що не так",
     t3: "Оплачено 2 червня, погоджено 9 червня",
     d3: "Crestline Contract Manufacturing, $22 300,00",

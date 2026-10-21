@@ -46,36 +46,23 @@ export function LandingPage({ lang }: { lang: Locale }) {
           </div>
 
           <ol className="lp-stack lp-flow" aria-label={t.flow.aria}>
-            <li className="pop-card" style={{ animationDelay: "300ms" }}>
-              <span className="flow-k">{t.flow.k1}</span>
-              <div className="mini ask">
-                <div className="mini-k">{t.flow.from}</div>
-                <div className="mini-t"><span className="mono">PBC-03</span> {t.flow.ask}</div>
-              </div>
-            </li>
-            <li className="pop-card" style={{ animationDelay: "700ms" }}>
-              <span className="flow-k">{t.flow.k2}</span>
-              <div className="mini ok">
-                <span className="mini-icon">
-                  <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                </span>
-                <div>
-                  <div className="mini-t">{t.flow.t2}</div>
-                  <div className="mini-k">{t.flow.d2}</div>
+            {[
+              { k: t.flow.k1, tone: "ask", icon: <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden><path d="M4 1.5h5.5L13 5v9.5H4z M9.5 1.5V5H13 M6.5 8.5h4 M6.5 11h4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" /></svg>, title: t.flow.t1, desc: t.flow.ask, chip: t.flow.from },
+              { k: t.flow.k2, tone: "ok", icon: <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>, title: t.flow.t2, desc: t.flow.d2, chip: t.flow.c2 },
+              { k: t.flow.k3, tone: "ex", icon: <span aria-hidden>!</span>, title: t.flow.t3, desc: t.flow.d3, chip: t.flow.chip },
+            ].map((c, i) => (
+              <li className="pop-card" style={{ animationDelay: `${300 + i * 400}ms` }} key={c.k}>
+                <span className="flow-k">{c.k}</span>
+                <div className={`mini flow-card ${c.tone}`}>
+                  <span className="mini-icon">{c.icon}</span>
+                  <div className="flow-body">
+                    <div className="mini-t">{c.title}</div>
+                    <div className="mini-k">{c.desc}</div>
+                    <div className="mini-chip">{c.chip}</div>
+                  </div>
                 </div>
-              </div>
-            </li>
-            <li className="pop-card" style={{ animationDelay: "1100ms" }}>
-              <span className="flow-k">{t.flow.k3}</span>
-              <div className="mini ex">
-                <span className="mini-icon">!</span>
-                <div>
-                  <div className="mini-t">{t.flow.t3}</div>
-                  <div className="mini-k">{t.flow.d3}</div>
-                  <div className="mini-chip">{t.flow.chip}</div>
-                </div>
-              </div>
-            </li>
+              </li>
+            ))}
           </ol>
         </section>
 
