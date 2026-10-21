@@ -12,23 +12,23 @@ import { CoverageChart } from "./landing/coverage";
 const PROBLEMS = [
   {
     t: "A spreadsheet of requests",
-    d: "Every audit starts with a list of asks: support for sampled card charges, approvals for large bills, a list of who has admin access.",
+    d: "Dozens of asks: receipts, approvals, access lists.",
   },
   {
     t: "Evidence is scattered",
-    d: "Each answer means finding a receipt, screenshotting an approval and matching a payment, then filing it in the right folder.",
+    d: "Every answer is a receipt, a screenshot and a folder.",
   },
   {
     t: "Problems show up late",
-    d: "A split purchase or a self-approved bill gets found by the auditor, weeks in, instead of by the finance team.",
+    d: "The auditor finds the gaps, weeks in.",
   },
 ];
 
 const STEPS = [
-  { t: "Upload the request list", d: "Excel, CSV, PDF or the auditor's email. Tickmark reads each request into a plan you can check and edit." },
-  { t: "Gather the evidence", d: "Receipts, approvals, bills and vendors come straight from Ramp, matched to the exact items the auditor picked." },
-  { t: "Test the controls", d: "The checks auditors run, written as code: receipts, approvals, split purchases, duplicates, new vendors." },
-  { t: "Fix and hand over", d: "Send the follow-ups you approve, then download a binder with an index, workpapers and every document." },
+  { t: "Upload", d: "The auditor's list, as a file or an email." },
+  { t: "Gather", d: "Receipts, approvals and bills from Ramp." },
+  { t: "Test", d: "The checks auditors run, on every record." },
+  { t: "Hand over", d: "Approve follow-ups. Download the binder." },
 ];
 
 // One small looping animation per problem card: a sheet filling up, scattered documents, a late alert.
@@ -47,19 +47,18 @@ export default function Landing() {
         {/* Intro */}
         <section className="lp-hero wrap">
           <div className="lp-hero-copy">
-            <p className="eyebrow pop" style={{ animationDelay: "0ms" }}>Audit prep for Ramp customers</p>
             <h1 className="pop" style={{ animationDelay: "60ms" }}>
               Your auditor&rsquo;s request list, <em>answered from Ramp.</em>
             </h1>
             <p className="lede pop" style={{ animationDelay: "120ms" }}>
-              Tickmark turns the year-end request list into a finished evidence binder, and flags control problems before the auditor finds them.
+              Upload the request list. Get back a finished evidence binder, with every problem flagged first.
             </p>
             <div className="row pop" style={{ animationDelay: "180ms" }}>
               <Link href="/app?sample=xlsx" className="btn primary lg">Try it with a sample audit</Link>
               <Link href="/app" className="btn lg">Upload your list</Link>
             </div>
             <p className="fine pop" style={{ animationDelay: "240ms" }}>
-              {info.kind === "fixture" ? "No Ramp account connected here yet, so the sample audit uses a generated company." : `Connected to ${info.label}.`}
+              {info.kind === "fixture" ? "The sample audit runs on a generated company." : `Connected to ${info.label}.`}
             </p>
           </div>
 
@@ -96,7 +95,6 @@ export default function Landing() {
             {PROBLEMS.map((p, i) => (
               <div className="lp-card stagger seq" style={{ transitionDelay: `${150 + i * 450}ms` }} key={p.t}>
                 {ART[i]}
-                <span className="lp-num">{String(i + 1).padStart(2, "0")}</span>
                 <h3>{p.t}</h3>
                 <p>{p.d}</p>
               </div>
@@ -146,34 +144,11 @@ export default function Landing() {
           <CoverageChart />
         </Reveal>
 
-        <Reveal className="lp-section wrap">
-          <div className="lp-trust">
-            <div className="stagger">
-              <h3>The model reads. Code decides.</h3>
-              <p>AI turns messy request lists into a plan you review. Every pass or fail is plain code on Ramp records, so results are repeatable.</p>
-            </div>
-            <div className="stagger" style={{ transitionDelay: "80ms" }}>
-              <h3>Every line traces to Ramp</h3>
-              <p>Each evidence row and exception links to the Ramp transaction, bill or vendor behind it.</p>
-            </div>
-            <div className="stagger" style={{ transitionDelay: "160ms" }}>
-              <h3>Nothing sent without you</h3>
-              <p>Follow-ups are drafts until you approve them. Tickmark only writes those approved comments.</p>
-            </div>
-          </div>
-          <Link href="/eval" className="lp-proof stagger" style={{ transitionDelay: "240ms" }}>
-            <span className="lp-proof-v">8 of 8</span>
-            <span>planted problems found in the sample company, with 0 false alarms.</span>
-            <span className="lp-proof-a">See the accuracy check</span>
-          </Link>
-        </Reveal>
-
         <Reveal className="lp-cta wrap" as="div">
           <h2>See it on a sample audit.</h2>
-          <p>Nine requests from a sample auditor. Seven are answered from Ramp in seconds, and two are flagged for your team.</p>
+          <p><Link href="/eval" className="lp-proof-line">8 of 8 planted problems found, 0 false alarms</Link></p>
           <div className="row" style={{ justifyContent: "center" }}>
             <Link href="/app?sample=xlsx" className="btn primary lg">Try the sample audit</Link>
-            <Link href="/app" className="btn lg">Upload your list</Link>
           </div>
         </Reveal>
       </main>

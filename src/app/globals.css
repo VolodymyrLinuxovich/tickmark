@@ -583,3 +583,24 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
   .pc-sheet i { width: var(--w, 88%); }
   .pc-late em { opacity: 1; transform: none; }
 }
+
+/* ---------- landing v5: minimal ---------- */
+.lp .eyebrow { color: var(--ink-3); }
+.lp-section { padding-top: 120px; }
+.lp-section h2, .lp-cta h2 { margin-bottom: 40px; }
+.lp-grid3 { gap: 40px; }
+.lp-card { background: none; border: none; padding: 0; box-shadow: none; }
+.lp-card h3 { font-size: 17px; margin: 14px 0 4px; }
+.lp-card p, .lp-steps p { font-size: 15px; }
+.pc-art { height: 84px; border: none; border-radius: 12px; }
+.lp-steps { gap: 32px; }
+.lp-steps h3 { font-size: 17px; }
+.lp-quote-band { background: none; border: none; margin-top: 96px; padding: 24px 0; }
+.lp-pull figcaption { margin-top: 20px; }
+.cov { border: none; box-shadow: none; background: none; padding: 0; }
+.cov-legend { color: var(--ink-3); }
+.lp-cta { padding-top: 140px; padding-bottom: 96px; }
+.lp-proof-line { color: var(--tick); text-decoration: none; font-weight: 500; }
+.lp-proof-line:hover { text-decoration: underline; text-underline-offset: 3px; }
+.lede { font-size: 19px; }
+.fine { font-size: 12.5px; }

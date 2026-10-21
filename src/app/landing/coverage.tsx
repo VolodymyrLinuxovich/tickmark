@@ -32,15 +32,10 @@ function rows(): Row[] {
 }
 
 export function CoverageChart() {
-  const snap = getFixture().snapshot;
   const data = rows().map((r) => ({ ...r, manual: Math.min(MANUAL_SAMPLE, r.n) }));
   return (
     <figure className="cov">
       <CoverageLive data={data} manualSample={MANUAL_SAMPLE} />
-      <figcaption>
-        Records each check covers on the sample company ({snap.transactions.length} card charges, {snap.bills.length} bills, {snap.vendors.length} vendors).
-        Hover a bar for details.
-      </figcaption>
       {/* Same numbers as a table for screen readers. */}
       <div className="sr-only"><table>
         <thead>
