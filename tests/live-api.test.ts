@@ -8,6 +8,7 @@ import { normalizeFile } from "../src/lib/parse/input";
 import { parseWithRules } from "../src/lib/parse/rules";
 import { getFixture } from "../src/lib/fixtures/generate";
 import { APP, CLI_TOKEN, startMockRamp, type MockRamp } from "./mock-ramp";
+import { fitSampleToLiveData } from "../src/lib/engine/live-sample";
 
 let ramp: MockRamp;
 const period = { from: "2025-01-01", to: "2025-12-31" };
@@ -93,5 +94,21 @@ describe("live Ramp client against a spec-shaped mock", () => {
   it("rejects bad client credentials with a clear error", async () => {
     const src = new ApiSource("sandbox", { kind: "client_credentials", clientId: "x", clientSecret: "y" }, ramp.url);
     await expect(src.snapshot({ from: "2024-01-01", to: "2024-12-31" })).rejects.toThrow(/Ramp API 401 on \/developer\/v1\/token/);
+  });
+
+  it("fits the sample list to a connected business and every selection matches a real transaction", async () => {
+    const src = new ApiSource("sandbox", { kind: "client_credentials", ...APP }, ramp.url);
+    const f = "public/samples/hartwell-pbc-fy2025.xlsx";
+    const parsed = parseWithRules(await normalizeFile(f, new Uint8Array(readFileSync(f))));
+    const fitted = await fitSampleToLiveData({ ...parsed }, src, new Date("2026-01-01T00:00:00Z"));
+    expect(fitted.requests.every((r) => r.period_from === "2025-01-01" && r.period_to === "2026-01-01")).toBe(true);
+    const sel = fitted.requests.find((r) => r.type === "transaction_support")!;
+    expect(sel.selections).toHaveLength(12);
+    const snap = await src.snapshot({ from: "2025-01-01", to: "2026-01-01" });
+    const results = runAll(fitted.requests, snap);
+    const ts = results.find((r) => r.request.type === "transaction_support")!;
+    expect(ts.tested).toBe(12);
+    expect(ts.findings.filter((x) => x.code === "SELECTION_NOT_FOUND")).toEqual([]);
+    expect(fitted.warnings.join(" ")).toMatch(/Sample list fitted to Acme Robotics/);
   });
 });
