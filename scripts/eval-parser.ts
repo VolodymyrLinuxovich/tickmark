@@ -1,15 +1,22 @@
 // Scores the request parsers against public/samples/corpus.
 // Run: npm run eval:parser   (add -- --verbose to list every miss, -- --dir <path> for another corpus)
-// The Claude parser is scored only when ANTHROPIC_API_KEY is set and a first call succeeds.
+// The model parser (Claude, then OpenAI) is scored only when a key is set and a first call succeeds.
+// Keys are read from .env.local when present.
 
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { normalizeFile, normalizeText, type NormalizedInput } from "../src/lib/parse/input";
 import { parseWithRules } from "../src/lib/parse/rules";
-import { MODEL, parseRequests } from "../src/lib/parse/claude";
+import { availableProviders, parseRequests } from "../src/lib/parse/claude";
 import type { ParsedList } from "../src/lib/parse/schema";
 import type { Expected } from "./make-corpus";
 
 const dirArg = process.argv.indexOf("--dir");
+try {
+  process.loadEnvFile(".env.local");
+} catch {
+  // no .env.local
+}
+
 const ROOT = dirArg > 0 ? process.argv[dirArg + 1] : "public/samples/corpus";
 const FIELDS = ["found", "ref", "type", "period_from", "period_to", "min_amount", "selections"] as const;
 type Field = (typeof FIELDS)[number];
@@ -82,24 +89,27 @@ async function main() {
   const verbose = process.argv.includes("--verbose");
   const cases = listCases(ROOT);
   const scores: Record<string, Score> = { rules: empty() };
-  let claude = Boolean(process.env.ANTHROPIC_API_KEY) && process.env.TICKMARK_PARSER !== "rules";
-  if (!claude) console.log("ANTHROPIC_API_KEY not set: scoring the rules parser only.\n");
+  let useModel = availableProviders().length > 0;
+  if (!useModel) console.log("No model key set (ANTHROPIC_API_KEY or OPENAI_API_KEY): scoring the rules parser only.\n");
 
-  for (const name of cases) {
-    const { expected, input } = await load(name);
-    score(name, expected, parseWithRules(input), scores.rules);
-    if (!claude) continue;
-    const parsed = await parseRequests(input);
-    if (parsed.parser !== MODEL) {
-      // parseRequests falls back to rules on any error; report it once and stop calling the API.
-      const why = parsed.warnings.find((w) => /Claude|model/.test(w)) ?? "unknown error";
-      console.log(`Claude parser unavailable, scoring the rules parser only.\n  ${why}\n`);
-      claude = false;
-      delete scores[MODEL];
-      continue;
+  const loaded = await Promise.all(cases.map(async (name) => ({ name, ...(await load(name)) })));
+  for (const { name, expected, input } of loaded) score(name, expected, parseWithRules(input), scores.rules);
+
+  if (useModel) {
+    // One probe call first, so a dead key fails once instead of once per case.
+    const first = await parseRequests(loaded[0].input);
+    if (first.parser === "rules") {
+      console.log(`Model parser unavailable, scoring the rules parser only.\n  ${first.warnings.at(-1) ?? "unknown error"}\n`);
+      useModel = false;
+    } else {
+      const results = [first];
+      for (let i = 1; i < loaded.length; i += 6) results.push(...(await Promise.all(loaded.slice(i, i + 6).map((c) => parseRequests(c.input)))));
+      results.forEach((parsed, i) => {
+        const key = parsed.parser === "rules" ? "model fell back" : parsed.parser;
+        scores[key] ??= empty();
+        score(loaded[i].name, loaded[i].expected, parsed, scores[key]);
+      });
     }
-    scores[MODEL] ??= empty();
-    score(name, expected, parsed, scores[MODEL]);
   }
 
   console.log(`Corpus: ${cases.length} cases, ${scores.rules.total} requests\n`);

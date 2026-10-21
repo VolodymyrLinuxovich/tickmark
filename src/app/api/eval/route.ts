@@ -9,9 +9,9 @@ import { scoreAgainstPlanted } from "@/lib/engine/eval";
 
 export const maxDuration = 120;
 
-/** Scores the full pipeline on the demo company. ?parser=claude runs the model parser too. */
+/** Scores the full pipeline on the demo company. ?parser=model (or claude) runs the model parser too. */
 export async function GET(req: Request) {
-  const useClaude = new URL(req.url).searchParams.get("parser") === "claude";
+  const useClaude = ["claude", "model"].includes(new URL(req.url).searchParams.get("parser") ?? "");
   const name = "hartwell-pbc-fy2025.xlsx";
   const input = await normalizeFile(name, new Uint8Array(await readFile(path.join(process.cwd(), "public/samples", name))));
   const t0 = Date.now();

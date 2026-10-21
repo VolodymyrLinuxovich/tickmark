@@ -14,7 +14,7 @@ type RunState = { status: "wait" | "spin" | "done" | "error"; result?: RequestRe
 
 const SEV_ORDER = { high: 0, medium: 1, low: 2 } as const;
 
-export default function Workbench({ source, claude, scopes }: { source: SourceInfo; claude: boolean; scopes: string }) {
+export default function Workbench({ source, models, scopes }: { source: SourceInfo; models: string[]; scopes: string }) {
   const [stage, setStage] = useState<Stage>("intake");
   const [parsed, setParsed] = useState<Parsed | null>(null);
   const [requests, setRequests] = useState<AuditRequest[]>([]);
@@ -82,7 +82,7 @@ export default function Workbench({ source, claude, scopes }: { source: SourceIn
 
   return (
     <main>
-      {stage === "intake" && <Intake busy={busy} error={error} onParse={parse} claude={claude} source={source} scopes={scopes} />}
+      {stage === "intake" && <Intake busy={busy} error={error} onParse={parse} models={models} source={source} scopes={scopes} />}
       {stage !== "intake" && (
         <div className="wrap">
           <div className="steps">
@@ -119,7 +119,7 @@ const STEPS = [
   { t: "Resolve and export", d: "Review exceptions, send the follow-ups you approve, and download the binder." },
 ];
 
-function Intake({ busy, error, onParse, claude, source, scopes }: { busy: string | null; error: string | null; onParse: (b: FormData | { text?: string; sample?: string }, label: string) => void; claude: boolean; source: SourceInfo; scopes: string }) {
+function Intake({ busy, error, onParse, models, source, scopes }: { busy: string | null; error: string | null; onParse: (b: FormData | { text?: string; sample?: string }, label: string) => void; models: string[]; source: SourceInfo; scopes: string }) {
   const [text, setText] = useState("");
   const [over, setOver] = useState(false);
   const [paste, setPaste] = useState(false);
@@ -236,12 +236,12 @@ function Intake({ busy, error, onParse, claude, source, scopes }: { busy: string
         ))}
       </ol>
 
-      <Advanced claude={claude} source={source} scopes={scopes} />
+      <Advanced models={models} source={source} scopes={scopes} />
     </div>
   );
 }
 
-function Advanced({ claude, source, scopes }: { claude: boolean; source: SourceInfo; scopes: string }) {
+function Advanced({ models, source, scopes }: { models: string[]; source: SourceInfo; scopes: string }) {
   const origin = useSyncExternalStore(
     () => () => {},
     () => window.location.origin,
@@ -283,7 +283,7 @@ function Advanced({ claude, source, scopes }: { claude: boolean; source: SourceI
             {source.kind === "fixture"
               ? "This site runs on Acme Robotics, a generated demo company whose records use Ramp's API field names. No Ramp account is connected."
               : `Connected to ${source.label}${source.base_url ? ` (${source.base_url})` : ""}.`}{" "}
-            Requests are read by {claude ? "Claude, falling back to a keyword parser if the call fails" : "a keyword parser, since no Anthropic key is set"}. Pass or fail is always decided by code, not the model.
+            Requests are read by {models.length ? `${models.join(", then ")}, falling back to keyword rules if the call fails` : "keyword rules, since no model key is set"}. Pass or fail is always decided by code, not the model.
           </p>
         </section>
         <section>
@@ -301,7 +301,7 @@ function Advanced({ claude, source, scopes }: { claude: boolean; source: SourceI
 }
 
 // ---------------------------------------------------------------- plan
-const parserName = (p: string) => (p === "rules" ? "keyword rules" : /claude/i.test(p) ? `Claude (${p})` : p);
+const parserName = (p: string) => (p === "rules" ? "keyword rules" : /claude/i.test(p) ? `Claude (${p})` : /^(gpt|o\d)/i.test(p) ? `OpenAI (${p})` : p);
 
 function Plan({ parsed, requests, setRequests, onRun, source }: { parsed: Parsed; requests: AuditRequest[]; setRequests: (r: AuditRequest[]) => void; onRun: () => void; source: SourceInfo }) {
   const auto = requests.filter((r) => r.type !== "unsupported").length;

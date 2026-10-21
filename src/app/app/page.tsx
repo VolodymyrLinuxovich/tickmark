@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getSource } from "@/lib/ramp/source";
 import { READ_SCOPES } from "@/lib/ramp/api-client";
+import { availableProviders } from "@/lib/parse/claude";
 import { TopBar } from "../topbar";
 import Workbench from "../workbench";
 
@@ -13,7 +14,7 @@ export default function AppPage() {
     <>
       <TopBar info={info} />
       <Suspense>
-        <Workbench source={info} claude={!!process.env.ANTHROPIC_API_KEY && process.env.TICKMARK_PARSER !== "rules"} scopes={READ_SCOPES} />
+        <Workbench source={info} models={availableProviders()} scopes={READ_SCOPES} />
       </Suspense>
     </>
   );

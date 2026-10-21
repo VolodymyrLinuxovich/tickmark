@@ -45,9 +45,10 @@ Copy `.env.example` to `.env.local`.
 | Variable | Purpose |
 |---|---|
 | `ANTHROPIC_API_KEY` | Enables the Claude request parser. Without it the keyword parser is used. |
+| `OPENAI_API_KEY`, `OPENAI_MODEL` | Enables the OpenAI request parser, tried after Claude. The model defaults to `gpt-5.5`. |
 | `TICKMARK_SOURCE` | `fixture` (default), `sandbox` (`demo-api.ramp.com`) or `production` (`api.ramp.com`). |
 | `RAMP_CLIENT_ID`, `RAMP_CLIENT_SECRET` | A Ramp developer app with the client credentials grant. Read scopes: `transactions:read receipts:read bills:read users:read departments:read vendors:read approvals:read business:read`. Posting comments also needs `transactions:write` and `bills:write`. |
-| `TICKMARK_PARSER` | Set to `rules` to force the keyword parser. |
+| `TICKMARK_PARSER` | `claude`, `openai` or `rules` picks one parser. Empty tries Claude, then OpenAI, then the keyword parser. |
 | `TICKMARK_CARD_APPROVAL_LIMIT`, `TICKMARK_RECEIPT_THRESHOLD` | Policy values in dollars (defaults 5000 and 75). |
 
 The live Ramp client (`src/lib/ramp/api-client.ts`) follows the Developer API docs: client credentials token at `/developer/v1/token`, `page.next` pagination, `/approvals` batched by entity id, and comments via `/developer/v1/comments/{bills|transactions}/{id}`. It has not yet been run against a Ramp sandbox, because sandbox access is not self-serve.

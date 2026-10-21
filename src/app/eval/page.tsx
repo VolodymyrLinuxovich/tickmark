@@ -80,7 +80,7 @@ async function EvalBody() {
             {report.extra.map((f) => <div className="finding" key={f.id}><b>{f.title}</b><div className="fd">{f.detail}</div></div>)}
           </>
         )}
-        <div className="label" style={{ marginTop: 28 }}>Request reading with Claude</div>
+        <div className="label" style={{ marginTop: 28 }}>Request reading with a model</div>
         <ClaudeEval />
         <div className="label" style={{ marginTop: 28 }}>Limits</div>
         <ul className="procedure">

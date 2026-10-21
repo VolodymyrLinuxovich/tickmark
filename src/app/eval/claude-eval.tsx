@@ -29,7 +29,7 @@ export default function ClaudeEval() {
   if (!out)
     return (
       <div className="row">
-        <button className="btn" onClick={go} disabled={busy}>{busy ? "Reading with Claude..." : "Run the same list through the Claude parser"}</button>
+        <button className="btn" onClick={go} disabled={busy}>{busy ? "Reading with the model..." : "Run the same list through the model parser"}</button>
         <span className="muted">One model call. Compares each request type with the expected answer, then reruns the checks.</span>
       </div>
     );
