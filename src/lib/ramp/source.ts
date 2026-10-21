@@ -196,7 +196,8 @@ export class ApiSource implements RampSource {
       const r = resolution(it.code, { txn: isTxn ? (rec as RampTransaction | null) : null, bill: isTxn ? null : (rec as RampBill | null), approval, name });
       if (r.resolved) changed = true;
       const replies = comments
-        .filter((c) => !it.posted_message || c.message.trim() !== it.posted_message.trim())
+        // Ramp prepends "@Name" mentions to the posted text, so Tickmark's own comment is matched by containment.
+        .filter((c) => !it.posted_message || !c.message.includes(it.posted_message.trim()))
         .map((c) => ({ id: c.id, author: name(c.user_id), message: c.message, created_at: c.created_at }))
         .sort((a, b) => a.created_at.localeCompare(b.created_at));
       return { finding_id: it.finding_id, resolved: r.resolved, how: r.how, replies, checked_at: new Date().toISOString() };
