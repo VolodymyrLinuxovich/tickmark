@@ -8,7 +8,7 @@ import { Reveal } from "./reveal";
 import { ProductDemo } from "./product-demo";
 import { CoverageChart } from "./coverage";
 import { HtmlLang } from "./html-lang";
-import { DICTS, fill, type Locale } from "@/lib/i18n";
+import { DICTS, type Locale } from "@/lib/i18n";
 
 // One small looping animation per problem card: a sheet filling up, scattered documents, a late alert.
 const ART = [
@@ -38,9 +38,11 @@ export function LandingPage({ lang }: { lang: Locale }) {
               <Link href="/app?sample=xlsx" className="btn primary lg">{t.hero.try}</Link>
               <Link href="/app" className="btn lg">{t.hero.upload}</Link>
             </div>
-            <p className="fine pop" style={{ animationDelay: "240ms" }}>
-              {info.kind === "fixture" ? t.hero.sample : fill(t.hero.connected, { source: info.label })}
-            </p>
+            {info.kind === "fixture" && (
+              <p className="fine pop" style={{ animationDelay: "240ms" }}>
+                {t.hero.sample}
+              </p>
+            )}
           </div>
 
           <ol className="lp-stack lp-flow" aria-label={t.flow.aria}>

@@ -328,7 +328,7 @@ function Advanced({ models, source, scopes }: { models: string[]; source: Source
           <p>
             {source.kind === "fixture"
               ? "No Ramp account is connected, so this runs on Acme Robotics, a generated sample company whose records use Ramp's API field names."
-              : `Connected to ${source.label}${source.base_url ? ` (${source.base_url})` : ""}.`}{" "}
+              : "Connected to Ramp."}{" "}
             Requests are read by {models.length ? `${models.join(", then ")}, falling back to keyword rules if the call fails` : "keyword rules, since no model key is set"}. Pass or fail is always decided by code, not the model.
           </p>
         </section>
@@ -369,7 +369,7 @@ function Plan({ parsed, requests, setRequests, onRun, source }: { parsed: Parsed
           </p>
         </div>
         <button className="btn primary" onClick={onRun} disabled={!requests.length}>
-          Pull evidence from {source.kind === "fixture" ? "sample data" : source.label}
+          Pull evidence from {source.kind === "fixture" ? "sample data" : "Ramp"}
         </button>
       </div>
       {parsed.warnings.map((w) => (
@@ -427,7 +427,7 @@ function Running({ requests, runs, source }: { requests: AuditRequest[]; runs: R
       <div className="section-head">
         <div>
           <h2>Pulling evidence</h2>
-          <p>{done} of {requests.length} done, reading from {source.label}.</p>
+          <p>{done} of {requests.length} done, reading from {source.kind === "fixture" ? "sample data" : "Ramp"}.</p>
         </div>
       </div>
       <div className="card plan">
@@ -825,7 +825,7 @@ function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f: Findin
           <textarea value={msg} onChange={(e) => setMsg(e.target.value)} aria-label="Comment draft" />
           <div className="row end" style={{ marginTop: 8 }}>
             <span className="muted" style={{ marginRight: "auto", fontSize: 12 }}>
-              Posts to the {f.comment.object_type === "bills" ? "bill" : "transaction"} thread{source.kind === "fixture" ? " (sample outbox, no Ramp account connected)" : ` in ${source.label}`}.
+              Posts to the {f.comment.object_type === "bills" ? "bill" : "transaction"} thread{source.kind === "fixture" ? " (sample outbox, no Ramp account connected)" : " in Ramp"}.
             </span>
             <button className="btn primary small" onClick={post} disabled={posting || !msg.trim()}>{posting ? "Sending..." : "Approve and send"}</button>
           </div>
@@ -993,7 +993,7 @@ function RecordDrawer({ refd, onClose }: { refd: RecordRef; onClose: () => void 
                   <div key={k} style={{ display: "contents" }}><dt>{k}</dt><dd>{v}</dd></div>
                 ))}
               </dl>
-              <div className="label">Raw API response ({data.source.label})</div>
+              <div className="label">Raw API response ({data.source.kind === "fixture" ? "sample data" : "Ramp"})</div>
               <pre>{JSON.stringify(data.record, null, 2)}</pre>
             </>
           )}

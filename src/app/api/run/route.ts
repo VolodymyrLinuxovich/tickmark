@@ -39,6 +39,6 @@ export async function POST(req: Request) {
       ms: Date.now() - t0,
     });
   } catch (err) {
-    return Response.json({ error: `Could not read from ${source.info.label}: ${String(err).slice(0, 300)}` }, { status: 502 });
+    return Response.json({ error: `Could not read from Ramp: ${String(err).slice(0, 300)}` }, { status: 502 });
   }
 }
