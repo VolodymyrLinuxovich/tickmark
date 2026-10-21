@@ -16,7 +16,7 @@ import { TopBar } from "../topbar";
 import ClaudeEval from "./claude-eval";
 import { CountUp, PlantedTable } from "./animated";
 
-export const metadata = { title: "Tickmark accuracy" };
+export const metadata = { title: "Accuracy" };
 
 /** Parses the sample list with the rules parser, runs every check and scores the result. */
 async function evaluate() {

@@ -9,7 +9,7 @@ import { availableProviders } from "@/lib/parse/claude";
 import { TopBar } from "../topbar";
 import Workbench from "../workbench";
 
-export const metadata: Metadata = { title: "Tickmark app" };
+export const metadata: Metadata = { title: "App" };
 
 export default function AppPage() {
   const info = getSource().info;

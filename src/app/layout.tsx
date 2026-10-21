@@ -9,7 +9,7 @@ const mono = Geist_Mono({ variable: "--font-mono", subsets: ["latin"] });
 const serif = Newsreader({ variable: "--font-serif", subsets: ["latin"], style: ["normal", "italic"] });
 
 export const metadata: Metadata = {
-  title: "Tickmark",
+  title: { default: "Tickmark · Audit evidence from Ramp", template: "%s · Tickmark" },
   description: "Turns an auditor's request list into a cited evidence binder from Ramp data.",
 };
 

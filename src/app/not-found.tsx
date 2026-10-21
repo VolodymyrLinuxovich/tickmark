@@ -5,7 +5,7 @@ import Link from "next/link";
 import { getSource } from "@/lib/ramp/source";
 import { TopBar } from "./topbar";
 
-export const metadata: Metadata = { title: "Page not found · Tickmark" };
+export const metadata: Metadata = { title: "Page not found" };
 
 export default function NotFound() {
   return (

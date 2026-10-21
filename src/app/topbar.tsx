@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Logo } from "./logo";
 import type { SourceInfo } from "@/lib/ramp/types";
 
 /**
@@ -10,10 +11,7 @@ export function TopBar({ info, landing = false }: { info: SourceInfo; landing?: 
     <header className="top">
       <div className="wrap">
         <Link href="/" className="brand">
-          <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden>
-            <rect x="1" y="1" width="18" height="18" rx="5" fill="none" stroke="currentColor" strokeWidth="1.6" />
-            <path d="M5.5 10.5l3 2.8L14.5 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <Logo />
           Tickmark
         </Link>
         <nav>

@@ -668,3 +668,38 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 @media (prefers-color-scheme: dark) {
   :root { --accent: #5cc28f; --accent-ink: #0c1712; }
 }
+.brand { font-size: 16.5px; gap: 10px; letter-spacing: -0.015em; }
+
+/* ---------- landing v7: spacing between v5 and v6 ---------- */
+.lp-hero { padding-top: 88px; padding-bottom: 56px; gap: 64px; }
+.lp-hero h1 { margin-bottom: 22px; }
+.lp-hero .lede { margin-bottom: 32px; }
+.fine { margin-top: 18px; }
+.lp-stack { gap: 18px; }
+.lp-section { padding-top: 128px; }
+.lp .eyebrow { margin-bottom: 14px; }
+.lp-section h2, .lp-cta h2 { margin-bottom: 48px; }
+.lp-grid3 { gap: 48px; }
+.lp-card h3 { margin: 18px 0 6px; }
+.lp-quote-band { margin-top: 128px; padding: 88px 0 80px; }
+.lp-pull-note { margin-top: 22px; }
+.lp-pull figcaption { margin-top: 26px; }
+.lp-steps { gap: 36px; }
+.lp-steps h3 { margin: 16px 0 6px; }
+.lp-shot { margin-top: 56px; }
+.demo-body { padding: 24px 26px 26px; }
+.demo-stats { margin: 20px 0; }
+.demo-grid { gap: 18px; }
+.demo-req { padding: 8px 14px; min-height: 48px; }
+.cov-head { margin-bottom: 28px; }
+.cov-rows { gap: 16px; }
+.lp-cta { padding-top: 144px; padding-bottom: 112px; }
+.lp-cta p { margin-bottom: 28px; }
+@media (max-width: 760px) {
+  .lp-hero { padding-top: 56px; gap: 44px; }
+  .lp-section { padding-top: 88px; }
+  .lp-quote-band { margin-top: 88px; padding: 64px 0 56px; }
+  .lp-section h2 { margin-bottom: 32px; }
+  .lp-grid3 { gap: 36px; }
+  .lp-cta { padding-top: 96px; padding-bottom: 80px; }
+}
