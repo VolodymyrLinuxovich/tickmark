@@ -6,7 +6,8 @@
 // All parsing, evidence gathering and checks happen in the API routes; this file only holds UI
 // state. Drafted comments are posted only when the user presses "Approve and send" on a finding.
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import type { ExceptionStatus, ExceptionStatuses } from "@/lib/binder/build";
 import { useSearchParams } from "next/navigation";
 import type { AuditRequest, ParsedList, RequestType } from "@/lib/parse/schema";
 import { REQUEST_TYPE_INFO, REQUEST_TYPES } from "@/lib/parse/schema";
@@ -387,8 +388,8 @@ function Plan({ parsed, requests, setRequests, onRun, source }: { parsed: Parsed
               <div className="interp">{r.type === "unsupported" ? REQUEST_TYPE_INFO.unsupported.what : r.interpretation}</div>
               {r.reason && <div className="why"><b>Why:</b> {r.reason}</div>}
               <div className="meta">
-                {r.period_from && <span className="tag">{r.period_from} to {r.period_to}</span>}
-                {r.min_amount != null && <span className="tag">over ${r.min_amount.toLocaleString("en-US")}</span>}
+                <PeriodChip r={r} onChange={(from, to) => setRequests(requests.map((x, k) => (k === i ? { ...x, period_from: from, period_to: to } : x)))} />
+                <AmountChip r={r} onChange={(min) => setRequests(requests.map((x, k) => (k === i ? { ...x, min_amount: min } : x)))} />
                 {r.selections.length > 0 && <span className="tag">{r.selections.length} selections</span>}
               </div>
             </div>
@@ -460,6 +461,7 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
   const [sel, setSel] = useState<number | "all">("all");
   const [downloading, setDownloading] = useState(false);
   const [sent, setSent] = useState<Record<string, string>>({});
+  const statusApi = useStatuses();
   const auto = results.filter((r) => r.status !== "manual");
   const tested = results.reduce((s, r) => s + r.rows.length, 0);
   const high = allFindings.filter((x) => x.f.severity === "high").length;
@@ -471,7 +473,7 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
   async function download() {
     setDownloading(true);
     try {
-      const res = await fetch("/api/binder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests, auditor }) });
+      const res = await fetch("/api/binder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests, auditor, statuses: statusApi.statuses }) });
       if (!res.ok) throw new Error("Binder failed");
       const blob = await res.blob();
       const name = res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ?? "audit-binder.zip";
@@ -488,7 +490,7 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
   // `sel` is "all" for the combined exception list, or an index into `results`.
   const current = sel === "all" ? null : results[sel];
   return (
-    <>
+    <StatusContext.Provider value={statusApi}>
       <div className="section-head">
         <div>
           <h2>Evidence binder{meta.business ? ` for ${meta.business}` : ""}</h2>
@@ -534,7 +536,10 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
             <>
               <h3>All exceptions</h3>
               <div className="headline muted">Sorted by severity. Each one lists the Ramp records behind it and the request that surfaced it.</div>
-              <div className="label">Exceptions ({allFindings.length})</div>
+              <div className="label">
+                Exceptions ({allFindings.length})
+                {allFindings.length > 0 && ` · ${allFindings.filter(({ f }) => (statusApi.statuses[f.id]?.status ?? "open") === "open").length} open`}
+              </div>
               {allFindings.map(({ f, refs }) => (
                 <FindingCard key={f.id} f={f} refs={refs} openRecord={openRecord} sent={sent} setSent={setSent} source={source} />
               ))}
@@ -543,7 +548,7 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
           )}
         </div>
       </div>
-    </>
+    </StatusContext.Provider>
   );
 }
 
@@ -659,6 +664,7 @@ function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f: Findin
           )}
         </div>
       )}
+      <StatusControl id={f.id} />
       {open && f.comment && (
         <div className="draft">
           <textarea value={msg} onChange={(e) => setMsg(e.target.value)} aria-label="Comment draft" />
@@ -672,6 +678,118 @@ function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f: Findin
         </div>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------- exception status
+/** Shared exception statuses for the results view, kept in this browser so a refresh does not lose them. */
+const StatusContext = createContext<{ statuses: ExceptionStatuses; set: (id: string, s: ExceptionStatus) => void }>({ statuses: {}, set: () => {} });
+const STATUS_KEY = "tickmark-exception-statuses";
+
+function useStatuses() {
+  // The results view only renders in the browser after a run, so reading storage here is safe.
+  const [statuses, setStatuses] = useState<ExceptionStatuses>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(STATUS_KEY) ?? "{}");
+    } catch {
+      return {}; // Storage can be blocked; statuses then last for this page view only.
+    }
+  });
+  const set = useCallback((id: string, s: ExceptionStatus) => {
+    setStatuses((prev) => {
+      const next = { ...prev, [id]: s };
+      try {
+        localStorage.setItem(STATUS_KEY, JSON.stringify(next));
+      } catch {
+        // see above
+      }
+      return next;
+    });
+  }, []);
+  return { statuses, set };
+}
+
+/** Open, resolved or waived, with a short note. Both go into the binder's workpapers and index. */
+function StatusControl({ id }: { id: string }) {
+  const { statuses, set } = useContext(StatusContext);
+  const cur = statuses[id] ?? { status: "open" as const };
+  return (
+    <div className="status-row">
+      <div className="seg" role="radiogroup" aria-label="Exception status">
+        {(["open", "resolved", "waived"] as const).map((k) => (
+          <button key={k} role="radio" aria-checked={cur.status === k} className={`seg-b ${k} ${cur.status === k ? "on" : ""}`} onClick={() => set(id, { ...cur, status: k })}>
+            {k === "open" ? "Open" : k === "resolved" ? "Resolved" : "Waived"}
+          </button>
+        ))}
+      </div>
+      {cur.status !== "open" && (
+        <input
+          className="status-note"
+          placeholder={cur.status === "resolved" ? "How it was resolved, e.g. PO attached" : "Why it is waived, e.g. below materiality"}
+          value={cur.note ?? ""}
+          maxLength={500}
+          onChange={(e) => set(id, { ...cur, note: e.target.value })}
+          aria-label="Status note"
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------- plan chips
+const fmtDay = (iso: string, withYear: boolean) =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", ...(withYear ? { year: "numeric" } : {}), timeZone: "UTC" });
+
+/** "Jan 1 – Dec 31, 2025", or both years when the period crosses one. */
+export function fmtPeriod(from: string, to: string): string {
+  const sameYear = from.slice(0, 4) === to.slice(0, 4);
+  return `${fmtDay(from, !sameYear)} – ${fmtDay(to, true)}`;
+}
+
+/** The request's period in plain English; click to change the dates. */
+function PeriodChip({ r, onChange }: { r: AuditRequest; onChange: (from: string | null, to: string | null) => void }) {
+  const [edit, setEdit] = useState(false);
+  const [from, setFrom] = useState(r.period_from ?? "");
+  const [to, setTo] = useState(r.period_to ?? "");
+  if (edit)
+    return (
+      <span className="tag chip-edit">
+        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Period start" />
+        <span>to</span>
+        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Period end" />
+        <button className="chip-ok" onClick={() => { onChange(from || null, to || null); setEdit(false); }} disabled={!!from && !!to && from > to}>Done</button>
+      </span>
+    );
+  return (
+    <button className="tag chip" onClick={() => setEdit(true)} title="Change the period">
+      {r.period_from && r.period_to ? fmtPeriod(r.period_from, r.period_to) : "Add a period"}
+    </button>
+  );
+}
+
+/** The dollar threshold; click to change or clear it. */
+function AmountChip({ r, onChange }: { r: AuditRequest; onChange: (min: number | null) => void }) {
+  const [edit, setEdit] = useState(false);
+  const [v, setV] = useState(r.min_amount?.toString() ?? "");
+  const relevant = r.type === "bill_support" || r.type === "receipt_completeness" || r.min_amount != null;
+  if (!relevant) return null;
+  const save = () => {
+    const n = Number(v.replace(/[$,\s]/g, ""));
+    onChange(v.trim() && Number.isFinite(n) && n > 0 ? n : null);
+    setEdit(false);
+  };
+  if (edit)
+    return (
+      <span className="tag chip-edit">
+        <span>over $</span>
+        <input inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} aria-label="Dollar threshold" autoFocus />
+        <button className="chip-ok" onClick={save}>Done</button>
+      </span>
+    );
+  return (
+    <button className="tag chip" onClick={() => setEdit(true)} title="Change the dollar threshold">
+      {r.min_amount != null ? `over $${r.min_amount.toLocaleString("en-US")}` : "Add a threshold"}
+    </button>
   );
 }
 

@@ -1,5 +1,5 @@
 // POST /api/binder
-// Body: { requests: AuditRequest[] (1 to 100), auditor?: string | null }.
+// Body: { requests: AuditRequest[] (1 to 100), auditor?: string | null, statuses?: { [findingId]: { status, note? } } }.
 // Response: a ZIP download (index, workpapers and evidence files), named after the business.
 // Read only: builds the binder from Ramp data and posts nothing back to Ramp.
 
@@ -12,7 +12,13 @@ import { z } from "zod";
 // Building the ZIP can download every receipt and invoice file, so this route gets the longest limit.
 export const maxDuration = 300;
 
-const Body = z.object({ requests: z.array(AuditRequestSchema).min(1).max(100), auditor: z.string().nullable().optional() });
+const Status = z.object({ status: z.enum(["open", "resolved", "waived"]), note: z.string().max(500).optional() });
+const Body = z.object({
+  requests: z.array(AuditRequestSchema).min(1).max(100),
+  auditor: z.string().nullable().optional(),
+  // Exception statuses set in the app, keyed by finding id. Shown in the workpapers and the index.
+  statuses: z.record(z.string(), Status).optional(),
+});
 
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json());
@@ -25,7 +31,7 @@ export async function POST(req: Request) {
   const snap = await source.snapshot({ from: from!, to: to! });
   // Rerun from source data so the binder never contains numbers the server did not compute.
   const results = runAll(reqs, snap);
-  const zip = await buildBinder(results, snap, source, parsed.data.auditor ?? null);
+  const zip = await buildBinder(results, snap, source, parsed.data.auditor ?? null, parsed.data.statuses ?? {});
   const name = `${snap.business_name.replace(/[^A-Za-z0-9]+/g, "-").replace(/-$/, "")}-audit-binder.zip`;
   return new Response(new Blob([zip as BlobPart], { type: "application/zip" }), {
     headers: { "Content-Disposition": `attachment; filename="${name}"` },
