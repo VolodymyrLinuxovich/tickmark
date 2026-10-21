@@ -62,7 +62,7 @@ mark("Problem: the auditor's request list");
 await wait(5000);
 
 mark("Drop in the request list");
-await click(page.getByRole("button", { name: "Excel PBC list" }), 1200);
+await click(page.getByRole("button", { name: "Try the sample list" }), 1200);
 await page.getByRole("button", { name: /Pull evidence/ }).waitFor();
 mark("Review the plan");
 await wait(3500);
