@@ -787,3 +787,49 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 .load li.done { color: var(--ink-2); }
 .load-foot { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; font-size: 12.5px; color: var(--ink-3); }
 .load-foot span:first-child { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--ink-2); }
+
+/* ---------- close the loop: live thread under a finding ---------- */
+.live { margin-top: 10px; border-left: 2px solid var(--line-2); padding: 2px 0 2px 12px; display: grid; gap: 8px; }
+.live.done { border-left-color: var(--tick); }
+.live-reply { display: flex; gap: 10px; align-items: flex-start; animation: live-in .35s ease-out both; }
+.live-avatar { flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-2); }
+.live-who { font-size: 12px; color: var(--ink-3); }
+.live-who time { margin-left: 4px; }
+.live-status { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--ink-3); }
+.live-status.ok { color: var(--tick); font-weight: 600; animation: live-in .35s ease-out both, live-glow 1.6s ease-out; border-radius: 6px; }
+.live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--tick); box-shadow: 0 0 0 0 var(--tick); animation: live-pulse 1.6s ease-out infinite; vertical-align: middle; }
+@keyframes live-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes live-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--tick) 55%, transparent); } 100% { box-shadow: 0 0 0 8px transparent; } }
+@keyframes live-glow { 0% { background: var(--tick-bg); } 100% { background: transparent; } }
+
+/* ---------- receipt hunter ---------- */
+.hunt { padding: 18px 20px; margin: 0 0 16px; }
+.hunt-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.hunt-head h3 { margin: 0 0 4px; }
+.hunt-head p { margin: 0; max-width: 70ch; }
+.hunt-drop { display: block; margin-top: 14px; border: 1.5px dashed var(--line-2); border-radius: 10px; padding: 22px 16px; text-align: center; color: var(--ink-2); cursor: pointer; transition: border-color .15s, background .15s; }
+.hunt-drop input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.hunt-drop:hover, .hunt-drop.over { border-color: var(--tick); background: var(--tick-bg); }
+.hunt-drop.busy { cursor: progress; }
+.hunt-drop:focus-within { outline: 2px solid var(--focus, var(--tick)); outline-offset: 2px; }
+.hunt-or { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; font-size: 13px; }
+.hunt-sum { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin: 14px 0 10px; }
+.hunt-ok { color: var(--tick); font-weight: 600; }
+.hunt-list { display: grid; gap: 8px; }
+.hunt-row { display: grid; grid-template-columns: minmax(0, 200px) minmax(0, 1fr) auto; gap: 14px; align-items: start; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--surface); transition: border-color .3s, background .3s; }
+.hunt-row.ok { border-color: color-mix(in srgb, var(--tick) 45%, var(--line)); background: color-mix(in srgb, var(--tick-bg) 55%, var(--surface)); }
+.hunt-charge .muted, .hunt-file .muted { font-size: 12px; }
+.hunt-subj { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hunt-file .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hunt-why { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.hunt-conf { font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 5px; }
+.hunt-conf.strong { background: var(--tick-bg); color: var(--tick); }
+.hunt-conf.likely { background: var(--warn-bg); color: var(--warn); }
+.hunt-act { text-align: right; min-width: 110px; font-size: 12.5px; }
+@media (max-width: 700px) {
+  .hunt-row { grid-template-columns: 1fr; }
+  .hunt-act { text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .live-reply, .live-status.ok, .live-dot { animation: none; }
+}

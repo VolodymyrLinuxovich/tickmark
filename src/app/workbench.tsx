@@ -13,6 +13,8 @@ import type { AuditRequest, ParsedList, RequestType } from "@/lib/parse/schema";
 import { REQUEST_TYPE_INFO, REQUEST_TYPES } from "@/lib/parse/schema";
 import type { Finding, FindingCode, RecordRef, RequestResult } from "@/lib/engine/types";
 import { TICKMARKS } from "@/lib/engine/types";
+import { LiveThread, WatchProvider, useWatch } from "./loop";
+import { ReceiptHunter } from "./receipt-hunter";
 import type { SourceInfo } from "@/lib/ramp/types";
 
 /** The four screens of the flow, in order. */
@@ -490,8 +492,13 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
 
   // `sel` is "all" for the combined exception list, or an index into `results`.
   const current = sel === "all" ? null : results[sel];
+  const missingReceipts = allFindings.filter(({ f }) => f.code === "MISSING_RECEIPT").map(({ f }) => f);
+  const setStatus = statusApi.set;
+  // When Ramp shows the fix, the finding is marked resolved with how it was fixed as the note.
+  const onResolved = useCallback((id: string, how: string) => setStatus(id, { status: "resolved", note: how }), [setStatus]);
   return (
     <StatusContext.Provider value={statusApi}>
+    <WatchProvider onResolved={onResolved}>
       <div className="section-head">
         <div>
           <h2>Evidence binder{meta.business ? ` for ${meta.business}` : ""}</h2>
@@ -508,8 +515,9 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
         <div className="stat"><div className="k">Answered from Ramp</div><div className="v">{auto.length}/{results.length}</div><div className="s">{results.length - auto.length} left for the team</div></div>
         <div className="stat"><div className="k">Evidence rows</div><div className="v">{tested.toLocaleString("en-US")}</div><div className="s">each tied to a Ramp record</div></div>
         <div className="stat"><div className="k">Exceptions</div><div className="v" style={{ color: allFindings.length ? "var(--warn)" : "var(--tick)" }}>{allFindings.length}</div><div className="s">{high} high severity</div></div>
-        <div className="stat"><div className="k">Drafts sent</div><div className="v">{Object.keys(sent).length}</div><div className="s">of {allFindings.filter((x) => x.f.comment).length} ready to send</div></div>
+        <LoopStat sent={Object.keys(sent).length} ready={allFindings.filter((x) => x.f.comment).length} live={source.kind !== "fixture"} />
       </div>
+      {missingReceipts.length > 0 && <ReceiptHunter findings={missingReceipts} source={source} />}
       <div className="results">
         <div className="card req-list">
           <button className={`req-item ${sel === "all" ? "on" : ""}`} onClick={() => setSel("all")}>
@@ -550,7 +558,20 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
           )}
         </div>
       </div>
+    </WatchProvider>
     </StatusContext.Provider>
+  );
+}
+
+/** Fourth stat: findings Ramp now shows as fixed, and follow-ups still being watched. */
+function LoopStat({ sent, ready, live }: { sent: number; ready: number; live: boolean }) {
+  const { resolved, watching } = useWatch();
+  return (
+    <div className="stat">
+      <div className="k">{live ? "Resolved in Ramp" : "Resolved"}</div>
+      <div className="v" style={{ color: resolved ? "var(--tick)" : undefined }}>{resolved}</div>
+      <div className="s">{watching ? `${watching} being watched, ` : ""}{sent} of {ready} follow-ups sent</div>
+    </div>
   );
 }
 
@@ -754,7 +775,8 @@ function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f: Findin
   const [msg, setMsg] = useState(f.comment?.message ?? "");
   const [posting, setPosting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  /** Posts the edited draft to /api/comment and records where it went in the shared `sent` map. */
+  const { watch } = useWatch();
+  /** Posts the edited draft to /api/comment, records where it went, and starts watching Ramp for the fix. */
   async function post() {
     if (!f.comment) return;
     setPosting(true);
@@ -765,6 +787,7 @@ function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f: Findin
       if (!res.ok) throw new Error(json.error);
       setSent({ ...sent, [f.id]: json.destination });
       setOpen(false);
+      watch({ finding_id: f.id, code: f.code, object_type: f.comment.object_type, object_id: f.comment.object_id, posted_message: msg, since: new Date().toISOString(), owner: f.owner?.name });
     } catch (e) {
       setErr(String((e as Error).message));
     } finally {
@@ -795,6 +818,7 @@ function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f: Findin
           )}
         </div>
       )}
+      <LiveThread id={f.id} />
       <StatusControl id={f.id} />
       {open && f.comment && (
         <div className="draft">

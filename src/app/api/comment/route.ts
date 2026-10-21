@@ -7,6 +7,7 @@
 
 import { getSource } from "@/lib/ramp/source";
 import { z } from "zod";
+import { rampError } from "@/lib/receipts/errors";
 
 const Body = z.object({
   object_type: z.enum(["bills", "transactions"]),
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
     const posted = await getSource().postComment(object_type, object_id, message, mention_user_ids);
     return Response.json(posted);
   } catch (err) {
-    return Response.json({ error: String(err).slice(0, 300) }, { status: 502 });
+    const e = rampError(err, object_type === "bills" ? "bills:write" : "transactions:write");
+    return Response.json({ error: e.error }, { status: e.status });
   }
 }

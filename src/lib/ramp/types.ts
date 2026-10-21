@@ -166,3 +166,46 @@ export interface SourceInfo {
 
 /** Dollars from a Ramp minor-unit integer. */
 export const dollars = (minor: number) => minor / 100;
+
+/** A finding the UI is watching in Ramp after a follow-up was sent or a receipt attached. */
+export interface RecheckItem {
+  finding_id: string;
+  code: string;
+  object_type: CommentObjectType;
+  object_id: string;
+  /** The comment Tickmark posted, so its own message is not shown back as a reply. */
+  posted_message?: string;
+  /** When the follow-up went out. Sample data uses it to time the simulated reply. */
+  since?: string;
+  /** Who the finding is about, for the simulated reply on sample data. */
+  owner?: string;
+  /** A receipt was attached from Tickmark. Sample data resolves on this; Ramp is always checked for real. */
+  attached?: boolean;
+}
+
+/** A comment on the Ramp thread, with the author's name filled in. */
+export interface ThreadReply {
+  id: string;
+  author: string;
+  message: string;
+  created_at: string;
+}
+
+/** What Ramp shows now for a watched finding. */
+export interface RecheckResult {
+  finding_id: string;
+  resolved: boolean;
+  /** Plain English, e.g. "Receipt attached in Ramp". */
+  how: string | null;
+  replies: ThreadReply[];
+  checked_at: string;
+  /** True on sample data, where the cardholder's response is simulated. */
+  simulated?: boolean;
+}
+
+/** A receipt file to attach to a transaction. */
+export interface ReceiptUpload {
+  bytes: Uint8Array;
+  file_name: string;
+  content_type: string;
+}

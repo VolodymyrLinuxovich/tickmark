@@ -102,7 +102,8 @@ export interface SnapshotNotes {
 
 /** Thin wrapper over the Ramp Developer API: token handling, retries, pagination and the snapshot read. */
 export class RampApiClient {
-  private token: { value: string; expires: number } | null = null;
+  // One token per scope string, so a write call never swaps the token a concurrent read is using.
+  private tokens = new Map<string, { value: string; expires: number }>();
 
   constructor(public base: string, private auth: RampAuth) {}
 
@@ -112,7 +113,8 @@ export class RampApiClient {
    */
   private async accessToken(scope = READ_SCOPES): Promise<string> {
     if (this.auth.kind === "token") return this.auth.token;
-    if (this.token && this.token.expires > Date.now() + 60_000) return this.token.value;
+    const cached = this.tokens.get(scope);
+    if (cached && cached.expires > Date.now() + 60_000) return cached.value;
     const res = await fetch(`${this.base}/developer/v1/token`, {
       method: "POST",
       headers: {
@@ -123,7 +125,7 @@ export class RampApiClient {
     });
     if (!res.ok) throw new RampHttpError(res.status, `${this.base}/developer/v1/token`, res.headers.get("x-trace-id"), await res.text());
     const json = (await res.json()) as { access_token: string; expires_in: number };
-    this.token = { value: json.access_token, expires: Date.now() + json.expires_in * 1000 };
+    this.tokens.set(scope, { value: json.access_token, expires: Date.now() + json.expires_in * 1000 });
     return json.access_token;
   }
 
@@ -301,18 +303,56 @@ export class RampApiClient {
     return { bytes: new Uint8Array(await res.arrayBuffer()), contentType: res.headers.get("content-type") ?? "application/octet-stream" };
   }
 
+  /** The comment thread on a bill or transaction. Ramp answers 4xx when no thread exists yet, which means no comments. */
+  async comments(objectType: CommentObjectType, objectId: string): Promise<{ id: string; message: string; user_id: string; created_at: string }[]> {
+    try {
+      return await this.list(`/developer/v1/comments/${objectType}/${encodeURIComponent(objectId)}`);
+    } catch (e) {
+      if (e instanceof RampHttpError && e.status < 500) return [];
+      throw e;
+    }
+  }
+
+  /** The approval record for one transaction or bill, or null when Ramp has none. */
+  async approvalFor(entityType: "TRANSACTION" | "BILL", id: string): Promise<RampApproval | null> {
+    const qs = new URLSearchParams({ entity_type: entityType, entity_ids: id });
+    const rows = await this.list<RampApproval>("/developer/v1/approvals", qs).catch(() => []);
+    return rows.find((a) => a.entity_id === id) ?? null;
+  }
+
   /**
-   * Posts a follow-up comment on a bill or transaction. This is the only write in the app and runs only after
-   * the user approves the draft. The read token is dropped before and after so the write scope never lingers.
+   * Uploads a receipt and links it to a transaction (POST /developer/v1/receipts). Ramp wants
+   * multipart with the file as a `Content-Disposition: attachment` part and the metadata as
+   * form-data parts. The idempotency key makes a retried upload land once.
+   */
+  async uploadReceipt(transactionId: string, userId: string, file: { bytes: Uint8Array; file_name: string; content_type: string }, idempotencyKey: string): Promise<{ id?: string }> {
+    const boundary = `----tickmark${Math.random().toString(16).slice(2)}`;
+    const field = (name: string, value: string) => `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`;
+    const safeName = file.file_name.replace(/["\r\n]/g, "_");
+    const head = Buffer.from(
+      field("idempotency_key", idempotencyKey) +
+        field("transaction_id", transactionId) +
+        field("user_id", userId) +
+        `--${boundary}\r\nContent-Disposition: attachment; name="receipt"; filename="${safeName}"\r\nContent-Type: ${file.content_type}\r\n\r\n`,
+    );
+    const body = Buffer.concat([head, Buffer.from(file.bytes), Buffer.from(`\r\n--${boundary}--\r\n`)]);
+    const res = await fetch(`${this.base}/developer/v1/receipts`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${await this.accessToken("receipts:write")}`, Accept: "application/json", "Content-Type": `multipart/form-data; boundary=${boundary}` },
+      body,
+      signal: AbortSignal.timeout(55_000),
+    });
+    if (!res.ok) throw new RampHttpError(res.status, `${this.base}/developer/v1/receipts`, res.headers.get("x-trace-id"), await res.text());
+    return (await res.json().catch(() => ({}))) as { id?: string };
+  }
+
+  /**
+   * Posts a follow-up comment on a bill or transaction. Like the receipt upload, it runs only after
+   * the user approves it. Write tokens are cached apart from the read token.
    */
   async postComment(objectType: CommentObjectType, objectId: string, message: string, mentionUserIds: string[]) {
     const scope = objectType === "bills" ? "bills:write" : "transactions:write";
-    if (this.auth.kind === "client_credentials") this.token = null; // write scope needs its own token
-    try {
-      await this.request("POST", `/developer/v1/comments/${objectType}/${objectId}`, { message, message_format: "PLAIN_TEXT", mention_user_ids: mentionUserIds }, scope);
-    } finally {
-      if (this.auth.kind === "client_credentials") this.token = null;
-    }
+    await this.request("POST", `/developer/v1/comments/${objectType}/${objectId}`, { message, message_format: "PLAIN_TEXT", mention_user_ids: mentionUserIds }, scope);
   }
 }
 
