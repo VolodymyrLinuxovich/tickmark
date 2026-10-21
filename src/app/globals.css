@@ -351,3 +351,14 @@ td.nw { white-space: nowrap; }
 @media (prefers-reduced-motion: reduce) {
   .reveal .stagger, .reveal > h2, .reveal > .eyebrow { opacity: 1; transform: none; }
 }
+
+/* not found */
+.not-found { padding-top: 96px; padding-bottom: 96px; max-width: 640px; }
+.not-found-code { font-family: var(--font-mono); font-size: 13px; color: var(--ink-3); margin: 0 0 12px; }
+.not-found h1 { font-family: var(--font-serif); font-weight: 500; font-size: 40px; line-height: 1.1; margin: 0 0 12px; }
+.not-found p { color: var(--ink-2); margin: 0 0 24px; }
+.not-found-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+/* why a request got its type */
+.plan-row .why { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
+.plan-row .why b { font-weight: 500; color: var(--ink-2); }
