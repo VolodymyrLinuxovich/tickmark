@@ -178,20 +178,26 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
   }
 
   if (opts.approvals) {
-    const { last } = lastApproval(ix, t.id);
-    if (!last) {
+    const { record, last } = lastApproval(ix, t.id);
+    // On Ramp most card charges never get an approval: the card limit is the pre-approval.
+    // Flag only charges that needed one: Ramp opened an approval that never completed,
+    // or the charge is above the pre-approval limit with no approval at all.
+    const needsApproval = Boolean(record) || cents > POLICY.cardApprovalLimit;
+    if (!last && needsApproval) {
       findings.push({
         id: findingId("NOT_APPROVED", [t.id]),
         code: "NOT_APPROVED",
         severity: "high",
         title: `No approval recorded for ${usd(cents)} at ${t.merchant_name}`,
-        detail: `Ramp has no completed approval step for this transaction.`,
+        detail: record
+          ? `Ramp opened an approval for this transaction, but it is ${String(record.status ?? "not complete").toLowerCase()}.`
+          : `Above the ${usd(POLICY.cardApprovalLimit)} pre-approval limit, and Ramp has no approval for it.`,
         records: [txnRef(t)],
         owner,
       });
         // Segregation of duties: the person who spends must not be the person who approves.
         // A policy auto-approval (no user id) is not self-approval.
-    } else if (last.user_id && last.user_id === t.card_holder.user_id) {
+    } else if (last?.user_id && last.user_id === t.card_holder.user_id) {
       findings.push({
         id: findingId("SELF_APPROVAL", [t.id]),
         code: "SELF_APPROVAL",
