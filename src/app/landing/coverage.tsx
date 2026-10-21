@@ -4,6 +4,7 @@
 
 import { getFixture } from "@/lib/fixtures/generate";
 import { POLICY } from "@/lib/engine/run";
+import { CoverageLive } from "./coverage-live";
 
 /** Items a person typically pulls when testing a control by hand. Also the app's default sample size. */
 const MANUAL_SAMPLE = 25;
@@ -31,47 +32,17 @@ function rows(): Row[] {
 }
 
 export function CoverageChart() {
-  const data = rows();
   const snap = getFixture().snapshot;
-  const max = Math.max(...data.map((r) => r.n));
-  const pct = (v: number) => `${(100 * v) / max}%`;
-  const total = data.reduce((a, r) => a + r.n, 0);
-  const manualTotal = data.reduce((a, r) => a + Math.min(MANUAL_SAMPLE, r.n), 0);
+  const data = rows().map((r) => ({ ...r, manual: Math.min(MANUAL_SAMPLE, r.n) }));
   return (
     <figure className="cov">
-      <div className="cov-head">
-        <div className="cov-legend" aria-hidden>
-          <span><i className="cov-key tick" /> Tickmark checks every record</span>
-          <span><i className="cov-key manual" /> Manual sample of {MANUAL_SAMPLE}</span>
-        </div>
-        <div className="cov-total">
-          <b>{total.toLocaleString("en-US")}</b> record checks instead of <b>{manualTotal}</b>
-        </div>
-      </div>
-      <div className="cov-rows" role="img" aria-label={`Records checked per test on the sample company. ${data.map((r) => `${r.check}: ${r.n} by Tickmark, ${Math.min(MANUAL_SAMPLE, r.n)} by hand`).join(". ")}.`}>
-        {data.map((r, i) => {
-          const manual = Math.min(MANUAL_SAMPLE, r.n);
-          return (
-            <div className="cov-row stagger" style={{ transitionDelay: `${i * 60}ms` }} key={r.check} tabIndex={0}>
-              <span className="cov-label">{r.check}</span>
-              <span className="cov-track">
-                <span className="cov-bar tick" style={{ width: pct(r.n) }} />
-                <span className="cov-bar manual" style={{ width: pct(manual) }} />
-                <span className="cov-tip">
-                  {r.n.toLocaleString("en-US")} {r.population} checked. A manual test would look at {manual}.
-                </span>
-              </span>
-              <span className="cov-val">{r.n.toLocaleString("en-US")}</span>
-            </div>
-          );
-        })}
-      </div>
+      <CoverageLive data={data} manualSample={MANUAL_SAMPLE} />
       <figcaption>
         Records each check covers on the sample company ({snap.transactions.length} card charges, {snap.bills.length} bills, {snap.vendors.length} vendors).
         Hover a bar for details.
       </figcaption>
       {/* Same numbers as a table for screen readers. */}
-      <table className="sr-only">
+      <div className="sr-only"><table>
         <thead>
           <tr><th>Check</th><th>Records checked by Tickmark</th><th>Manual sample</th></tr>
         </thead>
@@ -80,7 +51,7 @@ export function CoverageChart() {
             <tr key={r.check}><td>{r.check}</td><td>{r.n}</td><td>{Math.min(MANUAL_SAMPLE, r.n)}</td></tr>
           ))}
         </tbody>
-      </table>
+      </table></div>
     </figure>
   );
 }

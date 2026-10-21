@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getSource } from "@/lib/ramp/source";
 import { TopBar } from "./topbar";
 import { Reveal } from "./landing/reveal";
+import { ProductDemo } from "./landing/product-demo";
 import { CoverageChart } from "./landing/coverage";
 
 // Copy for the landing sections, kept as data so the JSX stays short.
@@ -60,7 +61,6 @@ export default function Landing() {
               <div className="mini-k">Request from Hartwell &amp; Co.</div>
               <div className="mini-t"><span className="mono">PBC-03</span> Invoice, approval and proof of payment for all bills over $10,000.</div>
             </div>
-            <span className="lp-arrow pop-card" style={{ animationDelay: "500ms" }}>&rarr;</span>
             <div className="mini ok pop-card" style={{ animationDelay: "650ms" }}>
               <span className="mini-icon">
                 <svg width="12" height="12" viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -70,7 +70,6 @@ export default function Landing() {
                 <div className="mini-k">Invoices attached, approvals traced, payments matched</div>
               </div>
             </div>
-            <span className="lp-arrow pop-card" style={{ animationDelay: "850ms" }}>&rarr;</span>
             <div className="mini ex pop-card" style={{ animationDelay: "1000ms" }}>
               <span className="mini-icon">!</span>
               <div>
@@ -95,23 +94,23 @@ export default function Landing() {
               </div>
             ))}
           </div>
-          {/* The Ramp quote, shown as two comments in a thread after the cards. */}
-          <figure className="lp-thread">
-            {[
-              "Preparing for an audit means gathering receipts, matching transactions, and exporting clean records.",
-              "It can take days.",
-            ].map((text, i) => (
-              <div className="lp-comment stagger seq" style={{ transitionDelay: `${1650 + i * 600}ms` }} key={text}>
-                <span className="lp-avatar" aria-hidden>R</span>
-                <div>
-                  <div className="lp-comment-who">
-                    <a href="https://ramp.com/blog/prepare-data-for-audits-and-compliance-reviews" target="_blank" rel="noreferrer">Ramp blog</a>
-                    <span>on audit prep</span>
-                  </div>
-                  <blockquote>&ldquo;{text}&rdquo;</blockquote>
-                </div>
-              </div>
-            ))}
+        </Reveal>
+
+        <Reveal className="lp-quote-band" as="div">
+          <figure className="lp-pull wrap">
+            <blockquote className="stagger">
+              &ldquo;Preparing for an audit means gathering receipts, matching transactions, and exporting clean records.&rdquo;
+            </blockquote>
+            <p className="lp-pull-note stagger" style={{ transitionDelay: "160ms" }}>
+              When documentation is missing, Ramp notes, it &ldquo;can take days.&rdquo;
+            </p>
+            <figcaption className="stagger" style={{ transitionDelay: "260ms" }}>
+              <span className="lp-pull-mark" aria-hidden>R</span>
+              <span>
+                <b>Ramp</b>
+                <a href="https://ramp.com/blog/prepare-data-for-audits-and-compliance-reviews" target="_blank" rel="noreferrer">Ramp blog, on audit preparation</a>
+              </span>
+            </figcaption>
           </figure>
         </Reveal>
 
@@ -129,8 +128,7 @@ export default function Landing() {
             ))}
           </ol>
           <div className="lp-shot stagger" style={{ transitionDelay: "320ms" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/landing/results.png" alt="Tickmark results: 7 of 9 requests answered from Ramp, 73 evidence rows, 8 exceptions listed by severity" width={1360} height={850} />
+            <ProductDemo />
           </div>
         </Reveal>
 
