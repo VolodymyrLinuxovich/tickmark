@@ -850,3 +850,24 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 .lp-flow .mini.flow-card { align-items: stretch; }
 .lp-flow .flow-card .mini-icon { align-self: start; }
 .lp-flow .flow-body { min-height: 0; height: 100%; }
+
+/* ask your books */
+.ask { padding: 18px 20px; margin-bottom: 16px; }
+.ask-head h3 { margin: 0; font-size: 16px; }
+.ask-head p { margin: 2px 0 0; color: var(--ink-2); font-size: 13.5px; }
+.ask-form { display: flex; gap: 8px; margin-top: 12px; }
+.ask-form input { flex: 1; min-width: 0; font: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--line-2); border-radius: 8px; background: var(--surface); color: var(--ink); }
+.ask-form input:focus { outline: 2px solid var(--focus); outline-offset: 1px; }
+.ask-examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip { font: inherit; font-size: 12.5px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); cursor: pointer; transition: border-color .15s ease, color .15s ease; }
+.chip:hover:not(:disabled) { border-color: var(--ink-3); color: var(--ink); }
+.ask-model { margin-top: 12px; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.ask-answer { margin-top: 14px; animation: rise .2s ease both; }
+.ask-sum { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; font-size: 14px; margin-bottom: 8px; }
+.ask-sum b { font-size: 17px; }
+.ask-by { color: var(--ink-3); font-size: 12.5px; margin-left: 6px; }
+.ask-sum .btn { margin-left: auto; }
+.ask-filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.ask .table-wrap { max-height: 360px; }
+.ask-more, .ask-added { font-size: 12.5px; margin: 8px 0 0; }
+.ask-added { color: var(--tick); }

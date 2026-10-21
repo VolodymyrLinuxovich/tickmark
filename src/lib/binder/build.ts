@@ -18,7 +18,10 @@ const clean = (s: string) =>
   s.replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-").replace(/…/g, "...").replace(/[^\x20-\x7e\n]/g, "");
 
 /** Folder name for a request, stripped of characters that are illegal in Windows or macOS paths. */
-const folderName = (r: RequestResult) => clean(`${r.request.ref} ${REQUEST_TYPE_INFO[r.request.type].label}`).replace(/[\\/:*?"<>|]/g, "");
+// "Ask your books" sections (ASK-01...) are named after their question instead of a request type.
+const typeLabel = (r: RequestResult) => (r.request.ref.startsWith("ASK-") ? "Ask your books" : REQUEST_TYPE_INFO[r.request.type].label);
+const folderName = (r: RequestResult) =>
+  clean(`${r.request.ref} ${r.request.ref.startsWith("ASK-") ? r.request.interpretation.slice(0, 50) : REQUEST_TYPE_INFO[r.request.type].label}`).replace(/[\\/:*?"<>|]/g, "");
 /** File-name-safe text, capped at 60 characters. */
 const safe = (s: string) => clean(s).replace(/[\\/:*?"<>|]/g, "").slice(0, 60).trim();
 
@@ -151,7 +154,7 @@ async function workpaper(r: RequestResult, ctx: Ctx, ref: string, statuses: Exce
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   const w = new Writer(doc, font, bold, ctx, `${ref}  ${r.request.ref} workpaper`);
-  w.text(`${r.request.ref}  ${REQUEST_TYPE_INFO[r.request.type].label}`, { size: 16, bold: true, gap: 2 });
+  w.text(`${r.request.ref}  ${typeLabel(r)}`, { size: 16, bold: true, gap: 2 });
   w.text(r.headline, { size: 10, color: r.findings.length ? [0.62, 0.32, 0] : [0.1, 0.45, 0.25], gap: 10 });
   w.text("Conclusion", { bold: true, size: 9 });
   w.text(conclusion(r), { size: 9, gap: 8 });
@@ -231,7 +234,7 @@ export async function buildBinder(results: RequestResult[], snap: RampSnapshot, 
     { header: "Folder", width: 34 },
   ];
   idx.getRow(1).font = { bold: true };
-  results.forEach((r, i) => idx.addRow([wpRef(i), r.request.ref, REQUEST_TYPE_INFO[r.request.type].label, r.request.text, r.status, r.headline, r.tested, r.findings.length, folderName(r)]));
+  results.forEach((r, i) => idx.addRow([wpRef(i), r.request.ref, typeLabel(r), r.request.text, r.status, r.headline, r.tested, r.findings.length, folderName(r)]));
   const fs = wb.addWorksheet("Exceptions");
   fs.columns = [
     { header: "Ref", width: 9 },

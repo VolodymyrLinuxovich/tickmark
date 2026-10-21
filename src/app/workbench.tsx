@@ -15,6 +15,7 @@ import type { Finding, FindingCode, RecordRef, RequestResult } from "@/lib/engin
 import { TICKMARKS } from "@/lib/engine/types";
 import { LiveThread, WatchProvider, useWatch } from "./loop";
 import { ReceiptHunter } from "./receipt-hunter";
+import { AskBooks, type BinderExtra } from "./ask-books";
 import type { SourceInfo } from "@/lib/ramp/types";
 
 /** The four screens of the flow, in order. */
@@ -465,6 +466,9 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
   const [downloading, setDownloading] = useState(false);
   const [sent, setSent] = useState<Record<string, string>>({});
   const statusApi = useStatuses();
+  const [extras, setExtras] = useState<BinderExtra[]>([]);
+  const periodFrom = requests.map((r) => r.period_from).filter(Boolean).sort()[0] ?? null;
+  const periodTo = requests.map((r) => r.period_to).filter(Boolean).sort().at(-1) ?? null;
   const auto = results.filter((r) => r.status !== "manual");
   const tested = results.reduce((s, r) => s + r.rows.length, 0);
   const high = allFindings.filter((x) => x.f.severity === "high").length;
@@ -476,7 +480,7 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
   async function download() {
     setDownloading(true);
     try {
-      const res = await fetch("/api/binder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests, auditor, statuses: statusApi.statuses }) });
+      const res = await fetch("/api/binder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests, auditor, statuses: statusApi.statuses, extras: extras.map((x) => ({ question: x.question, plan: x.plan })) }) });
       if (!res.ok) throw new Error("Binder failed");
       const blob = await res.blob();
       const name = res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ?? "audit-binder.zip";
@@ -518,6 +522,7 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
         <LoopStat sent={Object.keys(sent).length} ready={allFindings.filter((x) => x.f.comment).length} live={source.kind !== "fixture"} />
       </div>
       {missingReceipts.length > 0 && <ReceiptHunter findings={missingReceipts} source={source} />}
+      <AskBooks periodFrom={periodFrom} periodTo={periodTo} openRecord={openRecord} extras={extras} onAdd={(x) => setExtras((xs) => [...xs, x])} />
       <div className="results">
         <div className="card req-list">
           <button className={`req-item ${sel === "all" ? "on" : ""}`} onClick={() => setSel("all")}>

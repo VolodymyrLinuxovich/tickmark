@@ -8,6 +8,9 @@ import { runAll } from "@/lib/engine/run";
 import { buildBinder } from "@/lib/binder/build";
 import { AuditRequestSchema } from "@/lib/parse/schema";
 import { z } from "zod";
+import { PlanSchema } from "@/lib/ask/plan";
+import { runPlan } from "@/lib/ask/run";
+import type { RequestResult } from "@/lib/engine/types";
 
 // Building the ZIP can download every receipt and invoice file, so this route gets the longest limit.
 export const maxDuration = 300;
@@ -18,6 +21,8 @@ const Body = z.object({
   auditor: z.string().nullable().optional(),
   // Exception statuses set in the app, keyed by finding id. Shown in the workpapers and the index.
   statuses: z.record(z.string(), Status).optional(),
+  // "Ask your books" questions added to the binder. The plan is rerun here on Ramp data.
+  extras: z.array(z.object({ question: z.string().max(500), plan: PlanSchema })).max(20).optional(),
 });
 
 export async function POST(req: Request) {
@@ -31,6 +36,21 @@ export async function POST(req: Request) {
   const snap = await source.snapshot({ from: from!, to: to! });
   // Rerun from source data so the binder never contains numbers the server did not compute.
   const results = runAll(reqs, snap);
+  (parsed.data.extras ?? []).forEach((x, i) => {
+    const r = runPlan({ ...x.plan, limit: null }, snap);
+    const extra: RequestResult = {
+      request: { ref: `ASK-${String(i + 1).padStart(2, "0")}`, text: x.question, type: "unsupported", period_from: from ?? null, period_to: to ?? null, min_amount: null, selections: [], interpretation: r.title },
+      status: "complete",
+      headline: `${r.total} matching ${r.entity}`,
+      procedure: [`Asked: "${x.question}". Ran the filter (${r.filters.join(", ") || "all records"}) on every ${r.entity.replace(/s$/, "")} in Ramp for the period.`],
+      columns: r.columns,
+      rows: r.rows.map((row) => ({ record: row.record, cells: row.cells, tickmarks: [], finding_ids: [], files: [] })),
+      findings: [],
+      population: r.total,
+      tested: r.total,
+    };
+    results.push(extra);
+  });
   const zip = await buildBinder(results, snap, source, parsed.data.auditor ?? null, parsed.data.statuses ?? {});
   const name = `${snap.business_name.replace(/[^A-Za-z0-9]+/g, "-").replace(/-$/, "")}-audit-binder.zip`;
   return new Response(new Blob([zip as BlobPart], { type: "application/zip" }), {
