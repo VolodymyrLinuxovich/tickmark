@@ -2,8 +2,7 @@ import Link from "next/link";
 import type { SourceInfo } from "@/lib/ramp/types";
 
 /**
- * Site header. The pill shows which data source the server is using (sample data or a Ramp
- * account), so it is always clear whether results come from real data. `landing` adds the
+ * Site header. When a Ramp account is connected, a pill names it. `landing` adds the
  * section links and the call to action used on the home page.
  */
 export function TopBar({ info, landing = false }: { info: SourceInfo; landing?: boolean }) {
@@ -21,10 +20,12 @@ export function TopBar({ info, landing = false }: { info: SourceInfo; landing?: 
           {landing && <a href="#problem" className="hide-sm">Problem</a>}
           {landing && <a href="#solution" className="hide-sm">Solution</a>}
           <Link href="/eval">Accuracy</Link>
-          <span className="pill" title={info.base_url ?? "Deterministic demo company shaped like Ramp API responses"}>
-            <span className={`dot ${info.kind === "fixture" ? "" : "live"}`} />
-            <span className="pill-long">{info.kind === "fixture" ? "Sample data: Acme Robotics" : info.label}</span><span className="pill-short">{info.kind === "fixture" ? "Sample data" : info.label}</span>
-          </span>
+          {info.kind !== "fixture" && (
+            <span className="pill" title={info.base_url}>
+              <span className="dot live" />
+              {info.label}
+            </span>
+          )}
           {landing && <Link href="/app" className="btn primary small">Open Tickmark</Link>}
         </nav>
       </div>

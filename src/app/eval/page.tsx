@@ -14,6 +14,7 @@ import { runAll, POLICY, usd } from "@/lib/engine/run";
 import { scoreAgainstPlanted } from "@/lib/engine/eval";
 import { TopBar } from "../topbar";
 import ClaudeEval from "./claude-eval";
+import { CountUp, PlantedTable } from "./animated";
 
 export const metadata = { title: "Tickmark accuracy" };
 
@@ -58,30 +59,12 @@ async function EvalBody() {
           </div>
         </div>
         <div className="card stats">
-          <div className="stat"><div className="k">Planted problems found</div><div className="v" style={{ color: "var(--tick)" }}>{report.planted.filter((p) => p.found).length}/{report.planted.length}</div><div className="s">recall {(report.recall * 100).toFixed(0)}%</div></div>
-          <div className="stat"><div className="k">False alarms</div><div className="v">{report.extra.length}</div><div className="s">precision {(report.precision * 100).toFixed(0)}%</div></div>
-          <div className="stat"><div className="k">Checks run in</div><div className="v">{ms.toFixed(0)} ms</div><div className="s">{parsed.requests.length} requests, rules parser</div></div>
+          <div className="stat"><div className="k">Planted problems found</div><div className="v" style={{ color: "var(--tick)" }}><CountUp to={report.planted.filter((p) => p.found).length} />/{report.planted.length}</div><div className="s">recall <CountUp to={report.recall * 100} />%</div></div>
+          <div className="stat"><div className="k">False alarms</div><div className="v"><CountUp to={report.extra.length} /></div><div className="s">precision <CountUp to={report.precision * 100} />%</div></div>
+          <div className="stat"><div className="k">Checks run in</div><div className="v"><CountUp to={ms} /> ms</div><div className="s">{parsed.requests.length} requests, {parsed.parser === "rules" ? "rules parser" : parsed.parser}</div></div>
           <div className="stat"><div className="k">Card approval limit</div><div className="v">{usd(POLICY.cardApprovalLimit)}</div><div className="s">receipts required at {usd(POLICY.receiptThreshold)}</div></div>
         </div>
-        <div className="card" style={{ overflow: "hidden" }}>
-          <div className="table-wrap" style={{ border: "none", maxHeight: "none" }}>
-            <table>
-              <thead>
-                <tr><th></th><th>Planted problem</th><th>Check</th><th>Found by</th></tr>
-              </thead>
-              <tbody>
-                {report.planted.map((p) => (
-                  <tr key={p.key}>
-                    <td className="mono">{p.key}</td>
-                    <td>{p.description}</td>
-                    <td className="mono" style={{ fontSize: 11.5 }}>{p.code}</td>
-                    <td>{p.found ? <span style={{ color: "var(--tick)" }}>{p.by.join(", ")}</span> : <span style={{ color: "var(--bad)" }}>Missed</span>}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <PlantedTable rows={report.planted.map((p) => ({ key: p.key, description: p.description, code: p.code, found: p.found, by: p.by }))} />
         {report.extra.length > 0 && (
           <>
             <div className="label">False alarms</div>

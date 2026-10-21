@@ -31,6 +31,13 @@ const STEPS = [
   { t: "Fix and hand over", d: "Send the follow-ups you approve, then download a binder with an index, workpapers and every document." },
 ];
 
+// One small looping animation per problem card: a sheet filling up, scattered documents, a late alert.
+const ART = [
+  <div key="sheet" className="pc-art pc-sheet" aria-hidden><i /><i /><i /><i /><i /></div>,
+  <div key="docs" className="pc-art pc-docs" aria-hidden><i /><i /><i /></div>,
+  <div key="late" className="pc-art pc-late" aria-hidden><span className="pc-track"><b /></span><em>!</em></div>,
+];
+
 export default function Landing() {
   const info = getSource().info;
   return (
@@ -88,6 +95,7 @@ export default function Landing() {
           <div className="lp-grid3">
             {PROBLEMS.map((p, i) => (
               <div className="lp-card stagger seq" style={{ transitionDelay: `${150 + i * 450}ms` }} key={p.t}>
+                {ART[i]}
                 <span className="lp-num">{String(i + 1).padStart(2, "0")}</span>
                 <h3>{p.t}</h3>
                 <p>{p.d}</p>
