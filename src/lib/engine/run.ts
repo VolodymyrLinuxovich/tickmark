@@ -118,6 +118,15 @@ function receiptTotal(r: RampReceipt): number | null {
   return Math.round(sum * 100);
 }
 
+/**
+ * Whether a charge with no receipt is an exception. Ramp marks every charge with
+ * all_requirements_met_and_approved, which follows the business's own receipt policy.
+ * When Ramp says the charge met its requirements, the policy did not ask for a receipt.
+ * The amount threshold stays as a floor, so tiny charges are never chased.
+ */
+export const receiptRequired = (t: RampTransaction, threshold: number) =>
+  t.entity_amount.value >= threshold && t.all_requirements_met_and_approved !== true;
+
 // ---------- per-record checks ----------
 /**
  * Runs the per-item tests on one card transaction: receipt present, receipt agrees
@@ -137,13 +146,13 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
   const hasReceipt = receipts.length > 0 || (t.receipts?.length ?? 0) > 0;
 
   if (!hasReceipt) {
-    if (cents >= POLICY.receiptThreshold) {
+    if (receiptRequired(t, POLICY.receiptThreshold)) {
       findings.push({
         id: findingId("MISSING_RECEIPT", [t.id]),
         code: "MISSING_RECEIPT",
         severity: "medium",
         title: `No receipt for ${usd(cents)} at ${t.merchant_name}`,
-        detail: `Charged ${shortDate(t.user_transaction_time)} by ${owner.name}. Policy requires a receipt at ${usd(POLICY.receiptThreshold)} and above.`,
+        detail: `Charged ${shortDate(t.user_transaction_time)} by ${owner.name}. Ramp shows its receipt requirement as not met.`,
         records: [txnRef(t)],
         owner,
         comment: {
@@ -188,7 +197,9 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
         id: findingId("NOT_APPROVED", [t.id]),
         code: "NOT_APPROVED",
         severity: "high",
-        title: `No approval recorded for ${usd(cents)} at ${t.merchant_name}`,
+        title: record
+          ? `Approval still ${String(record.status ?? "open").toLowerCase()} for ${usd(cents)} at ${t.merchant_name}`
+          : `No approval recorded for ${usd(cents)} at ${t.merchant_name}`,
         detail: record
           ? `Ramp opened an approval for this transaction, but it is ${String(record.status ?? "not complete").toLowerCase()}.`
           : `Above the ${usd(POLICY.cardApprovalLimit)} pre-approval limit, and Ramp has no approval for it.`,
@@ -668,11 +679,16 @@ export function runRequest(req: AuditRequest, ix: Index): RequestResult {
 
     case "receipt_completeness": {
       const threshold = minCents ?? POLICY.receiptThreshold;
-      const missing = txns.filter((t) => t.entity_amount.value >= threshold && !(ix.receiptsByTxn.get(t.id)?.length) && !t.receipts?.length);
+      const noReceipt = txns.filter((t) => t.entity_amount.value >= threshold && !(ix.receiptsByTxn.get(t.id)?.length) && !t.receipts?.length);
+      const missing = noReceipt.filter((t) => receiptRequired(t, threshold));
+      const excused = noReceipt.length - missing.length;
       const findings = missing.flatMap((t) => checkTransaction(ix, t, { approvals: false }).findings.filter((f) => f.code === "MISSING_RECEIPT"));
       return result(req, {
         headline: missing.length ? `${missing.length} of ${txns.filter((t) => t.entity_amount.value >= threshold).length} card transactions over ${usd(threshold)} have no receipt` : `Every card transaction over ${usd(threshold)} has a receipt`,
-        procedure: [`Tested all ${txns.length} cleared card transactions in the period for an attached receipt at ${usd(threshold)} and above.`],
+        procedure: [
+          `Tested all ${txns.length} cleared card transactions in the period for an attached receipt at ${usd(threshold)} and above.`,
+          ...(excused ? [`${excused} more have no receipt, but Ramp marks them as meeting the company's receipt policy, so they are not exceptions.`] : []),
+        ],
         columns: TXN_COLS,
         rows: missing.map((t) => ({ record: txnRef(t), cells: txnCells(t, ix), tickmarks: ["X"], finding_ids: [findingId("MISSING_RECEIPT", [t.id])], files: [] })),
         findings,

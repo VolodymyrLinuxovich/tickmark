@@ -757,3 +757,24 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
   .top .btn.small { padding: 6px 10px; }
   .top .wrap { gap: 10px; }
 }
+
+/* ---------- results: exception summary by person and type ---------- */
+.ex-summary { border: 1px solid var(--line); border-radius: 8px; padding: 4px 14px 14px; margin-bottom: 14px; background: var(--surface-2); }
+.ex-lede { margin: 12px 0 0; color: var(--ink-2); }
+.ex-people { display: grid; gap: 6px; }
+.ex-person { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name n" "why n"; align-items: center; gap: 0 12px; text-align: left; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 7px; padding: 8px 12px; cursor: pointer; }
+.ex-person:hover { border-color: var(--ink-3); }
+.ex-person.on { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.ex-name { grid-area: name; font-weight: 600; }
+.ex-why { grid-area: why; font-size: 12.5px; color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ex-n { grid-area: n; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--warn); }
+.ex-types { display: flex; flex-wrap: wrap; gap: 6px; }
+.ex-types .tag.chip b { margin-left: 4px; font-weight: 600; color: var(--ink); }
+.ex-types .tag.chip.on { border-color: var(--ink); color: var(--ink); background: var(--surface); }
+.ex-more { font: inherit; font-size: 12.5px; background: none; border: none; padding: 6px 0 0; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.ex-more:hover { color: var(--ink); }
+.ex-filter { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 10px; color: var(--ink-2); font-size: 13px; }
+.ex-filter .ex-more { padding: 0; }
+.ex-page { width: 100%; justify-content: center; margin-top: 4px; }
+/* Stacked on narrow screens: the request list must scroll away, not cover the results. */
+@media (max-width: 900px) { .req-list { position: static; } }

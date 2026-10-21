@@ -11,7 +11,7 @@ import type { ExceptionStatus, ExceptionStatuses } from "@/lib/binder/build";
 import { useSearchParams } from "next/navigation";
 import type { AuditRequest, ParsedList, RequestType } from "@/lib/parse/schema";
 import { REQUEST_TYPE_INFO, REQUEST_TYPES } from "@/lib/parse/schema";
-import type { Finding, RecordRef, RequestResult } from "@/lib/engine/types";
+import type { Finding, FindingCode, RecordRef, RequestResult } from "@/lib/engine/types";
 import { TICKMARKS } from "@/lib/engine/types";
 import type { SourceInfo } from "@/lib/ramp/types";
 
@@ -540,10 +540,11 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
                 Exceptions ({allFindings.length})
                 {allFindings.length > 0 && ` · ${allFindings.filter(({ f }) => (statusApi.statuses[f.id]?.status ?? "open") === "open").length} open`}
               </div>
-              {allFindings.map(({ f, refs }) => (
-                <FindingCard key={f.id} f={f} refs={refs} openRecord={openRecord} sent={sent} setSent={setSent} source={source} />
-              ))}
-              {!allFindings.length && <p className="muted">No exceptions found.</p>}
+              {allFindings.length ? (
+                <ExceptionList items={allFindings} openRecord={openRecord} sent={sent} setSent={setSent} source={source} />
+              ) : (
+                <p className="muted">No exceptions found.</p>
+              )}
             </>
           )}
         </div>
@@ -603,11 +604,140 @@ function RequestDetail({ r, openRecord, sent, setSent, source }: { r: RequestRes
               <p className="muted">No rows: nothing in the population met the criteria.</p>
             )
           ) : r.findings.length ? (
-            r.findings.map((f) => <FindingCard key={f.id} f={f} openRecord={openRecord} sent={sent} setSent={setSent} source={source} />)
+            <ExceptionList items={r.findings.map((f) => ({ f }))} openRecord={openRecord} sent={sent} setSent={setSent} source={source} />
           ) : (
             <p className="muted">No exceptions. Every item passed.</p>
           )}
         </>
+      )}
+    </>
+  );
+}
+
+/** Plural names for exception types, used in the summary and filters. */
+const GROUP_LABEL: Record<FindingCode, string> = {
+  MISSING_RECEIPT: "Missing receipts",
+  RECEIPT_MISMATCH: "Receipt does not match",
+  NOT_APPROVED: "Approvals missing or pending",
+  SELF_APPROVAL: "Self-approvals",
+  APPROVAL_AFTER_PAYMENT: "Approved after payment",
+  NO_APPROVAL: "Bills not approved",
+  MISSING_INVOICE: "Missing invoices",
+  DUPLICATE_INVOICE: "Possible duplicate payments",
+  NEW_VENDOR_FAST_PAYMENT: "New vendors paid fast",
+  RESTRICTED_MCC: "Restricted merchants",
+  SPLIT_PURCHASE: "Split purchases",
+  SELECTION_NOT_FOUND: "Selections not found",
+};
+/** Singular names, for counts of one. */
+const ONE_LABEL: Record<FindingCode, string> = {
+  MISSING_RECEIPT: "Missing receipt",
+  RECEIPT_MISMATCH: "Receipt does not match",
+  NOT_APPROVED: "Approval missing or pending",
+  SELF_APPROVAL: "Self-approval",
+  APPROVAL_AFTER_PAYMENT: "Approved after payment",
+  NO_APPROVAL: "Bill not approved",
+  MISSING_INVOICE: "Missing invoice",
+  DUPLICATE_INVOICE: "Possible duplicate payment",
+  NEW_VENDOR_FAST_PAYMENT: "New vendor paid fast",
+  RESTRICTED_MCC: "Restricted merchant",
+  SPLIT_PURCHASE: "Split purchase",
+  SELECTION_NOT_FOUND: "Selection not found",
+};
+const countLabel = (c: FindingCode, n: number) => `${n} ${(n === 1 ? ONE_LABEL : GROUP_LABEL)[c].toLowerCase()}`;
+const NO_OWNER = "No owner";
+const PAGE = 10;
+const TOP_PEOPLE = 5;
+
+/**
+ * Exception list that reads like an auditor's summary: who to follow up with and for what,
+ * the count per exception type, and the cards themselves ten at a time. Clicking a person or
+ * a type filters the cards. Short lists skip the summary.
+ */
+function ExceptionList({ items, openRecord, sent, setSent, source }: { items: { f: Finding; refs?: string[] }[]; openRecord: (x: RecordRef) => void; sent: Record<string, string>; setSent: (s: Record<string, string>) => void; source: SourceInfo }) {
+  const [person, setPerson] = useState<string | null>(null);
+  const [code, setCode] = useState<FindingCode | null>(null);
+  const [shown, setShown] = useState(PAGE);
+  const [allPeople, setAllPeople] = useState(false);
+
+  const { people, types } = useMemo(() => {
+    const p = new Map<string, { n: number; high: number; codes: Map<FindingCode, number> }>();
+    const t = new Map<FindingCode, number>();
+    for (const { f } of items) {
+      const who = f.owner?.name ?? NO_OWNER;
+      const e = p.get(who) ?? { n: 0, high: 0, codes: new Map() };
+      e.n++;
+      if (f.severity === "high") e.high++;
+      e.codes.set(f.code, (e.codes.get(f.code) ?? 0) + 1);
+      p.set(who, e);
+      t.set(f.code, (t.get(f.code) ?? 0) + 1);
+    }
+    return {
+      people: [...p.entries()].sort((a, b) => b[1].n - a[1].n || b[1].high - a[1].high),
+      types: [...t.entries()].sort((a, b) => b[1] - a[1]),
+    };
+  }, [items]);
+
+  const filtered = items.filter(({ f }) => (!person || (f.owner?.name ?? NO_OWNER) === person) && (!code || f.code === code));
+  const pick = (next: () => void) => {
+    next();
+    setShown(PAGE);
+  };
+  const summary = items.length > 5;
+  const top = people.slice(0, TOP_PEOPLE).reduce((s, [, e]) => s + e.n, 0);
+  const listedPeople = allPeople ? people : people.slice(0, TOP_PEOPLE);
+
+  return (
+    <>
+      {summary && (
+        <div className="ex-summary">
+          <p className="ex-lede">
+            {people.length === 1
+              ? `All ${items.length} exceptions belong to ${people[0][0]}.`
+              : `${items.length} exceptions across ${people.length} people. The top ${Math.min(TOP_PEOPLE, people.length)} account for ${Math.round((top / items.length) * 100)}%.`}
+          </p>
+          <div className="label">Who to follow up with</div>
+          <div className="ex-people">
+            {listedPeople.map(([who, e]) => (
+              <button key={who} className={`ex-person ${person === who ? "on" : ""}`} aria-pressed={person === who} onClick={() => pick(() => setPerson(person === who ? null : who))}>
+                <span className="ex-name">{who}</span>
+                <span className="ex-why">
+                  {[...e.codes.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([c, n]) => countLabel(c, n)).join(", ")}
+                </span>
+                <span className="ex-n">{e.n}</span>
+              </button>
+            ))}
+          </div>
+          {people.length > TOP_PEOPLE && (
+            <button className="ex-more" onClick={() => setAllPeople(!allPeople)}>{allPeople ? "Show top people only" : `Show all ${people.length} people`}</button>
+          )}
+          {types.length > 1 && (
+            <>
+              <div className="label">By type</div>
+              <div className="ex-types">
+                {types.map(([c, n]) => (
+                  <button key={c} className={`tag chip ${code === c ? "on" : ""}`} aria-pressed={code === c} onClick={() => pick(() => setCode(code === c ? null : c))}>
+                    {GROUP_LABEL[c]} <b>{n}</b>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      {(person || code) && (
+        <div className="ex-filter">
+          Showing {filtered.length} {code ? GROUP_LABEL[code].toLowerCase() : "exceptions"}{person ? ` for ${person}` : ""}.
+          <button className="ex-more" onClick={() => pick(() => { setPerson(null); setCode(null); })}>Clear filter</button>
+        </div>
+      )}
+      {filtered.slice(0, shown).map(({ f, refs }) => (
+        <FindingCard key={f.id} f={f} refs={refs} openRecord={openRecord} sent={sent} setSent={setSent} source={source} />
+      ))}
+      {filtered.length > shown && (
+        <button className="btn ex-page" onClick={() => setShown(shown + PAGE)}>
+          Show {Math.min(PAGE, filtered.length - shown)} more of {filtered.length - shown} left
+        </button>
       )}
     </>
   );
