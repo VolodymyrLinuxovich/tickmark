@@ -656,3 +656,15 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 .lp-quote-band .lp-pull-mark { background: var(--tick); color: #fff; }
 @media (prefers-color-scheme: dark) { .lp-quote-band .lp-pull-mark { color: #121211; } }
 @media (max-width: 760px) { .lp-quote-band { margin-top: 112px; padding: 80px 0 72px; } .lp-quote-band .lp-pull::before { font-size: 100px; height: 46px; } }
+
+/* quote band in dark mode: stay dark (a deep green), never a bright slab */
+@media (prefers-color-scheme: dark) {
+  .lp-quote-band { background: #0f1c16; color: var(--ink); border-top: 1px solid #1d3328; border-bottom: 1px solid #1d3328; }
+  .lp-quote-band .lp-pull blockquote { color: var(--ink); }
+  .lp-quote-band .lp-pull-note { color: var(--ink-2); }
+  .lp-quote-band .lp-pull figcaption b { color: var(--ink); }
+  .lp-quote-band .lp-pull figcaption a { color: var(--ink-3); }
+}
+@media (prefers-color-scheme: dark) {
+  :root { --accent: #5cc28f; --accent-ink: #0c1712; }
+}
