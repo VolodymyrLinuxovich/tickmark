@@ -1,12 +1,17 @@
+// Chooses where Ramp data comes from: the generated demo company or the live Ramp Developer API.
+// Both sides implement RampSource, so the engine, binder and UI never know which one they are using.
+
 import { getFixture } from "../fixtures/generate";
 import type { CommentObjectType, PostedComment, RampSnapshot, SourceInfo } from "./types";
 import { RampApiClient, tokenFromRampCli, type RampAuth, type SnapshotNotes } from "./api-client";
 
+/** Audit period, inclusive on both ends. */
 export interface Period {
   from: string; // YYYY-MM-DD
   to: string;
 }
 
+/** The one interface the rest of the app reads Ramp data through. */
 export interface RampSource {
   info: SourceInfo;
   snapshot(period: Period): Promise<RampSnapshot & { notes?: SnapshotNotes }>;
@@ -17,8 +22,10 @@ export interface RampSource {
   record(type: RecordKind, id: string): Promise<unknown | null>;
 }
 
+/** Record types the record viewer can open by id. */
 export type RecordKind = "transaction" | "bill" | "vendor" | "user" | "receipt";
 
+/** Looks up one record in a snapshot and attaches its receipts and approval, for the record viewer. */
 export function recordFromSnapshot(snap: RampSnapshot, type: RecordKind, id: string): unknown | null {
   if (type === "transaction") {
     const t = snap.transactions.find((x) => x.id === id);
@@ -35,8 +42,10 @@ export function recordFromSnapshot(snap: RampSnapshot, type: RecordKind, id: str
 
 // Comments approved while on sample data are kept here so the UI can show them.
 const demoOutbox: PostedComment[] = [];
+/** Copy of the comments "sent" on sample data, for the UI. */
 export const getDemoOutbox = () => demoOutbox.slice();
 
+/** Serves the seeded Acme Robotics demo company. Comments go to an in-memory outbox instead of Ramp. */
 class FixtureSource implements RampSource {
   info = getFixture().snapshot.source;
   async snapshot() {
@@ -55,8 +64,10 @@ class FixtureSource implements RampSource {
   }
 }
 
+// A full snapshot is many paginated calls, so it is reused for a few minutes across requests in the same process.
 const SNAPSHOT_TTL_MS = 5 * 60_000;
 
+/** Live Ramp source. Sandbox uses demo-api.ramp.com and production uses api.ramp.com unless RAMP_API_BASE_URL overrides it. */
 export class ApiSource implements RampSource {
   info: SourceInfo;
   private client: RampApiClient;
@@ -71,6 +82,7 @@ export class ApiSource implements RampSource {
     const key = `${period.from}|${period.to}`;
     const hit = this.cache.get(key);
     if (hit && Date.now() - hit.at < SNAPSHOT_TTL_MS) return hit.p;
+    // The promise itself is cached so concurrent callers share one read. A failed read is evicted so the next call retries.
     const p = this.client.snapshot(period, this.info);
     p.catch(() => this.cache.delete(key));
     this.cache.set(key, { at: Date.now(), p });
@@ -96,12 +108,14 @@ export class ApiSource implements RampSource {
   }
 }
 
+/** The chosen source plus whether it is a real Ramp account, for the connection badge in the UI. */
 export interface Connection {
   source: RampSource;
   connected: boolean;
   reason: string; // why this source was chosen, shown in the UI
 }
 
+// Chosen once per process; env vars do not change while the server runs.
 let cached: Connection | null = null;
 
 /**
@@ -133,6 +147,7 @@ export function getConnection(): Connection {
   return cached;
 }
 
+/** Shortcut for the chosen source. */
 export const getSource = (): RampSource => getConnection().source;
 
 /** Test hook: forget the chosen source so env changes take effect. */

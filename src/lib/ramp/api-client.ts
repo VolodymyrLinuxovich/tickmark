@@ -3,6 +3,8 @@
 // - client credentials token at /developer/v1/token (a developer app), or
 // - a user access token (RAMP_ACCESS_TOKEN, or the token saved by `ramp auth login`).
 // List endpoints page with page.next.
+// Money fields are integers in minor units (cents for USD). ApiSource in source.ts wraps this
+// client; the rest of the app only sees the RampSnapshot that snapshot() returns.
 
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -20,6 +22,7 @@ import type {
   SourceInfo,
 } from "./types";
 
+/** Read-only scopes requested for the client credentials token. Writes (comments) get a separate token. */
 export const READ_SCOPES = [
   "transactions:read",
   "receipts:read",
@@ -32,22 +35,26 @@ export const READ_SCOPES = [
   "audit_logs:read",
 ].join(" ");
 
+/** A developer app (client id and secret, exchanged for a token) or a ready-made bearer token. */
 export type RampAuth =
   | { kind: "client_credentials"; clientId: string; clientSecret: string }
   | { kind: "token"; token: string; origin: string };
 
+/** Non-2xx response from Ramp. Keeps the status and Ramp's x-trace-id so failures can be reported to Ramp support. */
 export class RampHttpError extends Error {
   constructor(public status: number, public url: string, public trace: string | null, body: string) {
     super(`Ramp API ${status} on ${new URL(url).pathname}${trace ? ` (trace ${trace})` : ""}: ${body.slice(0, 200)}`);
   }
 }
 
+// Used to find transaction ids inside audit log reference URLs and labels.
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 const addDays = (iso: string, n: number) => new Date(new Date(iso).getTime() + n * 864e5).toISOString().replace(".000Z", "Z");
 
 /** Reads the access token the Ramp CLI saved for an environment, if any. */
 export function tokenFromRampCli(env: "sandbox" | "production"): string | null {
   try {
+    // The CLI stores one [sandbox] or [production] section in config.toml; a tiny line scan avoids a TOML dependency.
     const dir = process.env.XDG_CONFIG_HOME ? path.join(process.env.XDG_CONFIG_HOME, "ramp") : path.join(homedir(), ".config", "ramp");
     const text = readFileSync(path.join(dir, "config.toml"), "utf8");
     let section = "";
@@ -78,16 +85,22 @@ async function pool<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>
   return out;
 }
 
+/** How approvals were obtained, plus any partial-read warnings, shown next to results so gaps are not silent. */
 export interface SnapshotNotes {
   approvals: "approvals_api" | "fallback" | "none";
   warnings: string[];
 }
 
+/** Thin wrapper over the Ramp Developer API: token handling, retries, pagination and the snapshot read. */
 export class RampApiClient {
   private token: { value: string; expires: number } | null = null;
 
   constructor(public base: string, private auth: RampAuth) {}
 
+  /**
+   * Returns a bearer token. For a developer app it posts client_id:client_secret as Basic auth to
+   * /developer/v1/token and caches the result until one minute before it expires.
+   */
   private async accessToken(scope = READ_SCOPES): Promise<string> {
     if (this.auth.kind === "token") return this.auth.token;
     if (this.token && this.token.expires > Date.now() + 60_000) return this.token.value;
@@ -105,6 +118,7 @@ export class RampApiClient {
     return json.access_token;
   }
 
+  /** One API call. Retries 429 and 5xx up to four times, honoring Retry-After, else exponential backoff. */
   private async request<T>(method: "GET" | "POST", pathOrUrl: string, body?: unknown, scope?: string): Promise<T> {
     const url = pathOrUrl.startsWith("http") ? pathOrUrl : `${this.base}${pathOrUrl}`;
     for (let attempt = 0; ; attempt++) {
@@ -138,6 +152,7 @@ export class RampApiClient {
     if (!qs.has("page_size")) qs.set("page_size", "100");
     let next: string | null = `${p}?${qs}`;
     const out: T[] = [];
+    // page.next is a full URL that carries the cursor, so it is fetched as is. The page cap guards against a loop.
     for (let pages = 0; next && pages < 2000; pages++) {
       const page: { data: T[]; page?: { next: string | null } } = await this.get(next);
       out.push(...(page.data ?? []));
@@ -146,6 +161,10 @@ export class RampApiClient {
     return out;
   }
 
+  /**
+   * Reads everything one audit period needs in parallel. Users and transactions are required; the other
+   * lists are optional, so a token missing one scope degrades to a warning instead of failing the run.
+   */
   async snapshot(period: { from: string; to: string }, info: SourceInfo): Promise<RampSnapshot & { notes: SnapshotNotes }> {
     const range = { from_date: `${period.from}T00:00:00Z`, to_date: `${period.to}T23:59:59Z` };
     const notes: SnapshotNotes = { approvals: "none", warnings: [] };
@@ -164,6 +183,7 @@ export class RampApiClient {
       optional("Bills", this.list<RampBill>("/developer/v1/bills", { from_issued_date: range.from_date, to_issued_date: range.to_date })),
       optional("Vendors", this.list<RampVendor>("/developer/v1/vendors")),
     ]);
+    // Approvals are keyed by entity id, so they can only be fetched once the transaction and bill ids are known.
     for (const t of transactions) normalizeTransaction(t);
     for (const b of bills) normalizeBill(b);
 
@@ -196,6 +216,7 @@ export class RampApiClient {
     };
   }
 
+  /** GET /approvals takes a list of entity_ids; ids go 50 per request with four requests in flight to stay under rate limits. */
   private async approvals(entityType: "TRANSACTION" | "BILL", ids: string[]): Promise<RampApproval[]> {
     const batches: string[][] = [];
     for (let i = 0; i < ids.length; i += 50) batches.push(ids.slice(i, i + 50));
@@ -207,6 +228,10 @@ export class RampApiClient {
     return pages.flat();
   }
 
+  /**
+   * Fallback for bills: rebuilds approvals from each bill's history events. Only approved steps count
+   * (not unapproved, rejected or pending). A bill with no approved step is marked PENDING.
+   */
   private async billHistoryApprovals(bills: RampBill[], notes: SnapshotNotes): Promise<RampApproval[]> {
     interface Hist {
       events?: { date?: string; approval_chain_events?: { status?: string; step_date?: string; assigned_entities?: { assigned_user_id?: string }[] }[] }[];
@@ -230,6 +255,10 @@ export class RampApiClient {
     return out.filter((x): x is RampApproval => !!x);
   }
 
+  /**
+   * Fallback for card transactions: approval events from the audit log, matched to transactions by the ids
+   * found in each event's references. The window runs 60 days past the period because approvals lag charges.
+   */
   private async auditLogApprovals(range: { from_date: string; to_date: string }, transactions: RampTransaction[], notes: SnapshotNotes): Promise<RampApproval[]> {
     const ids = new Set(transactions.map((t) => t.id));
     const qs = new URLSearchParams({ from_date: range.from_date, to_date: addDays(range.to_date, 60) });
@@ -255,6 +284,7 @@ export class RampApiClient {
     return [...byTxn.values()];
   }
 
+  /** Fetches a receipt image or bill attachment. Returns null on failure so the binder can fall back to a rendered record. */
   async download(url: string): Promise<{ bytes: Uint8Array; contentType: string } | null> {
     // Receipt and attachment URLs are pre-signed, so no bearer token is sent.
     const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
@@ -262,6 +292,10 @@ export class RampApiClient {
     return { bytes: new Uint8Array(await res.arrayBuffer()), contentType: res.headers.get("content-type") ?? "application/octet-stream" };
   }
 
+  /**
+   * Posts a follow-up comment on a bill or transaction. This is the only write in the app and runs only after
+   * the user approves the draft. The read token is dropped before and after so the write scope never lingers.
+   */
   async postComment(objectType: CommentObjectType, objectId: string, message: string, mentionUserIds: string[]) {
     const scope = objectType === "bills" ? "bills:write" : "transactions:write";
     if (this.auth.kind === "client_credentials") this.token = null; // write scope needs its own token
@@ -274,6 +308,7 @@ export class RampApiClient {
 }
 
 // Older and newer API responses differ slightly; fill the fields the engine relies on.
+/** Fills entity_amount (in cents) from a legacy dollar amount, and defaults missing nested fields. */
 function normalizeTransaction(t: RampTransaction & { amount?: number; currency_code?: string }) {
   if (!t.entity_amount && typeof t.amount === "number") t.entity_amount = { value: Math.round(t.amount * 100), currency: t.currency_code ?? "USD" };
   t.receipts ??= [];
@@ -281,6 +316,7 @@ function normalizeTransaction(t: RampTransaction & { amount?: number; currency_c
   t.merchant_name ??= "Unknown merchant";
 }
 
+/** Defaults bill fields the engine dereferences, so a sparse API response cannot crash a check. */
 function normalizeBill(b: RampBill) {
   b.attachments ??= [];
   b.vendor ??= { id: "", name: "Unknown vendor" };

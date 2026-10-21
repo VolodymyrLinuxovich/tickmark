@@ -1,9 +1,15 @@
+// POST /api/binder
+// Body: { requests: AuditRequest[] (1 to 100), auditor?: string | null }.
+// Response: a ZIP download (index, workpapers and evidence files), named after the business.
+// Read only: builds the binder from Ramp data and posts nothing back to Ramp.
+
 import { getSource } from "@/lib/ramp/source";
 import { runAll } from "@/lib/engine/run";
 import { buildBinder } from "@/lib/binder/build";
 import { AuditRequestSchema } from "@/lib/parse/schema";
 import { z } from "zod";
 
+// Building the ZIP can download every receipt and invoice file, so this route gets the longest limit.
 export const maxDuration = 300;
 
 const Body = z.object({ requests: z.array(AuditRequestSchema).min(1).max(100), auditor: z.string().nullable().optional() });
@@ -13,6 +19,7 @@ export async function POST(req: Request) {
   if (!parsed.success) return Response.json({ error: "Invalid requests" }, { status: 400 });
   const source = getSource();
   const reqs = parsed.data.requests;
+  // One snapshot covers the widest period across all requests; defaults to FY2025.
   const from = reqs.map((r) => r.period_from).filter(Boolean).sort()[0] ?? "2025-01-01";
   const to = reqs.map((r) => r.period_to).filter(Boolean).sort().at(-1) ?? "2025-12-31";
   const snap = await source.snapshot({ from: from!, to: to! });

@@ -1,5 +1,7 @@
 // Checks the Ramp connection Tickmark will use and reports what it can read.
 //   npm run ramp:check            (reads .env.local if present)
+// Uses the same getConnection() as the app, so it shows exactly which credentials the server would pick,
+// then reads the last 365 days and prints record counts and how approvals were obtained.
 import { existsSync } from "node:fs";
 import { getConnection } from "../src/lib/ramp/source";
 

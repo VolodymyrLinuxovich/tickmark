@@ -17,8 +17,10 @@ const SHORTHAND: [RegExp, string][] = [
   [/\bw\//g, "with "],
   [/\bqtr\b/g, "quarter"],
 ];
+/** Lowercases and expands shorthand so the keyword rules below only need full words. */
 export const expandShorthand = (t: string) => SHORTHAND.reduce((s, [re, to]) => s.replace(re, to), t.toLowerCase());
 
+/** Request type only. See classifyWithReason for the rule order. */
 export function classify(text: string, hasSelections: boolean, area = ""): RequestType {
   return classifyWithReason(text, hasSelections, area).type;
 }
@@ -73,6 +75,11 @@ const scaled = (n: string, unit: string | undefined) => {
 const COUNT_WORDS: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, ten: 10, fifteen: 15, twenty: 20, "twenty-five": 25, fifty: 50, "one hundred": 100, hundred: 100 };
 const IN_WORDS = new RegExp(String.raw`(?:over|above|exceed(?:ing|s)?|in excess of|greater than|more than)\s+(${Object.keys(COUNT_WORDS).join("|")})\s+(thousand|million)\s+dollars`, "i");
 
+/**
+ * Dollar amount the request filters on, e.g. "over $10K" or "$2,500 or more". A bare amount with no
+ * comparison word ("the $5,000 approval limit") is a policy value, not a filter, so it is ignored.
+ * When several match, the earliest one in the text wins.
+ */
 export function findThreshold(text: string): number | null {
   const words = text.match(IN_WORDS);
   const hits = [BEFORE, AFTER, BARE_PLUS].map((re) => text.match(re)).filter((m): m is RegExpMatchArray => !!m);
@@ -271,6 +278,7 @@ const INTERPRET: Record<RequestType, (r: { min: number | null; n: number }) => s
   unsupported: () => "Not answerable from Ramp data. Left for the team.",
 };
 
+/** One plain sentence on what Tickmark will pull from Ramp for this request, shown on the plan. */
 export const interpret = (type: RequestType, min: number | null, n: number) => INTERPRET[type]({ min, n });
 
 // ---------- selections typed into text ----------
@@ -342,6 +350,11 @@ function marker(line: string): Marker | null {
   return null;
 }
 
+/**
+ * Splits an email, pasted list or PDF text into requests. A new request starts at a marker (PBC-01, 1., (1), a), i., AP-3, a bullet).
+ * Lines without a marker continue the current request until a blank line. Quote markers (>) and email headers are stripped,
+ * a sign-off ends the list, and dated amount lines become selections of the request above them.
+ */
 export function splitFreeText(text: string): InputRow[] {
   const rows: InputRow[] = [];
   let cur: InputRow | null = null; // request still taking continuation lines
@@ -396,6 +409,12 @@ export function splitFreeText(text: string): InputRow[] {
 
 const sameRef = (a: string, b: string) => a.toLowerCase().replace(/[^a-z0-9.]/g, "") === b.toLowerCase().replace(/[^a-z0-9.]/g, "");
 
+/**
+ * Keyword parser. Runs on every list: it is the fallback when no model is available, and the model's
+ * request count is checked against it. Period precedence: period columns, then the request text, then the
+ * period stated for the whole document. Selections typed under a request stay with it; selections from a
+ * separate sheet attach by their request column, or to every card request when there is none.
+ */
 export function parseWithRules(input: NormalizedInput): ParsedList {
   const warnings: string[] = [];
   const rows = input.rows.length ? input.rows : splitFreeText(input.text);

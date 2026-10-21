@@ -1,3 +1,10 @@
+// POST /api/comment
+// Body: { object_type: "bills" | "transactions", object_id, message, mention_user_ids? }.
+// Response: the posted comment, including `destination` (where it went), or { error } with 400 or 502.
+// This is the only route that writes to Ramp. The UI calls it only after the user presses
+// "Approve and send" on a drafted comment; the MCP server never calls it. With no Ramp account
+// connected, the sample source records the comment in an in-memory outbox instead.
+
 import { getSource } from "@/lib/ramp/source";
 import { z } from "zod";
 

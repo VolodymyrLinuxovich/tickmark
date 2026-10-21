@@ -1,3 +1,9 @@
+// POST /api/parse
+// Body: multipart with `file` (Excel, CSV, PDF, text or .eml, up to 5 MB), or JSON
+// { text } for pasted text, or { sample: "xlsx" | "email" } for a bundled sample.
+// Response: ParsedList ({ requests, auditor, parser, warnings }) plus `input_name`, or { error } with 400.
+// Only reads the list; nothing is fetched from or sent to Ramp except when fitting a sample to live data.
+
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { normalizeFile, normalizeText } from "@/lib/parse/input";
@@ -5,8 +11,10 @@ import { parseRequests } from "@/lib/parse/claude";
 import { getConnection } from "@/lib/ramp/source";
 import { fitSampleToLiveData } from "@/lib/engine/live-sample";
 
+// Parsing may call a model, which can take well over the default limit on a long list.
 export const maxDuration = 120;
 
+// Allowlist of sample files, so the request body cannot name an arbitrary path.
 const SAMPLES: Record<string, string> = {
   xlsx: "hartwell-pbc-fy2025.xlsx",
   email: "hartwell-request-email.txt",

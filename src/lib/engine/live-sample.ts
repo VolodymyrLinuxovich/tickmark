@@ -1,5 +1,8 @@
 // Fits the sample request list to a connected Ramp business: trailing 12 months,
 // and auditor selections drawn from its real card transactions.
+// Used by the demo when a real Ramp account is connected. The built-in sample
+// request list targets FY2025 of the demo company, so this rewrites its period and
+// selections to fit whatever data the connected business actually has.
 
 import type { ParsedList } from "../parse/schema";
 import type { RampSource } from "../ramp/source";
@@ -7,6 +10,12 @@ import { monetaryUnitSample } from "./sampling";
 
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
+/**
+ * Rewrites the sample list for live data: period becomes the trailing 12 months and
+ * transaction support requests get 12 selections drawn by monetary unit sampling from
+ * real cleared transactions. Selections are formatted like a bank statement line
+ * (uppercase, truncated merchant) so the matcher is exercised as it would be on a real list.
+ */
 export async function fitSampleToLiveData(parsed: ParsedList, source: RampSource, today = new Date()): Promise<ParsedList> {
   const to = ymd(today);
   const from = ymd(new Date(today.getTime() - 365 * 864e5));

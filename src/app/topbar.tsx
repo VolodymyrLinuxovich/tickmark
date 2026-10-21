@@ -1,6 +1,11 @@
 import Link from "next/link";
 import type { SourceInfo } from "@/lib/ramp/types";
 
+/**
+ * Site header. The pill shows which data source the server is using (sample data or a Ramp
+ * account), so it is always clear whether results come from real data. `landing` adds the
+ * section links and the call to action used on the home page.
+ */
 export function TopBar({ info, landing = false }: { info: SourceInfo; landing?: boolean }) {
   return (
     <header className="top">

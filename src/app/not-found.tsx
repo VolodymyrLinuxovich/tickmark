@@ -1,3 +1,5 @@
+// 404 page, rendered with the normal header so the data source pill still shows.
+
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getSource } from "@/lib/ramp/source";

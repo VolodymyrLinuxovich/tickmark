@@ -1,3 +1,7 @@
+// /eval: accuracy page. Runs the bundled sample PBC list through the rules parser and the checks
+// on the generated demo company, then scores what was found against the eight planted problems.
+// The optional model parser run is in claude-eval.tsx, since it costs a model call.
+
 import { readFile } from "node:fs/promises";
 import { Suspense } from "react";
 import { connection } from "next/server";
@@ -13,6 +17,7 @@ import ClaudeEval from "./claude-eval";
 
 export const metadata = { title: "Tickmark accuracy" };
 
+/** Parses the sample list with the rules parser, runs every check and scores the result. */
 async function evaluate() {
   const name = "hartwell-pbc-fy2025.xlsx";
   const input = await normalizeFile(name, new Uint8Array(await readFile(path.join(process.cwd(), "public/samples", name))));
@@ -24,6 +29,7 @@ async function evaluate() {
   return { parsed, snapshot, ms, report: scoreAgainstPlanted(results) };
 }
 
+/** Static shell with a Suspense fallback; the scored body streams in at request time. */
 export default function EvalPage() {
   return (
     <>
@@ -35,7 +41,9 @@ export default function EvalPage() {
   );
 }
 
+/** The scored report. */
 async function EvalBody() {
+  // Opt out of build-time prerendering so the timing shown is from this request.
   await connection();
   const { parsed, snapshot, ms, report } = await evaluate();
   return (

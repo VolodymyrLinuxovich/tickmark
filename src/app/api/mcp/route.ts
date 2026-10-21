@@ -11,16 +11,23 @@ import { getSource } from "@/lib/ramp/source";
 import { buildIndex, runRequest, uniqueFindings } from "@/lib/engine/run";
 import type { RequestResult } from "@/lib/engine/types";
 
+// A tool call may parse with a model and then fetch a full Ramp snapshot.
 export const maxDuration = 120;
 
+/** Wraps a value as the text content block MCP tool results expect. */
 const json = (value: unknown) => ({ content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] });
 
+/** Smallest date range that covers every request; defaults to FY2025. */
 function period(reqs: z.infer<typeof AuditRequestSchema>[]) {
   const from = reqs.map((r) => r.period_from).filter(Boolean).sort()[0] ?? "2025-01-01";
   const to = reqs.map((r) => r.period_to).filter(Boolean).sort().at(-1) ?? "2025-12-31";
   return { from: from!, to: to! };
 }
 
+/**
+ * Shapes engine results for an agent: one entry per request plus deduplicated exceptions with
+ * their Ramp records and draft comments. Evidence rows are left out unless asked for, since they can be large.
+ */
 function summarize(results: RequestResult[], includeRows: boolean) {
   return {
     requests: results.map((r) => ({
@@ -112,4 +119,5 @@ const handler = createMcpHandler(
   { serverInfo: { name: "tickmark", version: "0.1.0" } },
 );
 
+// Streamable HTTP transport uses GET, POST and DELETE on the same path.
 export { handler as GET, handler as POST, handler as DELETE };

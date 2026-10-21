@@ -1,3 +1,6 @@
+// /app: server wrapper for the client workbench. It reads server-only settings (data source,
+// configured parser models, Ramp scopes) and passes them down as props, so no secrets reach the client.
+
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getSource } from "@/lib/ramp/source";
@@ -13,6 +16,7 @@ export default function AppPage() {
   return (
     <>
       <TopBar info={info} />
+      {/* Workbench reads ?sample= with useSearchParams, which needs a Suspense boundary under Cache Components. */}
       <Suspense>
         <Workbench source={info} models={availableProviders()} scopes={READ_SCOPES} />
       </Suspense>

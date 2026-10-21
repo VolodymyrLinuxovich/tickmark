@@ -1,5 +1,7 @@
 "use client";
 
+// Scroll reveal wrapper for landing page sections.
+
 import { useEffect, useRef, type ReactNode } from "react";
 
 /** Fades a section in once it scrolls into view. Shows immediately without IntersectionObserver. */
@@ -12,6 +14,7 @@ export function Reveal({ children, className = "", as: Tag = "section", id }: { 
       el.classList.add("in");
       return;
     }
+    // Reveal once and stop observing, so sections do not fade out again on scroll up.
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {

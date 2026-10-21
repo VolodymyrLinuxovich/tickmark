@@ -1,6 +1,8 @@
 // Subsets of Ramp Developer API response objects (docs.ramp.com/developer-api/v1).
 // Field names match the OpenAPI spec so the fixture and live sources are interchangeable.
+// The engine, binder and fixture generator all read these types; nothing downstream sees raw API JSON.
 
+/** Ramp user roles. The user access check lists every role other than BUSINESS_USER and GUEST_USER as privileged. */
 export type RampRole =
   | "AUDITOR"
   | "BUSINESS_ADMIN"
@@ -10,6 +12,7 @@ export type RampRole =
   | "GUEST_USER"
   | "IT_ADMIN";
 
+/** A Ramp user. manager_id is the reporting line; in the demo company it is also the card spend approver. */
 export interface RampUser {
   id: string;
   first_name: string;
@@ -40,6 +43,10 @@ export interface CurrencyAmount {
   minor_unit_conversion_rate?: number | null;
 }
 
+/**
+ * A card charge. entity_amount is in cents. receipts holds receipt ids; the receipt objects are fetched
+ * separately and linked back by transaction_id.
+ */
 export interface RampTransaction {
   id: string;
   entity_amount: SignedAmount;
@@ -64,6 +71,7 @@ export interface RampTransaction {
   all_requirements_met_and_approved?: boolean;
 }
 
+/** A receipt image with Ramp's OCR. OCR prices are in dollars, unlike the cent amounts elsewhere. */
 export interface RampReceipt {
   id: string;
   transaction_id?: string;
@@ -83,6 +91,7 @@ export interface RampReceipt {
   } | null;
 }
 
+/** A vendor bill (accounts payable). amount is in cents; paid_at and payment are null until it is paid. */
 export interface RampBill {
   id: string;
   amount: CurrencyAmount;
@@ -101,6 +110,7 @@ export interface RampBill {
   payment?: { payment_method: string | null; payment_date?: string | null; amount?: CurrencyAmount } | null;
 }
 
+/** A vendor master record. created_at is used to spot vendors paid soon after they were added. */
 export interface RampVendor {
   id: string;
   name: string;
@@ -112,6 +122,7 @@ export interface RampVendor {
   total_spend_ytd?: CurrencyAmount | null;
 }
 
+/** Approval chain for one bill or transaction. approval_history lists who approved each step and when. */
 export interface RampApproval {
   entity_id: string;
   entity_type: "bill" | "reimbursement" | "transaction";
@@ -120,8 +131,10 @@ export interface RampApproval {
   next_approvers: { user_email: string; user_id: string }[];
 }
 
+/** Path segment for POST /developer/v1/comments/{object_type}/{id}. */
 export type CommentObjectType = "bills" | "transactions";
 
+/** A follow-up comment after it was sent, with where it went (Ramp or the sample outbox). */
 export interface PostedComment {
   object_type: CommentObjectType;
   object_id: string;
@@ -144,6 +157,7 @@ export interface RampSnapshot {
   approvals: RampApproval[];
 }
 
+/** Which data source produced a snapshot, shown in the UI and the binder. */
 export interface SourceInfo {
   kind: "fixture" | "sandbox" | "production";
   label: string;

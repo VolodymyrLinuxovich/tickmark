@@ -1,3 +1,8 @@
+// GET /api/eval[?parser=model]
+// Response: { parser, warnings, request_types, report, timing, population }.
+// Runs the bundled sample PBC list against the generated demo company and scores the findings
+// against the planted problems. Read only. The /eval page calls this for the model parser run.
+
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { getFixture } from "@/lib/fixtures/generate";
@@ -7,6 +12,7 @@ import { parseWithRules } from "@/lib/parse/rules";
 import { runAll } from "@/lib/engine/run";
 import { scoreAgainstPlanted } from "@/lib/engine/eval";
 
+// A model parse of the full list can take tens of seconds.
 export const maxDuration = 120;
 
 /** Scores the full pipeline on the demo company. ?parser=model (or claude) runs the model parser too. */

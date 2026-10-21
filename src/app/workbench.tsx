@@ -1,5 +1,11 @@
 "use client";
 
+// The Tickmark workbench at /app. One client component walks the user through four stages:
+// intake (upload or paste the PBC list), plan (review how each request was read), run (pull
+// evidence one request at a time) and results (exceptions, drafted comments, binder download).
+// All parsing, evidence gathering and checks happen in the API routes; this file only holds UI
+// state. Drafted comments are posted only when the user presses "Approve and send" on a finding.
+
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import type { AuditRequest, ParsedList, RequestType } from "@/lib/parse/schema";
@@ -8,12 +14,22 @@ import type { Finding, RecordRef, RequestResult } from "@/lib/engine/types";
 import { TICKMARKS } from "@/lib/engine/types";
 import type { SourceInfo } from "@/lib/ramp/types";
 
+/** The four screens of the flow, in order. */
 type Stage = "intake" | "plan" | "run" | "results";
+/** What /api/parse returns: the typed request list plus the file or sample name it came from. */
 type Parsed = ParsedList & { input_name?: string };
+/** Progress of one request during the run. Kept per request so a single failure does not sink the others. */
 type RunState = { status: "wait" | "spin" | "done" | "error"; result?: RequestResult; error?: string };
 
+/** Sort key so high severity exceptions are listed first. */
 const SEV_ORDER = { high: 0, medium: 1, low: 2 } as const;
 
+/**
+ * Top level of the flow. Owns all cross-stage state: the parsed list, the editable `requests`
+ * (the user can retype them on the plan screen), one `RunState` per request, run totals in
+ * `meta`, and the Ramp record open in the side drawer. Props come from the server page so the
+ * client knows the data source, configured parser models and Ramp scopes without its own fetch.
+ */
 export default function Workbench({ source, models, scopes }: { source: SourceInfo; models: string[]; scopes: string }) {
   const [stage, setStage] = useState<Stage>("intake");
   const [parsed, setParsed] = useState<Parsed | null>(null);
@@ -26,9 +42,11 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
   const closeRecord = useCallback(() => setRecord(null), []);
   const search = useSearchParams();
   const autoSample = search.get("sample");
+  // Guards against parsing the sample twice when effects run twice in development.
   const started = useRef(false);
   useEffect(() => {
     // /app?sample=xlsx or ?sample=email opens straight on the sample list.
+    // The parse is deferred with setTimeout so no state is set synchronously inside the effect.
     if (started.current || (autoSample !== "xlsx" && autoSample !== "email")) return;
     const t = setTimeout(() => {
       started.current = true;
@@ -37,6 +55,10 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
     return () => clearTimeout(t);
   }, [autoSample]);
 
+  /**
+   * Intake step. Sends a file (multipart), pasted text or a sample name to /api/parse and moves
+   * to the plan screen. `label` records which button started it so only that button shows "Reading...".
+   */
   async function parse(body: FormData | { text?: string; sample?: string }, label: string) {
     setBusy(label);
     setError(null);
@@ -55,6 +77,12 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
     }
   }
 
+  /**
+   * Run step. Calls /api/run once per request, in sequence, rather than once for the whole list.
+   * That gives live per-request progress and keeps each server call well inside its time limit.
+   * Repeat calls stay cheap because the server caches the Ramp snapshot for the period.
+   * `states` is a local copy that is cloned into React state after every change.
+   */
   async function run() {
     setStage("run");
     setError(null);
@@ -70,6 +98,7 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
         const json = await res.json();
         if (!res.ok) throw new Error(json.error);
         states[i] = { status: "done", result: json.results[0] };
+        // Population counts and warnings describe the whole snapshot, so the latest response is enough.
         last = { counts: json.counts, business: json.business, warnings: json.warnings ?? [] };
       } catch (e) {
         states[i] = { status: "error", error: String((e as Error).message) };
@@ -77,6 +106,7 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
       setRuns([...states]);
     }
     setMeta({ ms: performance.now() - t0, counts: last?.counts ?? {}, business: last?.business ?? "", warnings: last?.warnings ?? [] });
+    // Short pause so the last status icon is visible before the results screen replaces it.
     setTimeout(() => setStage("results"), 450);
   }
 
@@ -112,6 +142,7 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
 }
 
 // ---------------------------------------------------------------- intake
+/** The "how it works" strip shown under the upload box. */
 const STEPS = [
   { t: "Upload the request list", d: "The auditor's PBC list, as Excel, CSV, PDF or text." },
   { t: "Review the requests", d: "See how each request was read and fix any type. Nothing runs until you start it." },
@@ -119,6 +150,10 @@ const STEPS = [
   { t: "Resolve and export", d: "Review exceptions, send the follow-ups you approve, and download the binder." },
 ];
 
+/**
+ * Intake screen. Accepts the PBC list by drag and drop, file picker, pasted email text or one of
+ * the two bundled samples, and hands it to `onParse`. Nothing is sent to Ramp from here.
+ */
 function Intake({ busy, error, onParse, models, source, scopes }: { busy: string | null; error: string | null; onParse: (b: FormData | { text?: string; sample?: string }, label: string) => void; models: string[]; source: SourceInfo; scopes: string }) {
   const [text, setText] = useState("");
   const [over, setOver] = useState(false);
@@ -158,6 +193,7 @@ function Intake({ busy, error, onParse, models, source, scopes }: { busy: string
             setOver(true);
           }}
           onDragLeave={(e) => {
+            // Ignore leave events fired when the pointer moves onto a child element.
             if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false);
           }}
           onDrop={(e) => {
@@ -241,7 +277,13 @@ function Intake({ busy, error, onParse, models, source, scopes }: { busy: string
   );
 }
 
+/**
+ * Collapsed "advanced" panel on the intake screen: the MCP install command, which data source and
+ * parser are active, and which Ramp scopes are read or written.
+ */
 function Advanced({ models, source, scopes }: { models: string[]; source: SourceInfo; scopes: string }) {
+  // useSyncExternalStore gives the server render a fixed origin and the client the real one,
+  // so the MCP command can show the deployed URL without a hydration mismatch.
   const origin = useSyncExternalStore(
     () => () => {},
     () => window.location.origin,
@@ -301,10 +343,17 @@ function Advanced({ models, source, scopes }: { models: string[]; source: Source
 }
 
 // ---------------------------------------------------------------- plan
+/** Turns the parser id from /api/parse into a readable name for the plan header. */
 const parserName = (p: string) => (p === "rules" ? "keyword rules" : /claude/i.test(p) ? `Claude (${p})` : /^(gpt|o\d)/i.test(p) ? `OpenAI (${p})` : p);
 
+/**
+ * Plan review screen. Lists every request with its type, interpretation, period, threshold and
+ * selections, and lets the user correct the type before anything runs. Evidence is pulled only
+ * when the user presses the run button.
+ */
 function Plan({ parsed, requests, setRequests, onRun, source }: { parsed: Parsed; requests: AuditRequest[]; setRequests: (r: AuditRequest[]) => void; onRun: () => void; source: SourceInfo }) {
   const auto = requests.filter((r) => r.type !== "unsupported").length;
+  // A manual override replaces the parser's reason, so the plan shows the type came from the user.
   const setType = (i: number, type: RequestType) => setRequests(requests.map((r, k) => (k === i ? { ...r, type, reason: "Changed by you" } : r)));
   return (
     <>
@@ -351,6 +400,7 @@ function Plan({ parsed, requests, setRequests, onRun, source }: { parsed: Parsed
 }
 
 // ---------------------------------------------------------------- running
+/** Status dot used in the run list and the results sidebar: waiting, spinning, clean, exceptions or manual. */
 function StatusIcon({ s }: { s: "wait" | "spin" | "ok" | "ex" | "manual" | "error" }) {
   if (s === "ok") return <span className="status ok" aria-label="No exceptions"><Tick /></span>;
   if (s === "ex" || s === "error") return <span className="status ex" aria-label="Exceptions">!</span>;
@@ -358,12 +408,14 @@ function StatusIcon({ s }: { s: "wait" | "spin" | "ok" | "ex" | "manual" | "erro
   return <span className={`status ${s}`} />;
 }
 
+/** Maps a run state and its result status to a StatusIcon. "manual" means Ramp cannot answer the request. */
 const iconFor = (st: RunState): "wait" | "spin" | "ok" | "ex" | "manual" | "error" => {
   if (st.status !== "done") return st.status;
   if (!st.result) return "error";
   return st.result.status === "complete" ? "ok" : st.result.status === "manual" ? "manual" : "ex";
 };
 
+/** Run screen. Shows each request's progress and its headline as soon as its result arrives. */
 function Running({ requests, runs, source }: { requests: AuditRequest[]; runs: RunState[]; source: SourceInfo }) {
   const done = runs.filter((r) => r.status === "done" || r.status === "error").length;
   return (
@@ -391,8 +443,15 @@ function Running({ requests, runs, source }: { requests: AuditRequest[]; runs: R
 }
 
 // ---------------------------------------------------------------- results
+/**
+ * Results screen. Summary stats, a sidebar of requests, and a detail pane that shows either all
+ * exceptions or one request. `sent` maps finding id to where its comment was posted, and lives
+ * here so the "Drafts sent" count and every FindingCard agree.
+ */
 function Results({ requests, runs, meta, auditor, source, openRecord }: { requests: AuditRequest[]; runs: RunState[]; meta: { ms: number; counts: Record<string, number>; business: string; warnings: string[] }; auditor: string | null; source: SourceInfo; openRecord: (r: RecordRef) => void }) {
   const results = runs.map((r) => r.result).filter((r): r is RequestResult => !!r);
+  // The same exception can surface under several requests.
+  // Dedupe by finding id and remember every request ref that raised it.
   const allFindings = useMemo(() => {
     const m = new Map<string, { f: Finding; refs: string[] }>();
     for (const r of results) for (const f of r.findings) m.set(f.id, { f, refs: [...(m.get(f.id)?.refs ?? []), r.request.ref] });
@@ -405,6 +464,10 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
   const tested = results.reduce((s, r) => s + r.rows.length, 0);
   const high = allFindings.filter((x) => x.f.severity === "high").length;
 
+  /**
+   * Downloads the binder ZIP. Only the requests are sent, not the results; the server reruns the
+   * checks itself so the binder cannot contain numbers edited in the browser.
+   */
   async function download() {
     setDownloading(true);
     try {
@@ -422,6 +485,7 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
     }
   }
 
+  // `sel` is "all" for the combined exception list, or an index into `results`.
   const current = sel === "all" ? null : results[sel];
   return (
     <>
@@ -483,6 +547,11 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
   );
 }
 
+/**
+ * One request's workpaper: the request text, the procedure performed, an evidence table with
+ * tickmarks per row, and its exceptions. Opens on the exceptions tab when there are any.
+ * Manual requests show only the procedure, since Ramp holds no evidence for them.
+ */
 function RequestDetail({ r, openRecord, sent, setSent, source }: { r: RequestResult; openRecord: (x: RecordRef) => void; sent: Record<string, string>; setSent: (s: Record<string, string>) => void; source: SourceInfo }) {
   const [tab, setTab] = useState<"evidence" | "exceptions">(r.findings.length ? "exceptions" : "evidence");
   const flagged = new Set(r.findings.map((f) => f.id));
@@ -511,6 +580,7 @@ function RequestDetail({ r, openRecord, sent, setSent, source }: { r: RequestRes
                     <tbody>
                       {r.rows.map((row, i) => (
                         <tr key={row.record.id + i} className={row.finding_ids.some((id) => flagged.has(id)) ? "flag" : ""}>
+                          {/* The first cell opens the row's Ramp record. Control testing rows lead with the test name, so the link goes on the exception cell instead. */}
                           {row.cells.map((c, k) => (
                             <td key={k} className={/^\$|^-\$/.test(c) ? "num" : c.length <= 14 ? "nw" : ""}>
                               {k === (r.request.type === "control_testing" ? 1 : 0) && row.record.id ? <button className="rec" onClick={() => openRecord(row.record)}>{c}</button> : c}
@@ -538,11 +608,17 @@ function RequestDetail({ r, openRecord, sent, setSent, source }: { r: RequestRes
   );
 }
 
+/**
+ * One exception: title, severity, detail, the Ramp records behind it, and its drafted follow-up.
+ * The draft is editable and is posted only when the user presses "Approve and send". On sample
+ * data the server writes it to a demo outbox instead of Ramp.
+ */
 function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f: Finding; refs?: string[]; openRecord: (x: RecordRef) => void; sent: Record<string, string>; setSent: (s: Record<string, string>) => void; source: SourceInfo }) {
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState(f.comment?.message ?? "");
   const [posting, setPosting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  /** Posts the edited draft to /api/comment and records where it went in the shared `sent` map. */
   async function post() {
     if (!f.comment) return;
     setPosting(true);
@@ -600,10 +676,16 @@ function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f: Findin
 }
 
 // ---------------------------------------------------------------- record drawer
+/**
+ * Side drawer that shows the Ramp record behind an evidence row or exception: a short summary
+ * and the raw API response, so a reviewer can trace any line back to its source. The parent keys
+ * it by record, so opening another record remounts it with fresh state.
+ */
 function RecordDrawer({ refd, onClose }: { refd: RecordRef; onClose: () => void }) {
   const [data, setData] = useState<{ record: unknown; source: SourceInfo } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   useEffect(() => {
+    // `live` drops a late response if the drawer closed before the fetch finished.
     let live = true;
     fetch(`/api/record/${refd.type}/${refd.id}`)
       .then((r) => r.json())
@@ -648,13 +730,19 @@ function RecordDrawer({ refd, onClose }: { refd: RecordRef; onClose: () => void 
   );
 }
 
+/**
+ * Picks the fields an auditor cares about from a raw record returned by /api/record.
+ * Field names follow the Ramp API. Amounts arrive in cents and times are shown in UTC.
+ */
 function summarize(type: string, rec: unknown): [string, string][] {
   const money = (c: number) => (c / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
   const d = (s?: string | null) => (s ? new Date(s).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }) + " UTC" : "None");
   const r = rec as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   if (type === "transaction") {
     const t = r.transaction;
+    // The last approval step is the final sign-off.
     const ap = r.approval?.approval_history?.at(-1);
+    // OCR totals are in dollars, unlike the cent amounts elsewhere, hence the * 100 below.
     const ocr = r.receipts?.[0]?.ocr?.line_items?.[0]?.item_total_price;
     return [
       ["Merchant", `${t.merchant_name} (MCC ${t.merchant_category_code})`],
@@ -684,6 +772,7 @@ function summarize(type: string, rec: unknown): [string, string][] {
   return [];
 }
 
+/** Check mark icon for clean requests. */
 function Tick() {
   return (
     <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden>

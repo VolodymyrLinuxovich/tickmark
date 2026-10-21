@@ -1,3 +1,5 @@
+// Engine stage of the pipeline: parse (request list -> AuditRequest) -> engine
+// (this file) -> binder (ZIP of workbook, PDFs and evidence).
 // Answers one audit request from a Ramp snapshot. Every verdict here is plain
 // code over Ramp records; the language model is only used upstream to parse
 // the request list.
@@ -8,20 +10,36 @@ import type { RampApproval, RampBill, RampReceipt, RampSnapshot, RampTransaction
 import { monetaryUnitSample } from "./sampling";
 import { findingId, type EvidenceRow, type Finding, type RecordRef, type RequestResult, type Tickmark } from "./types";
 
+/** Reads a dollar amount from an env var and returns cents, or the fallback when unset or invalid. */
 function centsFromEnv(name: string, fallback: number): number {
   const v = Number(process.env[name]);
   return Number.isFinite(v) && v > 0 ? Math.round(v * 100) : fallback;
 }
 
+/**
+ * Company spend policy the checks test against. All money is in integer cents.
+ * These stand in for a client's written expense policy; auditors test the
+ * client against its own policy, so the limits are configurable.
+ */
 export const POLICY = {
   // cents; card purchases above this need pre-approval
   cardApprovalLimit: centsFromEnv("TICKMARK_CARD_APPROVAL_LIMIT", 500000),
   // cents; receipts required at this amount and above
   receiptThreshold: centsFromEnv("TICKMARK_RECEIPT_THRESHOLD", 7500),
+    // A receipt "agrees" to the charge within $1 or 1%, whichever is larger. Tips,
+    // card surcharges, FX conversion and OCR rounding cause small honest gaps.
   receiptTolerance: (cents: number) => Math.max(100, Math.round(cents * 0.01)),
+    // Split purchase window: charges at the same merchant by the same person within
+    // two days are treated as one order broken up to stay under the approval limit.
   splitWindowHours: 48,
+    // Same vendor and same amount within a week is the usual pattern of an invoice
+    // entered twice (e.g. once from email, once from the vendor portal).
   duplicateWindowDays: 7,
+    // A new vendor paid within two weeks of setup is a classic fictitious-vendor
+    // fraud signal, because there was little time for vendor due diligence.
   fastPaymentDays: 14,
+    // Merchant category codes (MCC, a 4-digit code the card network assigns to every
+    // merchant) that rarely have a business purpose and usually signal personal spend.
   restrictedMcc: {
     "5921": "Package stores, beer, wine and liquor",
     "5813": "Bars and nightclubs",
@@ -32,6 +50,7 @@ export const POLICY = {
   } as Record<string, string>,
 };
 
+/** Lookup maps built once per run so each per-record check is O(1). Approvals are keyed by the id of the transaction or bill they approve. */
 export interface Index {
   snap: RampSnapshot;
   user: Map<string, RampUser>;
@@ -40,6 +59,7 @@ export interface Index {
   vendor: Map<string, RampVendor>;
 }
 
+/** Builds the lookup maps over a snapshot. Receipts without a transaction id are unattached uploads and are skipped. */
 export function buildIndex(snap: RampSnapshot): Index {
   const receiptsByTxn = new Map<string, RampReceipt[]>();
   for (const r of snap.receipts) {
@@ -62,12 +82,15 @@ const name = (u?: { first_name?: string; last_name?: string } | null) => (u ? `$
 const txnRef = (t: RampTransaction): RecordRef => ({ type: "transaction", id: t.id, label: `${t.merchant_name} ${usd(t.entity_amount.value)} on ${shortDate(t.user_transaction_time)}` });
 const billRef = (b: RampBill): RecordRef => ({ type: "bill", id: b.id, label: `${b.vendor.name} ${b.invoice_number ?? ""} ${usd(b.amount.amount)}`.replace(/\s+/g, " ") });
 
+/** True when a date falls inside the request's audit period. Compares YYYY-MM-DD strings, so time zones never shift a record across a boundary. */
 function inPeriod(iso: string | null | undefined, req: AuditRequest) {
   if (!iso) return false;
   const d = iso.slice(0, 10);
   return (!req.period_from || d >= req.period_from) && (!req.period_to || d <= req.period_to);
 }
 
+// "approved" also matches inside "unapproved" or "not approved", so a step must
+// match the first pattern and not the second.
 const APPROVED_STEP = /approv/i;
 const NOT_APPROVED_STEP = /(unapprov|not.?approv|reject|declin|cancel|terminat|pending)/i;
 
@@ -83,9 +106,11 @@ export function lastApproval(ix: Index, id: string) {
   return { record: a, steps, last: steps.at(-1) };
 }
 
+/** Display name for an approval step. A step with no user id is an automatic policy approval, which an auditor must not mistake for a human sign-off. */
 const approverName = (ix: Index, step: { user_id: string | null; user_email: string | null }) =>
   step.user_id ? (ix.user.has(step.user_id) ? name(ix.user.get(step.user_id)) : step.user_email ?? "Unknown user") : "Auto-approved by policy";
 
+/** Receipt total in cents from OCR line items plus tax, or null when OCR found no line items (an image with no readable total cannot be agreed). */
 function receiptTotal(r: RampReceipt): number | null {
   const items = r.ocr?.line_items ?? [];
   if (!items.length) return null;
@@ -94,6 +119,12 @@ function receiptTotal(r: RampReceipt): number | null {
 }
 
 // ---------- per-record checks ----------
+/**
+ * Runs the per-item tests on one card transaction: receipt present, receipt agrees
+ * to the amount, approved by someone other than the cardholder, and merchant category.
+ * Returns findings, the tickmarks earned (see TICKMARKS in types.ts) and evidence file urls.
+ * `approvals: false` skips approval tests when a request only asks about receipts.
+ */
 function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: boolean }): { findings: Finding[]; ticks: Tickmark[]; files: string[] } {
   const findings: Finding[] = [];
   const ticks: Tickmark[] = [];
@@ -123,6 +154,7 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
         },
       });
     }
+    // Only agree amounts when receipt objects were loaded; an id alone has no OCR to compare.
   } else if (receipts.length) {
     const ocr = receipts.map(receiptTotal).filter((x): x is number => x != null);
     const matched = ocr.some((v) => Math.abs(v - cents) <= POLICY.receiptTolerance(cents));
@@ -157,6 +189,8 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
         records: [txnRef(t)],
         owner,
       });
+        // Segregation of duties: the person who spends must not be the person who approves.
+        // A policy auto-approval (no user id) is not self-approval.
     } else if (last.user_id && last.user_id === t.card_holder.user_id) {
       findings.push({
         id: findingId("SELF_APPROVAL", [t.id]),
@@ -189,9 +223,14 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
       },
     });
   }
+    // Any exception adds the X tickmark so the row points the reader to the findings list.
   return { findings, ticks: findings.length ? [...ticks, "X"] : ticks, files };
 }
 
+/**
+ * Runs the per-item tests on one vendor bill (accounts payable): invoice attached,
+ * approved, approver independent of the bill owner, approval before payment, payment made.
+ */
 function checkBill(ix: Index, b: RampBill): { findings: Finding[]; ticks: Tickmark[]; files: string[] } {
   const findings: Finding[] = [];
   const ticks: Tickmark[] = [];
@@ -239,6 +278,8 @@ function checkBill(ix: Index, b: RampBill): { findings: Finding[]; ticks: Tickma
         },
       });
     } else ticks.push("A");
+        // Approval after payment means the control did not operate: money left before
+        // anyone reviewed it, and a later sign-off cannot prevent a bad payment.
     if (b.paid_at && new Date(last.action_at) > new Date(b.paid_at)) {
       findings.push({
         id: findingId("APPROVAL_AFTER_PAYMENT", [b.id]),
@@ -262,10 +303,17 @@ function checkBill(ix: Index, b: RampBill): { findings: Finding[]; ticks: Tickma
 }
 
 // ---------- population-wide checks ----------
+/**
+ * Flags split purchases: one order broken into several charges that are each under
+ * the card approval limit, so none of them triggers pre-approval, but together exceed it.
+ * Groups by cardholder and merchant, then clusters charges within POLICY.splitWindowHours
+ * of the first one. A transaction is reported in at most one cluster.
+ */
 export function splitPurchases(ix: Index, txns: RampTransaction[]): Finding[] {
   const out: Finding[] = [];
   const groups = new Map<string, RampTransaction[]>();
   for (const t of txns) {
+        // Refunds and charges already above the limit cannot be part of a split; the latter already needed approval.
     if (t.entity_amount.value <= 0 || t.entity_amount.value > POLICY.cardApprovalLimit) continue;
     const k = `${t.card_holder.user_id}|${t.merchant_name.toLowerCase()}`;
     groups.set(k, [...(groups.get(k) ?? []), t]);
@@ -284,6 +332,7 @@ export function splitPurchases(ix: Index, txns: RampTransaction[]): Finding[] {
       if (cluster.length < 2 || total <= POLICY.cardApprovalLimit) continue;
       const ids = cluster.map((t) => t.id);
       const id = findingId("SPLIT_PURCHASE", ids);
+            // Skip clusters that overlap one already reported, so a run of three charges is one finding, not three.
       if (seen.has(id) || ids.some((x) => [...seen].some((s) => s.includes(x)))) continue;
       seen.add(id);
       const t0 = cluster[0];
@@ -307,6 +356,11 @@ export function splitPurchases(ix: Index, txns: RampTransaction[]): Finding[] {
   return out;
 }
 
+/**
+ * Flags bills that look entered twice for the same vendor: same invoice number, or
+ * same amount issued within POLICY.duplicateWindowDays. Archived bills are ignored
+ * because archiving is how a duplicate is normally voided. Pairwise per vendor, O(n^2) per vendor.
+ */
 export function duplicateBills(all: RampBill[]): Finding[] {
   const out: Finding[] = [];
   const seen = new Set<string>();
@@ -345,6 +399,10 @@ export function duplicateBills(all: RampBill[]): Finding[] {
   return out;
 }
 
+/**
+ * Flags vendors created in the period whose first payment came within
+ * POLICY.fastPaymentDays of setup. Reports only the first payment per vendor.
+ */
 export function fastPaidNewVendors(ix: Index, bills: RampBill[], req: AuditRequest): Finding[] {
   const out: Finding[] = [];
   for (const v of ix.snap.vendors) {
@@ -374,8 +432,16 @@ export function fastPaidNewVendors(ix: Index, bills: RampBill[], req: AuditReque
 }
 
 // ---------- selection matching ----------
+/** Lowercase words of three or more characters, used for fuzzy description matching. */
 const tokens = (s: string) => s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((w) => w.length > 2);
 
+/**
+ * Finds the Ramp transaction for one auditor selection. The auditor's list comes from
+ * the general ledger or bank statement, so the description is truncated or reformatted.
+ * Amount must match to the cent; date must be within 5 days of the transaction or
+ * accounting date, because card charges post days after the swipe and weekends and
+ * month-end close widen the gap. Ties go to the closest date and most matching words.
+ */
 export function matchSelection(ix: Index, sel: { date: string; description: string; amount: number }): { txn: RampTransaction; score: number } | null {
   const cents = Math.round(sel.amount * 100);
   const d = toIsoDate(sel.date);
@@ -395,8 +461,10 @@ export function matchSelection(ix: Index, sel: { date: string; description: stri
 }
 
 // ---------- request handlers ----------
+/** Drops repeat findings by id. The same problem can be found by more than one check or request. */
 const dedupe = (fs: Finding[]) => [...new Map(fs.map((f) => [f.id, f])).values()];
 
+/** Wraps a handler's output into a RequestResult, setting status and a default headline from the findings. */
 function result(request: AuditRequest, r: Omit<RequestResult, "request" | "status" | "headline"> & { headline?: string }): RequestResult {
   const findings = dedupe(r.findings);
   return {
@@ -408,6 +476,7 @@ function result(request: AuditRequest, r: Omit<RequestResult, "request" | "statu
   };
 }
 
+/** Evidence table cells for a card transaction row; columns are TXN_COLS. */
 const txnCells = (t: RampTransaction, ix: Index) => {
   const { last } = lastApproval(ix, t.id);
   return [
@@ -422,6 +491,7 @@ const txnCells = (t: RampTransaction, ix: Index) => {
 };
 const TXN_COLS = ["Date", "Merchant", "Cardholder", "Amount", "Receipt", "Approved by", "Business purpose"];
 
+/** Evidence table cells for a bill row; columns are BILL_COLS. */
 const billCells = (b: RampBill, ix: Index) => {
   const { last } = lastApproval(ix, b.id);
   return [
@@ -435,6 +505,12 @@ const billCells = (b: RampBill, ix: Index) => {
 };
 const BILL_COLS = ["Vendor", "Invoice", "Issued", "Amount", "Approved by", "Paid"];
 
+/**
+ * Answers one parsed request against the indexed snapshot. Each request type maps to a
+ * fixed audit procedure; the procedure text written here is printed in the workpaper so
+ * a reviewer can see exactly what was tested. Only cleared card transactions count,
+ * because pending or declined charges are not yet in the books.
+ */
 export function runRequest(req: AuditRequest, ix: Index): RequestResult {
   const snap = ix.snap;
   const txns = snap.transactions.filter((t) => (t.state === "CLEARED" || t.state === "COMPLETION") && inPeriod(t.user_transaction_time, req));
@@ -470,8 +546,12 @@ export function runRequest(req: AuditRequest, ix: Index): RequestResult {
           rows.push({ record: { ...txnRef(m.txn), label: `${sel.ref} ${txnRef(m.txn).label}` }, cells: [sel.ref, ...txnCells(m.txn, ix)], tickmarks: c.ticks, finding_ids: c.findings.map((f) => f.id), files: c.files });
         }
       } else {
+                // No selections given: draw the sample here. 25 is a common default
+                // sample size for testing a population of transactions.
         const n = Number(req.text.match(/(?:sample of|select|pull)\s+(\d+)/i)?.[1] ?? 25);
         const pop = txns.filter((t) => minCents == null || t.entity_amount.value >= minCents);
+                // Fixed seed so the same data always yields the same sample, which lets a
+                // reviewer re-perform the selection and get identical items.
         const s = monetaryUnitSample(pop.map((t) => ({ id: t.id, amount: t.entity_amount.value })), n, 2025);
         picked = pop.filter((t) => s.selected.includes(t.id));
         procedure.push(`Drew a monetary unit sample of ${picked.length} from ${pop.length} card transactions (${usd(pop.reduce((a, t) => a + t.entity_amount.value, 0))}). Interval ${usd(Math.round(s.interval))}, seeded random start ${usd(Math.round(s.start))}, ${s.topStratum.length} items above the interval selected in full.`);
@@ -486,6 +566,7 @@ export function runRequest(req: AuditRequest, ix: Index): RequestResult {
     }
 
     case "bill_support": {
+            // Bills are tested in full (no sampling) because a request like "every bill over $10,000" asks for all of them.
       const sel = bills.filter((b) => (minCents == null || b.amount.amount >= minCents) && (b.paid_at ? inPeriod(b.paid_at, req) : true));
       const rows: EvidenceRow[] = [];
       const findings: Finding[] = [];
@@ -585,6 +666,8 @@ export function runRequest(req: AuditRequest, ix: Index): RequestResult {
     }
 
     case "user_access": {
+      // Roles that can move money, change policy or see everything. Auditors review
+      // this list to confirm only the right people hold elevated access.
       const privileged = ["BUSINESS_OWNER", "BUSINESS_ADMIN", "BUSINESS_BOOKKEEPER", "IT_ADMIN", "AUDITOR"];
       const users = snap.users.filter((u) => privileged.includes(u.role)).sort((a, b) => privileged.indexOf(a.role) - privileged.indexOf(b.role));
       const dept = (id: string | null) => snap.departments.find((d) => d.id === id)?.name ?? "";
@@ -616,11 +699,13 @@ export function runRequest(req: AuditRequest, ix: Index): RequestResult {
   }
 }
 
+/** Runs every request in a parsed list against one snapshot. */
 export function runAll(reqs: AuditRequest[], snap: RampSnapshot): RequestResult[] {
   const ix = buildIndex(snap);
   return reqs.map((r) => runRequest(r, ix));
 }
 
+/** All findings across requests, each listed once. */
 export function uniqueFindings(results: RequestResult[]): Finding[] {
   return dedupe(results.flatMap((r) => r.findings));
 }

@@ -26,6 +26,7 @@ export interface NormalizedInput {
   text: string; // full text rendering, used by the Claude parser
 }
 
+/** RFC 4180 style CSV reader: quoted cells may hold commas, quotes ("") and line breaks. Blank rows are kept so row numbers stay true. */
 export function parseCsv(text: string, delimiter = ","): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
@@ -60,6 +61,7 @@ export function parseCsv(text: string, delimiter = ","): string[][] {
 
 const MONTH_INDEX: Record<string, number> = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12 };
 
+/** "Mar", "March" or "Sept" to 3 or 9; null for anything else. */
 export const monthNumber = (name: string): number | null => MONTH_INDEX[name.toLowerCase().slice(0, name.toLowerCase().startsWith("sept") ? 4 : 3)] ?? null;
 
 const year4 = (y: string) => (y.length === 2 ? `20${y}` : y);

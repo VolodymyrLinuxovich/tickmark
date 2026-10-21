@@ -1,8 +1,12 @@
+// Landing page at /: the problem, the four-step flow and the list of checks.
+// A server component; it reads the data source only to label the sample audit link.
+
 import Link from "next/link";
 import { getSource } from "@/lib/ramp/source";
 import { TopBar } from "./topbar";
 import { Reveal } from "./landing/reveal";
 
+// Copy for the landing sections, kept as data so the JSX stays short.
 const PROBLEMS = [
   {
     t: "A spreadsheet of requests",

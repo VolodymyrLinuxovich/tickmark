@@ -1,7 +1,11 @@
 "use client";
 
+// Button on /eval that runs the sample list through the model parser via /api/eval?parser=claude.
+// It is opt in because it makes a paid model call; the rest of the page uses the rules parser.
+
 import { useState } from "react";
 
+/** Subset of the /api/eval response that this component shows. */
 interface Out {
   parser: string;
   warnings: string[];
@@ -10,6 +14,7 @@ interface Out {
   timing: { parse_ms: number };
 }
 
+// The correct type for each request in the sample list, used to score the model's reading.
 const EXPECTED: Record<string, string> = {
   "PBC-01": "unsupported", "PBC-02": "transaction_support", "PBC-03": "bill_support", "PBC-04": "receipt_completeness", "PBC-05": "control_testing",
   "PBC-06": "duplicate_payments", "PBC-07": "vendor_listing", "PBC-08": "user_access", "PBC-09": "unsupported",

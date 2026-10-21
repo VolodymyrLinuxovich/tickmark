@@ -2,6 +2,7 @@
 // Start the app first (npm run build && npx next start -p 3790), then:
 //   node scripts/record-demo.mjs http://localhost:3790 demo-out
 // Writes demo-out/tickmark-demo.webm and demo-out/chapters.json (timestamps for narration).
+// Not part of the app. It drives the sample data flow end to end, so it needs no Ramp credentials.
 
 import { chromium } from "playwright-core";
 import { mkdirSync, renameSync, writeFileSync } from "node:fs";
@@ -12,6 +13,7 @@ const out = path.resolve(process.argv[3] ?? "demo-out");
 mkdirSync(out, { recursive: true });
 
 const size = { width: 1440, height: 900 };
+// Uses the installed Chrome, since playwright-core ships no browser of its own.
 const browser = await chromium.launch({ channel: "chrome" });
 const context = await browser.newContext({ viewport: size, recordVideo: { dir: out, size }, acceptDownloads: true, colorScheme: "light" });
 
@@ -30,10 +32,12 @@ await context.addInitScript(() => {
 const page = await context.newPage();
 const t0 = Date.now();
 const chapters = [];
+/** Records a chapter title at the current video time, in seconds. */
 const mark = (title) => chapters.push({ at: ((Date.now() - t0) / 1000).toFixed(1), title });
 const wait = (ms) => page.waitForTimeout(ms);
 let mouse = { x: size.width / 2, y: size.height / 2 };
 
+/** Glides the mouse to the center of an element so viewers can follow it. */
 async function moveTo(locator) {
   await locator.scrollIntoViewIfNeeded();
   const box = await locator.boundingBox();
@@ -42,12 +46,14 @@ async function moveTo(locator) {
   mouse = target;
   await wait(250);
 }
+/** Moves to an element, clicks it, then holds so the result stays on screen. */
 async function click(locator, pause = 900) {
   await moveTo(locator);
   await page.mouse.down();
   await page.mouse.up();
   await wait(pause);
 }
+/** Smooth wheel scroll, since a single jump is hard to follow on video. */
 async function scrollBy(dy, steps = 20) {
   for (let i = 0; i < steps; i++) {
     await page.mouse.wheel(0, dy / steps);
@@ -105,6 +111,7 @@ await scrollBy(350);
 await wait(4000);
 mark("End");
 
+// The video file is only complete after the context closes; then it gets a stable name.
 const video = page.video();
 await context.close();
 await browser.close();

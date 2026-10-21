@@ -1,3 +1,8 @@
+// Accuracy scoring for the /eval page. The demo company is generated with known
+// control problems planted in it; this compares engine findings to that ground truth.
+// Recall = share of planted problems found. Precision = share of findings that
+// match a planted problem.
+
 import { getFixture, type PlantedException } from "../fixtures/generate";
 import { findingId, type Finding, type RequestResult } from "./types";
 import { uniqueFindings } from "./run";

@@ -1,12 +1,23 @@
-// Monetary unit sampling (probability proportional to size), as used in audit
-// substantive testing. Items at or above the sampling interval are always
-// selected; the rest are picked by a systematic walk from a seeded random start.
+// Engine helper: picks which card transactions to test when the auditor asks
+// for a sample instead of naming items.
+//
+// Monetary unit sampling treats every dollar as a unit and samples dollars, then
+// tests the transaction holding each sampled dollar. A $9,000 charge is 100 times
+// more likely to be picked than a $90 one. Auditors use it because misstatement risk
+// sits in the large amounts, and it gives full coverage of anything material.
+// Items at or above the sampling interval are always selected; the rest are
+// picked by a systematic walk from a seeded random start.
 
+/** One item in the population. Amount is the weight for selection. */
 export interface SampleItem {
   id: string;
   amount: number; // positive, any unit
 }
 
+/**
+ * interval: dollars between sampled units. start: the random first unit.
+ * topStratum: items at or above the interval, which are always tested.
+ */
 export interface MusResult {
   interval: number;
   start: number;
@@ -14,6 +25,7 @@ export interface MusResult {
   topStratum: string[];
 }
 
+/** Mulberry32, a small seeded PRNG. Seeding makes a sample reproducible, so anyone can re-perform it. */
 export function mulberry(seed: number) {
   let a = seed >>> 0;
   return () => {
@@ -25,6 +37,11 @@ export function mulberry(seed: number) {
   };
 }
 
+/**
+ * Selects about n items by systematic monetary unit sampling. Non-positive amounts
+ * (refunds) are excluded. If n covers the whole population, everything is selected.
+ * The result can hold fewer than n ids when a large item spans several sampled units.
+ */
 export function monetaryUnitSample(items: SampleItem[], n: number, seed = 1): MusResult {
   const pop = items.filter((i) => i.amount > 0);
   if (n <= 0 || !pop.length) return { interval: 0, start: 0, selected: [], topStratum: [] };
@@ -47,6 +64,8 @@ export function monetaryUnitSample(items: SampleItem[], n: number, seed = 1): Mu
   const selected = new Set(top.map((i) => i.id));
   const rand = mulberry(seed);
   const start = rand() * interval;
+    // Walk the cumulative dollar total; every time it passes the next sampling point
+    // (start, start + interval, ...), the item holding that dollar is selected.
   if (remaining > 0 && Number.isFinite(interval)) {
     let cum = 0;
     let k = 0;

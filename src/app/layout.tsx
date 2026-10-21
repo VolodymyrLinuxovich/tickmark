@@ -1,3 +1,5 @@
+// Root layout: loads the three fonts as CSS variables used by globals.css.
+
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import "./globals.css";

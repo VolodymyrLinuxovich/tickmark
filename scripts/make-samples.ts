@@ -1,10 +1,17 @@
 // Writes the sample auditor request list used in the demo.
 // Run: npx tsx scripts/make-samples.ts
+// Writes the same nine requests three ways (Excel with a Selections sheet, CSV, and a plain email) into
+// public/samples, to exercise each input path. Selections come from the seeded fixture, so they always match
+// real demo transactions.
 
 import ExcelJS from "exceljs";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { getFixture } from "../src/lib/fixtures/generate";
 
+/**
+ * [ref, area, request] rows. Requests PBC-02 to PBC-08 map to one request type each; PBC-01 (bank
+ * reconciliations) and PBC-09 (fixed assets) are outside Ramp data and should come back unsupported.
+ */
 export const SAMPLE_REQUESTS = [
   ["PBC-01", "Cash", "Bank reconciliations for all operating accounts as of December 31, 2025."],
   ["PBC-02", "Expenses", "For the card transactions selected on the Selections tab, provide the receipt, evidence of approval and the business purpose."],
@@ -48,6 +55,7 @@ async function main() {
   sel.getColumn(5).numFmt = "#,##0.00";
   await wb.xlsx.writeFile("public/samples/hartwell-pbc-fy2025.xlsx");
 
+  // Minimal CSV quoting: wrap fields that contain a comma, quote or newline, and double inner quotes.
   const q = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
   writeFileSync(
     "public/samples/hartwell-pbc-fy2025.csv",

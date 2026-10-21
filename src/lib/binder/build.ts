@@ -1,3 +1,9 @@
+// Binder stage, the last step of the pipeline: turns request results into the ZIP the
+// auditor receives. Layout: "00 Index.xlsx" (requests, exceptions, evidence rows),
+// README.txt, and one folder per request holding Workpaper.pdf and an Evidence folder.
+// A workpaper is the auditor's standard record of one test: what was asked, what was
+// done, what was seen and what failed.
+
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
@@ -11,7 +17,9 @@ import { usd } from "../engine/run";
 const clean = (s: string) =>
   s.replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[–—]/g, "-").replace(/…/g, "...").replace(/[^\x20-\x7e\n]/g, "");
 
+/** Folder name for a request, stripped of characters that are illegal in Windows or macOS paths. */
 const folderName = (r: RequestResult) => clean(`${r.request.ref} ${REQUEST_TYPE_INFO[r.request.type].label}`).replace(/[\\/:*?"<>|]/g, "");
+/** File-name-safe text, capped at 60 characters. */
 const safe = (s: string) => clean(s).replace(/[\\/:*?"<>|]/g, "").slice(0, 60).trim();
 
 interface Ctx {
@@ -21,6 +29,7 @@ interface Ctx {
   generatedAt: Date;
 }
 
+/** Minimal flowing-text layout over pdf-lib: wraps text, draws tables and starts a new page with a header when space runs out. Pages are US Letter in points. */
 class Writer {
   page!: PDFPage;
   y = 0;
@@ -81,6 +90,7 @@ class Writer {
   }
 }
 
+/** Renders one request's workpaper PDF: request text, procedure, evidence table with tickmarks, exceptions and the tickmark legend. */
 async function workpaper(r: RequestResult, ctx: Ctx): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
@@ -135,6 +145,11 @@ async function demoDocument(kind: "receipt" | "invoice", lines: [string, string]
   return doc.save();
 }
 
+/**
+ * Builds the full evidence binder ZIP. Evidence files are fetched from the source; when the
+ * source cannot serve a file (demo data), a labeled stand-in PDF is rendered from the Ramp
+ * record so the binder layout is still complete. At most 200 files per request keeps the ZIP bounded.
+ */
 export async function buildBinder(results: RequestResult[], snap: RampSnapshot, source: RampSource, auditor: string | null): Promise<Uint8Array> {
   const ctx: Ctx = { business: snap.business_name, auditor, sourceLabel: source.info.label, generatedAt: new Date() };
   const zip = new JSZip();
@@ -166,6 +181,7 @@ export async function buildBinder(results: RequestResult[], snap: RampSnapshot, 
     { header: "Ramp record ids", width: 40 },
   ];
   fs.getRow(1).font = { bold: true };
+    // A finding can come up under several requests; list it once, under the first request that found it.
   const seen = new Set<string>();
   for (const r of results)
     for (const f of r.findings) {
