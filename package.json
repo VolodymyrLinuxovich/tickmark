@@ -18,6 +18,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.136.0",
     "@modelcontextprotocol/server": "^2.3.1",
+    "@vercel/blob": "^2.8.2",
     "exceljs": "^4.4.0",
     "jszip": "^3.10.2",
     "mcp-handler": "^2.3.0",

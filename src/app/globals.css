@@ -871,3 +871,42 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 .ask .table-wrap { max-height: 360px; }
 .ask-more, .ask-added { font-size: 12.5px; margin: 8px 0 0; }
 .ask-added { color: var(--tick); }
+
+/* auditor portal: share card (controller) */
+.share { padding: 18px 20px; margin-bottom: 16px; }
+.share-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.share-head h3 { margin: 0; font-size: 16px; }
+.share-head p { margin: 2px 0 0; color: var(--ink-2); font-size: 13.5px; max-width: 640px; }
+.share-link { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+.share-link code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font: 12.5px var(--font-mono), monospace; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 7px; }
+.share-fine { font-size: 12.5px; margin: 6px 0 0; }
+.pq { border-top: 1px solid var(--line); padding: 10px 0; }
+.pq p { margin: 3px 0 0; }
+.pq-ans { margin: 8px 0 0 16px; padding-left: 12px; border-left: 2px solid var(--tick); }
+.pq-wait { margin: 6px 0 0 16px; font-size: 12.5px; }
+.pq-form { margin-top: 8px; gap: 8px; }
+.pq-form input, .pq-form textarea { font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line-2); border-radius: 7px; background: var(--surface); color: var(--ink); }
+.pq-form input { flex: 1; min-width: 0; }
+.pq-form textarea { width: 100%; min-height: 72px; font-family: var(--font-sans), sans-serif; margin-bottom: 8px; }
+
+/* auditor portal page */
+.portal { padding-top: 28px; padding-bottom: 64px; }
+.portal-empty { text-align: center; padding: 96px 0; color: var(--ink-2); }
+.portal-empty .status { width: 22px; height: 22px; display: inline-block; }
+.portal-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px; }
+.portal-head h1 { font-family: var(--font-serif), Georgia, serif; font-weight: 500; font-size: 32px; margin: 0 0 4px; }
+.portal-head p { margin: 0; max-width: 680px; }
+.portal-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.portal-item { overflow: hidden; }
+.portal-row { width: 100%; display: flex; align-items: center; gap: 14px; padding: 14px 18px; background: none; border: none; text-align: left; cursor: pointer; flex-wrap: wrap; }
+.portal-row:hover { background: var(--surface-2); }
+.portal-ref { font-weight: 600; font-size: 12.5px; color: var(--ink-3); min-width: 56px; }
+.portal-main { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
+.portal-st { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+.portal-st.ok { background: var(--tick-bg); color: var(--tick); }
+.portal-st.ex { background: var(--warn-bg); color: var(--warn); }
+.portal-st.manual { background: var(--surface-2); color: var(--ink-3); border: 1px solid var(--line); }
+.portal-detail { padding: 0 18px 18px; border-top: 1px solid var(--line); }
+.portal-findings { margin: 0; padding-left: 18px; }
+.portal-findings li { margin: 4px 0; font-size: 13.5px; }
+.portal-q { margin-top: 18px; }

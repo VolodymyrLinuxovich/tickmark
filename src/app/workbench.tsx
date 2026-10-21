@@ -16,6 +16,7 @@ import { TICKMARKS } from "@/lib/engine/types";
 import { LiveThread, WatchProvider, useWatch } from "./loop";
 import { ReceiptHunter } from "./receipt-hunter";
 import { AskBooks, type BinderExtra } from "./ask-books";
+import { PortalShare } from "./portal-share";
 import type { SourceInfo } from "@/lib/ramp/types";
 
 /** The four screens of the flow, in order. */
@@ -522,6 +523,7 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
         <LoopStat sent={Object.keys(sent).length} ready={allFindings.filter((x) => x.f.comment).length} live={source.kind !== "fixture"} />
       </div>
       {missingReceipts.length > 0 && <ReceiptHunter findings={missingReceipts} source={source} />}
+      <PortalShare requests={requests} business={meta.business} auditor={auditor} />
       <AskBooks periodFrom={periodFrom} periodTo={periodTo} openRecord={openRecord} extras={extras} onAdd={(x) => setExtras((xs) => [...xs, x])} />
       <div className="results">
         <div className="card req-list">
