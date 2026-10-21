@@ -644,3 +644,15 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
   .lp-cta { padding-top: 120px; padding-bottom: 96px; }
 }
 #problem, #solution { scroll-margin-top: 72px; }
+
+/* ---------- quote band: a dark full-width band so the quote stands out ---------- */
+.lp-quote-band { background: var(--accent); color: var(--accent-ink); margin-top: 168px; padding: 112px 0 104px; }
+.lp-quote-band .lp-pull { position: relative; }
+.lp-quote-band .lp-pull::before { content: "\201C"; display: block; font-family: var(--font-serif), Georgia, serif; font-size: 140px; line-height: .6; height: 64px; color: var(--tick); margin-bottom: 18px; }
+.lp-quote-band .lp-pull blockquote { color: var(--accent-ink); font-size: clamp(28px, 3.8vw, 48px); }
+.lp-quote-band .lp-pull-note { color: color-mix(in srgb, var(--accent-ink) 70%, transparent); font-size: 18px; }
+.lp-quote-band .lp-pull figcaption b { color: var(--accent-ink); }
+.lp-quote-band .lp-pull figcaption a { color: color-mix(in srgb, var(--accent-ink) 60%, transparent); }
+.lp-quote-band .lp-pull-mark { background: var(--tick); color: #fff; }
+@media (prefers-color-scheme: dark) { .lp-quote-band .lp-pull-mark { color: #121211; } }
+@media (max-width: 760px) { .lp-quote-band { margin-top: 112px; padding: 80px 0 72px; } .lp-quote-band .lp-pull::before { font-size: 100px; height: 46px; } }

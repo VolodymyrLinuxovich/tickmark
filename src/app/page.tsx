@@ -105,7 +105,7 @@ export default function Landing() {
         <Reveal className="lp-quote-band" as="div">
           <figure className="lp-pull wrap">
             <blockquote className="stagger">
-              &ldquo;Preparing for an audit means gathering receipts, matching transactions, and exporting clean records.&rdquo;
+              Preparing for an audit means gathering receipts, matching transactions, and exporting clean records.
             </blockquote>
             <p className="lp-pull-note stagger" style={{ transitionDelay: "160ms" }}>
               When documentation is missing, Ramp notes, it &ldquo;can take days.&rdquo;
