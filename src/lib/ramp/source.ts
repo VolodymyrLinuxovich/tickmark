@@ -3,7 +3,7 @@
 
 import { getFixture } from "../fixtures/generate";
 import type { CommentObjectType, PostedComment, RampSnapshot, SourceInfo } from "./types";
-import { RampApiClient, tokenFromRampCli, type RampAuth, type SnapshotNotes } from "./api-client";
+import { RampApiClient, loginFromRampCli, type RampAuth, type SnapshotNotes } from "./api-client";
 
 /** Audit period, inclusive on both ends. */
 export interface Period {
@@ -135,14 +135,18 @@ export function getConnection(): Connection {
   let auth: RampAuth | null = null;
   if (process.env.RAMP_CLIENT_ID && process.env.RAMP_CLIENT_SECRET) auth = { kind: "client_credentials", clientId: process.env.RAMP_CLIENT_ID, clientSecret: process.env.RAMP_CLIENT_SECRET };
   else if (process.env.RAMP_ACCESS_TOKEN) auth = { kind: "token", token: process.env.RAMP_ACCESS_TOKEN, origin: "access token" };
-  else {
-    const cli = tokenFromRampCli(env);
-    if (cli) auth = { kind: "token", token: cli, origin: "Ramp CLI login" };
+  let reason = "No Ramp credentials are configured, so sample data is used.";
+  if (!auth) {
+    const cli = loginFromRampCli(env);
+    // A CLI login made during signup only has application scopes; it can't read spend yet.
+    if (cli && cli.scopes.length && !cli.scopes.includes("transactions:read")) {
+      reason = `The Ramp CLI is logged in to the ${env} but cannot read transactions yet (granted: ${cli.scopes.join(", ")}). Finish the Ramp application, then run \`ramp auth login\` again.`;
+    } else if (cli) auth = { kind: "token", token: cli.token, origin: "Ramp CLI login" };
   }
   if (auth) {
     cached = { source: new ApiSource(env, auth, process.env.RAMP_API_BASE_URL), connected: true, reason: "" };
   } else {
-    cached = { source: new FixtureSource(), connected: false, reason: "No Ramp credentials are configured, so sample data is used." };
+    cached = { source: new FixtureSource(), connected: false, reason };
   }
   return cached;
 }

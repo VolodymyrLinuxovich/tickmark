@@ -52,22 +52,31 @@ const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
 const addDays = (iso: string, n: number) => new Date(new Date(iso).getTime() + n * 864e5).toISOString().replace(".000Z", "Z");
 
 /** Reads the access token the Ramp CLI saved for an environment, if any. */
-export function tokenFromRampCli(env: "sandbox" | "production"): string | null {
+export interface CliLogin {
+  token: string;
+  scopes: string[];
+}
+
+/** Reads the token and granted scopes the Ramp CLI saved for an environment, if any. */
+export function loginFromRampCli(env: "sandbox" | "production"): CliLogin | null {
   try {
     // The CLI stores one [sandbox] or [production] section in config.toml; a tiny line scan avoids a TOML dependency.
     const dir = process.env.XDG_CONFIG_HOME ? path.join(process.env.XDG_CONFIG_HOME, "ramp") : path.join(homedir(), ".config", "ramp");
     const text = readFileSync(path.join(dir, "config.toml"), "utf8");
     let section = "";
+    let token = "";
+    let scopes = "";
     for (const line of text.split("\n")) {
       const h = line.match(/^\s*\[([^\]]+)\]\s*$/);
       if (h) section = h[1].trim().replace(/^"|"$/g, "");
-      const kv = line.match(/^\s*access_token\s*=\s*"([^"]+)"/);
-      if (kv && section === env) return kv[1];
+      if (section !== env) continue;
+      token = line.match(/^\s*access_token\s*=\s*"([^"]+)"/)?.[1] ?? token;
+      scopes = line.match(/^\s*granted_scopes\s*=\s*"([^"]*)"/)?.[1] ?? scopes;
     }
+    return token ? { token, scopes: scopes.split(/\s+/).filter(Boolean) } : null;
   } catch {
-    // no CLI config
+    return null; // no CLI config
   }
-  return null;
 }
 
 /** Runs async work over items with at most `limit` in flight. */
