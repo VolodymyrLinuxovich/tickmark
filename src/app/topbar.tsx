@@ -18,7 +18,7 @@ export function TopBar({ info, landing = false }: { info: SourceInfo; landing?: 
           <Link href="/eval">Accuracy</Link>
           <span className="pill" title={info.base_url ?? "Deterministic demo company shaped like Ramp API responses"}>
             <span className={`dot ${info.kind === "fixture" ? "" : "live"}`} />
-            <span className="pill-long">{info.kind === "fixture" ? "Demo company: Acme Robotics" : info.label}</span><span className="pill-short">{info.kind === "fixture" ? "Demo data" : info.label}</span>
+            <span className="pill-long">{info.kind === "fixture" ? "Sample data: Acme Robotics" : info.label}</span><span className="pill-short">{info.kind === "fixture" ? "Sample data" : info.label}</span>
           </span>
           {landing && <Link href="/app" className="btn primary small">Open Tickmark</Link>}
         </nav>
