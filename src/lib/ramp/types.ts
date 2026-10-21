@@ -92,6 +92,7 @@ export interface RampBill {
   created_at: string;
   paid_at: string | null;
   status: "OPEN" | "PAID" | string;
+  archived_at?: string | null;
   approval_status: "APPROVED" | "INITIALIZED" | "PENDING" | "REJECTED" | "TERMINATED" | null;
   memo?: string | null;
   vendor: { id: string; name: string };

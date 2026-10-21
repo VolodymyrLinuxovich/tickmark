@@ -4,6 +4,8 @@ Every year a company's auditor sends a "PBC" list: 30 to 100 requests like *"sup
 
 Ramp already holds the receipts, approvals, bills and payments. Tickmark reads the auditor's list, pulls the evidence from Ramp, runs the control tests auditors run, and returns a binder where every line traces to a Ramp record. Exceptions come with a drafted Ramp comment to the right person, sent only after you approve it.
 
+Live demo: https://tickmark-eta.vercel.app
+
 Built for the BBS x Ramp Hackathon (Build track): *pick an outdated financial workflow and rebuild it with the newest AI tools.*
 
 ## What it does
@@ -46,8 +48,25 @@ Copy `.env.example` to `.env.local`.
 | `TICKMARK_SOURCE` | `fixture` (default), `sandbox` (`demo-api.ramp.com`) or `production` (`api.ramp.com`). |
 | `RAMP_CLIENT_ID`, `RAMP_CLIENT_SECRET` | A Ramp developer app with the client credentials grant. Read scopes: `transactions:read receipts:read bills:read users:read departments:read vendors:read approvals:read business:read`. Posting comments also needs `transactions:write` and `bills:write`. |
 | `TICKMARK_PARSER` | Set to `rules` to force the keyword parser. |
+| `TICKMARK_CARD_APPROVAL_LIMIT`, `TICKMARK_RECEIPT_THRESHOLD` | Policy values in dollars (defaults 5000 and 75). |
 
 The live Ramp client (`src/lib/ramp/api-client.ts`) follows the Developer API docs: client credentials token at `/developer/v1/token`, `page.next` pagination, `/approvals` batched by entity id, and comments via `/developer/v1/comments/{bills|transactions}/{id}`. It has not yet been run against a Ramp sandbox, because sandbox access is not self-serve.
+
+## Use it from an agent (MCP)
+
+`/api/mcp` is a Streamable HTTP MCP server with three read-only tools:
+
+| Tool | What it does |
+|---|---|
+| `read_request_list` | Request list text in, typed requests out (type, period, threshold, selections). |
+| `answer_audit_requests` | Runs the checks from raw text or reviewed requests. Returns each request's result, every exception with its Ramp records, and a drafted follow-up comment. |
+| `get_ramp_record` | The transaction, bill, vendor or user behind an exception, with receipts and approval history. |
+
+```bash
+claude mcp add --transport http tickmark http://localhost:3000/api/mcp
+```
+
+Nothing is posted to Ramp through MCP. Drafts come back to the agent, and sending stays in the app behind a person's approval.
 
 ## How it is built
 
@@ -67,9 +86,19 @@ Next.js 16 (App Router), TypeScript, `@anthropic-ai/sdk`, zod, exceljs, pdf-lib,
 ## Limits
 
 - The demo company is generated, so the 8 of 8 score shows that the checks work as designed. It is not a measure of accuracy on real books.
-- Policy values (approval limit, receipt threshold, restricted merchant codes) are constants in `engine/run.ts`. A real deployment should read them from the company's Ramp spend policy.
+- Policy values come from environment variables or defaults, and restricted merchant codes are a constant in `engine/run.ts`. A real deployment should read them from the company's Ramp spend policy.
+- Amounts are shown in USD. Ramp reports amounts in the business entity's settlement currency, so a non-USD entity would be labeled wrong.
 - Receipt checks use the OCR total Ramp already stores. Tickmark does not re-read receipt images.
 - In demo mode, receipts and invoices in the binder are rendered from the record fields and labeled as such.
+
+## Recording the demo
+
+```bash
+npm run build && npx next start -p 3790
+node scripts/record-demo.mjs http://localhost:3790 demo-out
+```
+
+This drives the app in Chrome with a visible cursor and writes `demo-out/tickmark-demo.webm` plus `chapters.json` with a timestamp for each step.
 
 ## Demo script (3 minutes)
 
