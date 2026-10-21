@@ -5,6 +5,7 @@
 import { getFixture } from "@/lib/fixtures/generate";
 import { POLICY } from "@/lib/engine/run";
 import { CoverageLive } from "./coverage-live";
+import { DICTS, type Locale } from "@/lib/i18n";
 
 /** Items a person typically pulls when testing a control by hand. Also the app's default sample size. */
 const MANUAL_SAMPLE = 25;
@@ -31,15 +32,16 @@ function rows(): Row[] {
   ];
 }
 
-export function CoverageChart() {
+export function CoverageChart({ lang = "en" }: { lang?: Locale }) {
+  const c = DICTS[lang].checks;
   // The five checks that cover the most records, largest first.
   const data = rows()
     .sort((a, b) => b.n - a.n)
     .slice(0, 5)
-    .map((r) => ({ ...r, manual: Math.min(MANUAL_SAMPLE, r.n) }));
+    .map((r) => ({ ...r, check: c.names[r.check] ?? r.check, population: c.populations[r.population] ?? r.population, manual: Math.min(MANUAL_SAMPLE, r.n) }));
   return (
     <figure className="cov">
-      <CoverageLive data={data} manualSample={MANUAL_SAMPLE} />
+      <CoverageLive data={data} manualSample={MANUAL_SAMPLE} labels={{ all: c.all, manual: c.manual, instead: c.instead, tip: c.tip }} />
       {/* Same numbers as a table for screen readers. */}
       <div className="sr-only"><table>
         <thead>

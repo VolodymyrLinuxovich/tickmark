@@ -12,7 +12,23 @@ export interface CoverageRow {
   manual: number;
 }
 
-export function CoverageLive({ data, manualSample }: { data: CoverageRow[]; manualSample: number }) {
+export interface CoverageLabels {
+  all: string;
+  manual: string; // {m}
+  instead: string;
+  tip: string; // {n} {pop} {m}
+}
+
+const DEFAULT_LABELS: CoverageLabels = {
+  all: "Tickmark checks every record",
+  manual: "Manual sample of {m}",
+  instead: "record checks instead of",
+  tip: "{n} {pop} checked. A manual test would look at {m}.",
+};
+
+const fillIn = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (_, k) => String(v[k] ?? ""));
+
+export function CoverageLive({ data, manualSample, labels = DEFAULT_LABELS }: { data: CoverageRow[]; manualSample: number; labels?: CoverageLabels }) {
   const ref = useRef<HTMLDivElement>(null);
   const [p, setP] = useState(0);
   const [live, setLive] = useState(false);
@@ -59,12 +75,12 @@ export function CoverageLive({ data, manualSample }: { data: CoverageRow[]; manu
     <div ref={ref} className={`cov-live ${live ? "live" : ""}`}>
       <div className="cov-head">
         <div className="cov-legend" aria-hidden>
-          <span><i className="cov-key tick" /> Tickmark checks every record</span>
-          <span><i className="cov-key manual" /> Manual sample of {manualSample}</span>
+          <span><i className="cov-key tick" /> {labels.all}</span>
+          <span><i className="cov-key manual" /> {fillIn(labels.manual, { m: manualSample })}</span>
         </div>
         <div className="cov-total">
           <span className={`cov-pulse ${live ? "on" : ""}`} aria-hidden />
-          <b>{fmt(total * p)}</b> record checks instead of <b>{fmt(manualTotal * Math.min(1, p * 3))}</b>
+          <b>{fmt(total * p)}</b> {labels.instead} <b>{fmt(manualTotal * Math.min(1, p * 3))}</b>
         </div>
       </div>
       <div className="cov-rows" role="img" aria-label={`Records checked per test. ${data.map((r) => `${r.check}: ${r.n} by Tickmark, ${r.manual} by hand`).join(". ")}.`}>
@@ -75,7 +91,7 @@ export function CoverageLive({ data, manualSample }: { data: CoverageRow[]; manu
               <span className="cov-bar tick" style={{ width: `${(100 * r.n * p) / max}%`, ["--scan-delay" as string]: `${i * 0.35}s` }} />
               <span className="cov-bar manual" style={{ width: `${(100 * r.manual * Math.min(1, p * 3)) / max}%` }} />
               <span className="cov-tip">
-                {r.n.toLocaleString("en-US")} {r.population} checked. A manual test would look at {r.manual}.
+                {fillIn(labels.tip, { n: r.n.toLocaleString("en-US"), pop: r.population, m: r.manual })}
               </span>
             </span>
             <span className="cov-val">{fmt(r.n * p)}</span>

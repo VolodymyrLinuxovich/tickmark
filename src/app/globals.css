@@ -739,3 +739,21 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 @media (prefers-color-scheme: dark) { .lp-flow .mini { box-shadow: 0 0 0 1px rgba(255,255,255,.02); } }
 @media (max-width: 900px) { .lp-flow { grid-template-columns: 1fr; gap: 22px; } }
 @media (max-height: 800px) and (min-width: 901px) { .lp-hero { padding-top: 48px; gap: 40px; } .lp-hero h1 { margin-bottom: 16px; } .lp-hero .lede { margin-bottom: 24px; } }
+
+/* language menu */
+.lang { position: relative; }
+.lang summary { list-style: none; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 9px; border-radius: 8px; color: var(--ink-2); border: 1px solid transparent; transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
+.lang summary::-webkit-details-marker { display: none; }
+.lang summary:hover, .lang[open] summary { background: var(--surface); border-color: var(--line); color: var(--ink); }
+.lang-code { font-size: 12px; font-weight: 600; letter-spacing: .04em; }
+.lang ul { position: absolute; right: 0; top: calc(100% + 8px); margin: 0; padding: 6px; list-style: none; min-width: 168px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 10px 30px rgba(27,27,24,.12); z-index: 30; animation: rise .15s ease both; }
+.lang li a { display: flex; justify-content: space-between; padding: 8px 10px; border-radius: 7px; color: var(--ink); text-decoration: none; font-size: 14px; }
+.lang li a:hover, .lang li a:focus-visible { background: var(--surface-2); }
+.lang li a[aria-current] { font-weight: 600; color: var(--tick); }
+@media (max-width: 480px) {
+  .hide-xs { display: none; }
+  .lang-code { display: none; }
+  .top nav { gap: 8px; }
+  .top .btn.small { padding: 6px 10px; }
+  .top .wrap { gap: 10px; }
+}
