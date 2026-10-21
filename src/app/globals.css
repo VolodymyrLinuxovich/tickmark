@@ -643,3 +643,4 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
   .lp-grid3 { gap: 48px; }
   .lp-cta { padding-top: 120px; padding-bottom: 96px; }
 }
+#problem, #solution { scroll-margin-top: 72px; }
