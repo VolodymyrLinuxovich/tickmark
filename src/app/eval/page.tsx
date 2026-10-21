@@ -51,7 +51,7 @@ async function EvalBody() {
       <main className="wrap" style={{ paddingTop: 28, paddingBottom: 48 }}>
         <div className="section-head">
           <div>
-            <h2>Accuracy on the demo company</h2>
+            <h1 className="page-title">Accuracy on the sample company</h1>
             <p>
               Acme Robotics has {snapshot.transactions.length} card transactions, {snapshot.receipts.length} receipts and {snapshot.bills.length} bills for FY2025, all clean except eight planted problems. This page runs the sample request list end to end and scores what Tickmark finds.
             </p>

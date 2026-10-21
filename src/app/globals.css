@@ -362,3 +362,4 @@ td.nw { white-space: nowrap; }
 /* why a request got its type */
 .plan-row .why { font-size: 12px; color: var(--ink-3); margin-top: 4px; }
 .plan-row .why b { font-weight: 500; color: var(--ink-2); }
+.section-head .page-title { font-family: var(--font-serif), Georgia, serif; font-weight: 500; font-size: 28px; letter-spacing: -0.015em; margin: 0; }
