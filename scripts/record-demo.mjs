@@ -62,13 +62,19 @@ async function scrollBy(dy, steps = 20) {
   await wait(500);
 }
 
-await page.goto(`${base}/app`);
+await page.goto(base);
 await page.mouse.move(mouse.x, mouse.y);
-mark("Problem: the auditor's request list");
-await wait(5000);
+mark("Intro");
+await wait(4500);
+mark("The problem");
+await click(page.getByRole("link", { name: "Problem", exact: true }), 4500);
+mark("Our solution");
+await click(page.getByRole("link", { name: "Solution", exact: true }), 4500);
+await page.evaluate(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+await wait(1200);
 
-mark("Drop in the request list");
-await click(page.getByRole("button", { name: "Try the sample list" }), 1200);
+mark("Try the sample audit");
+await click(page.getByRole("link", { name: "Try it with a sample audit" }), 1200);
 await page.getByRole("button", { name: /Pull evidence/ }).waitFor();
 mark("Review the plan");
 await wait(3500);
@@ -105,7 +111,7 @@ await wait(1500);
 
 mark("Accuracy: 8 of 8 planted problems");
 await click(page.getByRole("link", { name: "Accuracy" }), 500);
-await page.getByText("Planted problems found").waitFor();
+await page.getByText("Planted problems found", { exact: true }).waitFor();
 await wait(4000);
 await scrollBy(350);
 await wait(4000);
