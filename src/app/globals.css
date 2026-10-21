@@ -604,3 +604,42 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 .lp-proof-line:hover { text-decoration: underline; text-underline-offset: 3px; }
 .lede { font-size: 19px; }
 .fine { font-size: 12.5px; }
+
+/* ---------- landing v6: more space ---------- */
+.lp-hero { padding-top: 112px; padding-bottom: 72px; gap: 88px; }
+.lp-hero h1 { margin-bottom: 28px; line-height: 1.08; }
+.lp-hero .lede { margin-bottom: 40px; line-height: 1.6; }
+.lp-hero .row { gap: 14px; }
+.fine { margin-top: 22px; }
+.lp-stack { gap: 24px; }
+.lp-stack .mini { padding: 20px 22px; }
+.lp-section { padding-top: 168px; }
+.lp .eyebrow { margin-bottom: 18px; }
+.lp-section h2, .lp-cta h2 { margin-bottom: 64px; line-height: 1.15; }
+.lp-grid3 { gap: 64px; }
+.lp-card h3 { margin: 22px 0 8px; }
+.lp-card p, .lp-steps p { line-height: 1.6; }
+.lp-quote-band { margin-top: 168px; padding: 0; }
+.lp-pull blockquote { line-height: 1.3; }
+.lp-pull-note { margin-top: 28px; }
+.lp-pull figcaption { margin-top: 32px; }
+.lp-steps { gap: 48px; }
+.lp-steps h3 { margin: 20px 0 8px; }
+.lp-shot { margin-top: 72px; }
+.demo-body { padding: 28px 30px 30px; }
+.demo-stats { margin: 24px 0; }
+.demo-grid { gap: 22px; }
+.demo-req { padding: 10px 14px; min-height: 52px; }
+.cov-head { margin-bottom: 36px; }
+.cov-rows { gap: 22px; }
+.lp-cta { padding-top: 192px; padding-bottom: 140px; }
+.lp-cta h2 { margin-bottom: 20px; }
+.lp-cta p { margin-bottom: 36px; }
+@media (max-width: 760px) {
+  .lp-hero { padding-top: 64px; gap: 56px; }
+  .lp-section { padding-top: 112px; }
+  .lp-quote-band { margin-top: 112px; }
+  .lp-section h2 { margin-bottom: 40px; }
+  .lp-grid3 { gap: 48px; }
+  .lp-cta { padding-top: 120px; padding-bottom: 96px; }
+}
