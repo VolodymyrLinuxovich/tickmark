@@ -33,7 +33,7 @@ Ramp comment to the right person, sent only after you approve it.
 |------|------------------|
 | [Overview](https://tickmark-eta.vercel.app) | The problem, the solution, what it checks |
 | [Sample audit](https://tickmark-eta.vercel.app/app?sample=xlsx) | Nine auditor requests, read, tested and turned into a binder |
-| [App](https://tickmark-eta.vercel.app/app) | Upload your own request list (Excel, CSV or the auditor's email) |
+| [App](https://tickmark-eta.vercel.app/app) | Upload your own request list (Excel, CSV, PDF or the auditor's email) |
 | [Accuracy](https://tickmark-eta.vercel.app/eval) | Scores on a company with eight planted control problems |
 | `/api/mcp` | MCP server, so an agent can run an audit request |
 
@@ -150,7 +150,7 @@ sequenceDiagram
 | Request type | What Tickmark does |
 |---|---|
 | Transaction support | Matches each auditor selection to a Ramp transaction (exact amount, date within 5 days of transaction or posting date, description tokens), then agrees it to the receipt OCR total (within $1 or 1%), traces the approval and checks the memo. Without selections it draws a monetary unit sample. |
-| Bill support | Every bill over the threshold: invoice attached, approver is not the bill owner, approved before payment, payment traced. |
+| Bill support | Every bill over the threshold, or exactly the bills the auditor selected (matched by amount, date within 5 days and vendor): invoice attached, approver is not the bill owner, approved before payment, payment traced. |
 | Missing receipts | Card charges at or above the receipt threshold with nothing attached. |
 | Control testing | Split purchases (same cardholder and merchant within 48 hours, each under the approval limit, together over it), self-approval, approval after payment, restricted merchant categories. |
 | Duplicate payments | Same vendor and invoice number, or same vendor and amount within 7 days. Archived bills are skipped. |
@@ -158,8 +158,10 @@ sequenceDiagram
 | User access | Owners, admins, bookkeepers, IT admins and auditors, with status. |
 
 5. **Hand over.** Each exception links to its Ramp records and carries a drafted comment for the cardholder or bill
-   owner. Approve it and it posts to that Ramp thread. The binder holds `00 Index.xlsx` (requests, exceptions, evidence
-   rows with Ramp ids), a PDF workpaper per request with tickmarks, and every receipt and invoice.
+   owner. Approve it and it posts to that Ramp thread. Mark each exception open, resolved or waived with a note. The
+   binder holds `00 Index.xlsx` (requests, exceptions with their status, evidence rows with Ramp ids), a PDF workpaper
+   per request (reference WP-01 onward, conclusion, evidence with tickmarks, exceptions, prepared and reviewed sign-off,
+   page numbers), and every receipt and invoice.
 
 ---
 

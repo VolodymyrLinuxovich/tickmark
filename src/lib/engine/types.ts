@@ -54,6 +54,7 @@ export const TICKMARKS = {
   P: "Payment traced",
   I: "Invoice obtained",
   M: "Business purpose documented",
+  T: "Tested in full, no exception",
   X: "Exception, see findings",
 } as const;
 export type Tickmark = keyof typeof TICKMARKS;

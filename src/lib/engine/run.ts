@@ -460,6 +460,45 @@ export function matchSelection(ix: Index, sel: { date: string; description: stri
   return best;
 }
 
+/**
+ * Finds the Ramp bill behind one auditor selection on a bill request: same amount, issue or
+ * payment date within 5 days, and the best overlap between the description and the vendor
+ * name or invoice number. Null when nothing matches.
+ */
+export function matchBill(ix: Index, sel: { date: string; description: string; amount: number }): { bill: RampBill; score: number } | null {
+  const cents = Math.round(sel.amount * 100);
+  const d = toIsoDate(sel.date);
+  const want = tokens(sel.description);
+  let best: { bill: RampBill; score: number } | null = null;
+  for (const b of ix.snap.bills) {
+    if (b.amount.amount !== cents) continue;
+    const dates = [b.issued_at, b.paid_at].filter(Boolean).map((x) => x!.slice(0, 10));
+    const dayGap = d ? Math.min(...dates.map((x) => Math.abs(new Date(x).getTime() - new Date(d).getTime()) / 864e5)) : 0;
+    if (dayGap > 5) continue;
+    const have = new Set(tokens(`${b.vendor.name} ${b.invoice_number ?? ""}`));
+    const overlap = want.filter((w) => [...have].some((h) => h.startsWith(w) || w.startsWith(h))).length;
+    const score = 10 - dayGap + overlap * 3;
+    if (!best || score > best.score) best = { bill: b, score };
+  }
+  return best;
+}
+
+/** Readable names for the control tests, used in workpapers instead of finding codes. */
+export const TEST_NAMES: Partial<Record<Finding["code"], string>> = {
+  SPLIT_PURCHASE: "Split purchase",
+  SELF_APPROVAL: "Self-approval",
+  APPROVAL_AFTER_PAYMENT: "Approval after payment",
+  RESTRICTED_MCC: "Restricted merchant category (MCC)",
+  NOT_APPROVED: "No approval recorded",
+  NO_APPROVAL: "No approval recorded",
+};
+
+/** "BUSINESS_ADMIN" to "Business admin". */
+const sentenceCase = (s: string) => {
+  const t = s.replaceAll("_", " ").toLowerCase();
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
+
 // ---------- request handlers ----------
 /** Drops repeat findings by id. The same problem can be found by more than one check or request. */
 const dedupe = (fs: Finding[]) => [...new Map(fs.map((f) => [f.id, f])).values()];
@@ -504,6 +543,15 @@ const billCells = (b: RampBill, ix: Index) => {
   ];
 };
 const BILL_COLS = ["Vendor", "Invoice", "Issued", "Amount", "Approved by", "Paid"];
+
+/** The control tests in the control testing workpaper, with the finding codes each one raises and what it runs over. */
+const CONTROL_TESTS: { name: string; codes: Finding["code"][]; population: (t: RampTransaction[], b: RampBill[]) => number }[] = [
+  { name: "Split purchase", codes: ["SPLIT_PURCHASE"], population: (t) => t.length },
+  { name: "Self-approval", codes: ["SELF_APPROVAL"], population: (t, b) => t.length + b.length },
+  { name: "Approval after payment", codes: ["APPROVAL_AFTER_PAYMENT"], population: (_t, b) => b.filter((x) => x.paid_at).length },
+  { name: "No approval recorded", codes: ["NOT_APPROVED", "NO_APPROVAL"], population: (t, b) => t.length + b.length },
+  { name: "Restricted merchant category (MCC)", codes: ["RESTRICTED_MCC"], population: (t) => t.length },
+];
 
 /**
  * Answers one parsed request against the indexed snapshot. Each request type maps to a
@@ -566,21 +614,45 @@ export function runRequest(req: AuditRequest, ix: Index): RequestResult {
     }
 
     case "bill_support": {
-            // Bills are tested in full (no sampling) because a request like "every bill over $10,000" asks for all of them.
-      const sel = bills.filter((b) => (minCents == null || b.amount.amount >= minCents) && (b.paid_at ? inPeriod(b.paid_at, req) : true));
       const rows: EvidenceRow[] = [];
       const findings: Finding[] = [];
-      for (const b of sel) {
+      const test = (b: RampBill, label?: string) => {
         const c = checkBill(ix, b);
         findings.push(...c.findings);
-        rows.push({ record: billRef(b), cells: billCells(b, ix), tickmarks: c.ticks, finding_ids: c.findings.map((f) => f.id), files: c.files });
+        const ref = billRef(b);
+        rows.push({ record: label ? { ...ref, label: `${label} ${ref.label}` } : ref, cells: label ? [label, ...billCells(b, ix)] : billCells(b, ix), tickmarks: c.ticks, finding_ids: c.findings.map((f) => f.id), files: c.files });
+      };
+      // When the auditor picked specific bills, test exactly those; otherwise test every bill over the threshold.
+      if (req.selections.length) {
+        for (const sel of req.selections) {
+          const m = matchBill(ix, sel);
+          if (m) {
+            test(m.bill, sel.ref);
+            continue;
+          }
+          const f: Finding = {
+            id: findingId("SELECTION_NOT_FOUND", [sel.ref]),
+            code: "SELECTION_NOT_FOUND",
+            severity: "medium",
+            title: `${sel.ref}: no Ramp bill for ${usd(Math.round(sel.amount * 100))} on ${sel.date}`,
+            detail: `"${sel.description}" may have been paid outside Ramp. Pull the invoice and payment from the source system.`,
+            records: [],
+          };
+          findings.push(f);
+          rows.push({ record: { type: "bill", id: "", label: sel.ref }, cells: [sel.ref, sel.description, "", sel.date, usd(Math.round(sel.amount * 100)), "", "Not found in Ramp"], tickmarks: ["X"], finding_ids: [f.id], files: [] });
+        }
+      } else {
+        // Bills are tested in full (no sampling) because a request like "every bill over $10,000" asks for all of them.
+        for (const b of bills.filter((b) => (minCents == null || b.amount.amount >= minCents) && (b.paid_at ? inPeriod(b.paid_at, req) : true))) test(b);
       }
       return result(req, {
         procedure: [
-          `Selected all ${sel.length} bills${minCents ? ` of ${usd(minCents)} or more` : ""} issued or paid in the period.`,
+          req.selections.length
+            ? `Matched ${req.selections.length} auditor selections to Ramp bills by amount, issue or payment date (within 5 days) and vendor or invoice number.`
+            : `Selected all ${rows.length} bills${minCents ? ` of ${usd(minCents)} or more` : ""} issued or paid in the period.`,
           "Obtained the invoice attachment, traced the approval to the approver and date, confirmed approval came before payment and that the approver was not the bill owner, and traced the payment.",
         ],
-        columns: BILL_COLS,
+        columns: req.selections.length ? ["Ref", ...BILL_COLS] : BILL_COLS,
         rows,
         findings,
         population: bills.length,
@@ -622,8 +694,22 @@ export function runRequest(req: AuditRequest, ix: Index): RequestResult {
           `Approval timing: compared approval time with payment time on ${bills.filter((b) => b.paid_at).length} paid bills.`,
           `Restricted merchants: screened merchant category codes against ${Object.keys(POLICY.restrictedMcc).join(", ")}.`,
         ],
-        columns: ["Test", "Exception", "Records", "Owner"],
-        rows: fs.map((f) => ({ record: f.records[0], cells: [f.code.replaceAll("_", " ").toLowerCase(), f.title, f.records.map((r) => r.label).join("; "), f.owner?.name ?? ""], tickmarks: ["X"], finding_ids: [f.id], files: [] })),
+        columns: ["Test", "Result", "Records", "Owner"],
+        rows: [
+          // One summary row per test, so tests that passed show in the workpaper too.
+          ...CONTROL_TESTS.map(({ name, codes, population }) => {
+            const hits = fs.filter((f) => codes.includes(f.code));
+            const n = population(txns, bills);
+            return {
+              record: { type: "transaction" as const, id: "", label: name },
+              cells: [name, hits.length ? `${hits.length} exception${hits.length > 1 ? "s" : ""} in ${n} records` : `${n} records tested, no exceptions`, "", ""],
+              tickmarks: (hits.length ? ["X"] : ["T"]) as Tickmark[],
+              finding_ids: hits.map((f) => f.id),
+              files: [],
+            };
+          }),
+          ...fs.map((f) => ({ record: f.records[0], cells: [TEST_NAMES[f.code] ?? sentenceCase(f.code), f.title, f.records.map((r) => r.label).join("; "), f.owner?.name ?? ""], tickmarks: ["X"] as Tickmark[], finding_ids: [f.id], files: [] })),
+        ],
         findings: fs,
         population: txns.length + bills.length,
         tested: txns.length + bills.length,
@@ -657,7 +743,7 @@ export function runRequest(req: AuditRequest, ix: Index): RequestResult {
         columns: ["Vendor", "Category", "Created", "Added in period", "Paid in period"],
         rows: vendors.map((v) => {
           const f = findings.find((x) => x.records.some((r) => r.id === v.id));
-          return { record: { type: "vendor", id: v.id, label: v.name }, cells: [v.name, v.sk_category_name ?? "", shortDate(v.created_at), inPeriod(v.created_at, req) ? "Yes" : "", usd(spend(v))], tickmarks: f ? ["X"] : [], finding_ids: f ? [f.id] : [], files: [] };
+          return { record: { type: "vendor", id: v.id, label: v.name }, cells: [v.name, v.sk_category_name ?? "", shortDate(v.created_at), inPeriod(v.created_at, req) ? "Yes" : "", usd(spend(v))], tickmarks: f ? ["X"] : ["T"], finding_ids: f ? [f.id] : [], files: [] };
         }),
         findings,
         population: vendors.length,
@@ -676,7 +762,7 @@ export function runRequest(req: AuditRequest, ix: Index): RequestResult {
         headline: `${users.length} users with elevated access${inactive.length ? `, ${inactive.length} no longer active` : ""}`,
         procedure: ["Listed every Ramp user with the owner, admin, bookkeeper, IT admin or auditor role, with status and department, as of the date of this binder."],
         columns: ["Name", "Email", "Role", "Status", "Department"],
-        rows: users.map((u) => ({ record: { type: "user", id: u.id, label: name(u) }, cells: [name(u), u.email, u.role.replaceAll("_", " ").toLowerCase(), u.status.replace("USER_", "").toLowerCase(), dept(u.department_id)], tickmarks: [], finding_ids: [], files: [] })),
+        rows: users.map((u) => ({ record: { type: "user", id: u.id, label: name(u) }, cells: [name(u), u.email, sentenceCase(u.role), sentenceCase(u.status.replace("USER_", "")), dept(u.department_id)], tickmarks: [], finding_ids: [], files: [] })),
         findings: [],
         population: snap.users.length,
         tested: users.length,

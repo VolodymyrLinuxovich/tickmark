@@ -703,3 +703,38 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
   .lp-grid3 { gap: 36px; }
   .lp-cta { padding-top: 96px; padding-bottom: 80px; }
 }
+
+/* plan chips you can edit */
+.tag.chip { cursor: pointer; font: inherit; font-size: 12px; }
+.tag.chip:hover { border-color: var(--ink-3); color: var(--ink); }
+.tag.chip-edit { display: inline-flex; align-items: center; gap: 6px; padding: 3px 4px 3px 8px; }
+.tag.chip-edit input { font: inherit; font-size: 12px; border: 1px solid var(--line-2); border-radius: 5px; padding: 2px 6px; background: var(--surface); color: var(--ink); }
+.tag.chip-edit input[inputmode] { width: 90px; }
+.chip-ok { font: inherit; font-size: 12px; border: none; border-radius: 5px; padding: 3px 8px; background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+.chip-ok:disabled { opacity: .4; cursor: default; }
+
+/* exception status */
+.status-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--line-2); border-radius: 7px; overflow: hidden; }
+.seg-b { font: inherit; font-size: 12px; padding: 4px 10px; border: none; background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.seg-b + .seg-b { border-left: 1px solid var(--line-2); }
+.seg-b.on.open { background: var(--warn-bg); color: var(--warn); font-weight: 500; }
+.seg-b.on.resolved { background: var(--tick-bg); color: var(--tick); font-weight: 500; }
+.seg-b.on.waived { background: var(--surface-2); color: var(--ink); font-weight: 500; }
+.status-note { flex: 1 1 220px; min-width: 0; font: inherit; font-size: 12.5px; padding: 5px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface); color: var(--ink); }
+
+/* ---------- hero flow: three labelled cards that are hard to miss ---------- */
+.lp-flow { list-style: none; padding: 0; margin: 0; display: grid !important; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 100%; max-width: 1120px; text-align: left; counter-reset: none; }
+.lp-flow li { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.flow-k { font-size: 13px; font-weight: 600; letter-spacing: .02em; color: var(--ink-2); padding-left: 2px; }
+.lp-flow .mini { flex: 1; margin: 0 !important; padding: 20px 22px; border-radius: 14px; border-top-width: 4px; gap: 14px; flex-direction: row; box-shadow: 0 2px 6px rgba(27,27,24,.05), 0 18px 40px rgba(27,27,24,.10); }
+.lp-flow .mini.ask { flex-direction: column; gap: 8px; border-top-color: var(--ink-3); }
+.lp-flow .mini.ok { border-top-color: var(--tick); }
+.lp-flow .mini.ex { border-top-color: var(--warn); }
+.lp-flow .mini-t { font-size: 17px; line-height: 1.35; letter-spacing: -0.005em; }
+.lp-flow .mini-t .mono { font-size: 13px; }
+.lp-flow .mini-k { font-size: 14.5px; line-height: 1.45; margin-top: 3px; }
+.lp-flow .mini-icon { width: 30px; height: 30px; font-size: 15px; }
+.lp-flow .mini-chip { font-size: 13px; margin-top: 12px; padding: 4px 10px; background: var(--warn-bg); color: var(--warn); border-color: transparent; font-weight: 500; }
+@media (prefers-color-scheme: dark) { .lp-flow .mini { box-shadow: 0 0 0 1px rgba(255,255,255,.02); } }
+@media (max-width: 900px) { .lp-flow { grid-template-columns: 1fr; gap: 22px; } }
