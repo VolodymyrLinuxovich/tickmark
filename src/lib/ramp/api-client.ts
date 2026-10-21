@@ -352,7 +352,18 @@ export class RampApiClient {
    */
   async postComment(objectType: CommentObjectType, objectId: string, message: string, mentionUserIds: string[]) {
     const scope = objectType === "bills" ? "bills:write" : "transactions:write";
-    await this.request("POST", `/developer/v1/comments/${objectType}/${objectId}`, { message, message_format: "PLAIN_TEXT", mention_user_ids: mentionUserIds }, scope);
+    try {
+      await this.request("POST", `/developer/v1/comments/${objectType}/${objectId}`, { message, message_format: "PLAIN_TEXT", mention_user_ids: mentionUserIds }, scope);
+    } catch (e) {
+      // This endpoint only adds to an existing thread. Ramp's agent tool starts one when there is none.
+      if (!(e instanceof RampHttpError && e.status === 404)) throw e;
+      await this.request(
+        "POST",
+        "/developer/v1/agent-tools/post-comment",
+        { message, ramp_object_type: objectType === "bills" ? "bill" : "transaction", ramp_object_uuid: objectId, mention_user_uuids: mentionUserIds, rationale: "Audit follow-up approved by the user in Tickmark" },
+        "comments:write",
+      );
+    }
   }
 }
 

@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     const posted = await getSource().postComment(object_type, object_id, message, mention_user_ids);
     return Response.json(posted);
   } catch (err) {
-    const e = rampError(err, object_type === "bills" ? "bills:write" : "transactions:write");
+    const e = rampError(err, `${object_type === "bills" ? "bills:write" : "transactions:write"} and comments:write`);
     return Response.json({ error: e.error }, { status: e.status });
   }
 }

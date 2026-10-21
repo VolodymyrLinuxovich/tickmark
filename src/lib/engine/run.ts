@@ -192,6 +192,9 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
     // Flag only charges that needed one: Ramp opened an approval that never completed,
     // or the charge is above the pre-approval limit with no approval at all.
     const needsApproval = Boolean(record) || cents > POLICY.cardApprovalLimit;
+    const next = record?.next_approvers?.find((n) => n.user_id);
+    const nextUser = next ? ix.user.get(next.user_id) : undefined;
+    const nextName = nextUser ? name(nextUser) : next?.user_email ?? "approver";
     if (!last && needsApproval) {
       findings.push({
         id: findingId("NOT_APPROVED", [t.id]),
@@ -204,7 +207,16 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
           ? `Ramp opened an approval for this transaction, but it is ${String(record.status ?? "not complete").toLowerCase()}.`
           : `Above the ${usd(POLICY.cardApprovalLimit)} pre-approval limit, and Ramp has no approval for it.`,
         records: [txnRef(t)],
-        owner,
+        // A pending approval is waiting on a person: follow up with the next approver, not the cardholder.
+        owner: next ? { user_id: next.user_id, name: nextName } : owner,
+        ...(next && {
+          comment: {
+            object_type: "transactions" as const,
+            object_id: t.id,
+            message: `Hi ${nextName.split(" ")[0]}, this ${usd(cents)} ${t.merchant_name} charge by ${owner.name} on ${shortDate(t.user_transaction_time)} is still waiting for your approval in Ramp. Our auditors are testing it. Could you review it this week? Thank you.`,
+            mention_user_ids: [next.user_id],
+          },
+        }),
       });
         // Segregation of duties: the person who spends must not be the person who approves.
         // A policy auto-approval (no user id) is not self-approval.
