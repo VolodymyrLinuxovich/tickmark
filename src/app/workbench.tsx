@@ -113,7 +113,7 @@ export default function Workbench({ source, claude, scopes }: { source: SourceIn
 
 // ---------------------------------------------------------------- intake
 const STEPS = [
-  { t: "Upload the request list", d: "The auditor's PBC list, as Excel, CSV or text." },
+  { t: "Upload the request list", d: "The auditor's PBC list, as Excel, CSV, PDF or text." },
   { t: "Review the requests", d: "See how each request was read and fix any type. Nothing runs until you start it." },
   { t: "Gather and test evidence", d: "Tickmark pulls receipts, approvals and bills from Ramp and runs the checks auditors run." },
   { t: "Resolve and export", d: "Review exceptions, send the follow-ups you approve, and download the binder." },
@@ -176,9 +176,9 @@ function Intake({ busy, error, onParse, claude, source, scopes }: { busy: string
             </svg>
           </span>
           <strong>{busy === "file" ? "Reading your list..." : over ? "Drop to upload" : "Upload the request list"}</strong>
-          <span id="drop-hint">{over ? "Release to read the file" : "Drag a file here or click to choose. Excel, CSV or text."}</span>
+          <span id="drop-hint">{over ? "Release to read the file" : "Drag a file here or click to choose. Excel, CSV, PDF or text."}</span>
         </button>
-        <input ref={input} type="file" accept=".xlsx,.csv,.txt,.eml" hidden onChange={(e) => e.target.files?.[0] && send(e.target.files[0])} />
+        <input ref={input} type="file" accept=".xlsx,.csv,.pdf,.txt,.eml" hidden onChange={(e) => e.target.files?.[0] && send(e.target.files[0])} />
 
         <div className="intake-alt">
           <span>
@@ -301,16 +301,18 @@ function Advanced({ claude, source, scopes }: { claude: boolean; source: SourceI
 }
 
 // ---------------------------------------------------------------- plan
+const parserName = (p: string) => (p === "rules" ? "keyword rules" : /claude/i.test(p) ? `Claude (${p})` : p);
+
 function Plan({ parsed, requests, setRequests, onRun, source }: { parsed: Parsed; requests: AuditRequest[]; setRequests: (r: AuditRequest[]) => void; onRun: () => void; source: SourceInfo }) {
   const auto = requests.filter((r) => r.type !== "unsupported").length;
-  const setType = (i: number, type: RequestType) => setRequests(requests.map((r, k) => (k === i ? { ...r, type } : r)));
+  const setType = (i: number, type: RequestType) => setRequests(requests.map((r, k) => (k === i ? { ...r, type, reason: "Changed by you" } : r)));
   return (
     <>
       <div className="section-head">
         <div>
           <h2>{requests.length} requests{parsed.auditor ? ` from ${parsed.auditor}` : ""}</h2>
           <p>
-            {auto} can be answered from Ramp. Read from {parsed.input_name ?? "input"} by {parsed.parser === "rules" ? "the rules parser" : parsed.parser}. Change a type if it looks wrong.
+            {auto} can be answered from Ramp. Read from {parsed.input_name ?? "input"} by {parserName(parsed.parser)}. Change a type if it looks wrong.
           </p>
         </div>
         <button className="btn primary" onClick={onRun} disabled={!requests.length}>
@@ -334,6 +336,7 @@ function Plan({ parsed, requests, setRequests, onRun, source }: { parsed: Parsed
             <div>
               <div className="req">{r.text}</div>
               <div className="interp">{r.type === "unsupported" ? REQUEST_TYPE_INFO.unsupported.what : r.interpretation}</div>
+              {r.reason && <div className="why"><b>Why:</b> {r.reason}</div>}
               <div className="meta">
                 {r.period_from && <span className="tag">{r.period_from} to {r.period_to}</span>}
                 {r.min_amount != null && <span className="tag">over ${r.min_amount.toLocaleString("en-US")}</span>}

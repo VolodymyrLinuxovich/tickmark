@@ -20,19 +20,37 @@ const SHORTHAND: [RegExp, string][] = [
 export const expandShorthand = (t: string) => SHORTHAND.reduce((s, [re, to]) => s.replace(re, to), t.toLowerCase());
 
 export function classify(text: string, hasSelections: boolean, area = ""): RequestType {
+  return classifyWithReason(text, hasSelections, area).type;
+}
+
+const quote = (m: RegExpMatchArray | null) => (m ? `"${m[0].trim()}"` : "");
+
+/** Request type plus the words that decided it, shown to the reviewer. */
+export function classifyWithReason(text: string, hasSelections: boolean, area = ""): { type: RequestType; reason: string } {
   const t = expandShorthand(text);
-  if (OUTSIDE_RAMP.test(t) || OUTSIDE_RAMP.test(area.toLowerCase())) return "unsupported";
-  if (/duplicate/.test(t)) return "duplicate_payments";
-  if (/receipt/.test(t) && /(without|missing|no receipt|lack|not attached|n[o']t have|absent|unsupported by)/.test(t)) return "receipt_completeness";
-  if (/(split|their own|own (spend|purchases|transactions)|self[- ]?approv|segregation of duties|restricted|prohibited|merchant categor|\bmcc|circumvent|out[- ]of[- ]policy|policy violation|approved after|after (they were |it was )?paid|also the approver|approved by the (same (person|individual)|cardholder(?!'s))|approver is the same|approv\w*[^.]{0,40}(after|later than) the payment)/.test(t)) return "control_testing";
-  if (/(vendor master|vendor list|list(ing)? of vendors|new vendors|vendors (created|added|onboarded|set up)|vendor additions)/.test(t)) return "vendor_listing";
-  if (/(user access|administrator|admin (access|rights|roles?|permissions|privileges)|access (listing|rights|review)|users with|users and their roles|user listing|system access|list of users|users (in|of) the)/.test(t)) return "user_access";
+  let m = t.match(OUTSIDE_RAMP);
+  if (m) return { type: "unsupported", reason: `Mentions ${quote(m)}, which Ramp data does not cover` };
+  m = area.toLowerCase().match(OUTSIDE_RAMP);
+  if (m) return { type: "unsupported", reason: `Listed under ${quote(m)}, which Ramp data does not cover` };
+  if ((m = t.match(/duplicate/))) return { type: "duplicate_payments", reason: `Mentions ${quote(m)}` };
+  const missing = t.match(/(without|missing|no receipt|lack|not attached|n[o']t have|absent|unsupported by)/);
+  if (/receipt/.test(t) && missing) return { type: "receipt_completeness", reason: `Mentions receipts and ${quote(missing)}` };
+  m = t.match(/(split|their own|own (spend|purchases|transactions)|self[- ]?approv|segregation of duties|restricted|prohibited|merchant categor|\bmcc|circumvent|out[- ]of[- ]policy|policy violation|approved after|after (they were |it was )?paid|also the approver|approved by the (same (person|individual)|cardholder(?!'s))|approver is the same|approv\w*[^.]{0,40}(after|later than) the payment)/);
+  if (m) return { type: "control_testing", reason: `Control test wording: ${quote(m)}` };
+  m = t.match(/(vendor master|vendor list|list(ing)? of vendors|new vendors|vendors (created|added|onboarded|set up)|vendor additions)/);
+  if (m) return { type: "vendor_listing", reason: `Mentions ${quote(m)}` };
+  m = t.match(/(user access|administrator|admin (access|rights|roles?|permissions|privileges)|access (listing|rights|review)|users with|users and their roles|user listing|system access|list of users|users (in|of) the)/);
+  if (m) return { type: "user_access", reason: `Mentions ${quote(m)}` };
   // A sample of vendor bills or disbursements with no card wording is bill support.
-  if (/(\bbills?\b|vendor invoice|disbursement|accounts payable|\bap\b)/.test(t) && !/(card|amex|p-?card)/.test(t)) return "bill_support";
-  if (/(selected|selection|sample|\bselect\b|following)/.test(t) && /(transaction|card|expense|charge|spend|refund|credit)/.test(t)) return "transaction_support";
-  if (/(\bbills?\b|invoice|vendor payment|accounts payable|disbursement|payments? to vendors)/.test(t)) return "bill_support";
-  if (hasSelections && /(transaction|card|expense|charge|spend)/.test(t)) return "transaction_support";
-  return "unsupported";
+  m = t.match(/(\bbills?\b|vendor invoice|disbursement|accounts payable|\bap\b)/);
+  if (m && !/(card|amex|p-?card)/.test(t)) return { type: "bill_support", reason: `Mentions ${quote(m)} and no card spend` };
+  const picked = t.match(/(selected|selection|sample|\bselect\b|following)/);
+  const card = t.match(/(transaction|card|expense|charge|spend|refund|credit)/);
+  if (picked && card) return { type: "transaction_support", reason: `Asks about ${quote(picked)} ${quote(card)} items` };
+  m = t.match(/(\bbills?\b|invoice|vendor payment|accounts payable|disbursement|payments? to vendors)/);
+  if (m) return { type: "bill_support", reason: `Mentions ${quote(m)}` };
+  if (hasSelections && card) return { type: "transaction_support", reason: "Lists selected card items under the request" };
+  return { type: "unsupported", reason: "No wording that matches a Ramp check" };
 }
 
 // ---------- thresholds ----------
@@ -391,11 +409,14 @@ export function parseWithRules(input: NormalizedInput): ParsedList {
     const attached = input.selections
       .filter((s) => (linked.has(s) ? sameRef(s.request_ref!, row.ref) : true))
       .map(({ ref, date, description, amount }) => ({ ref, date, description, amount }));
-    let type = classify(text, inline.length > 0, row.area);
+    let { type, reason } = classifyWithReason(text, inline.length > 0, row.area);
     const ownSelections = inline.length ? inline : attached;
     // Dated amounts listed under a request are card selections, unless the topic is outside Ramp.
     const inScope = !OUTSIDE_RAMP.test(text.toLowerCase());
-    if (type === "unsupported" && inScope && (inline.length || (attached.length && /transaction|card/i.test(text)))) type = "transaction_support";
+    if (type === "unsupported" && inScope && (inline.length || (attached.length && /transaction|card/i.test(text)))) {
+      type = "transaction_support";
+      reason = `Has ${(inline.length ? inline : attached).length} selected items`;
+    }
     // Sheet selections go to card requests; selections typed under a bill request stay with it.
     const selections = type === "transaction_support" ? ownSelections : type === "bill_support" ? inline : [];
     const columnPeriod = row.period_text ? findPeriod(row.period_text, fye) : null;
@@ -411,6 +432,7 @@ export function parseWithRules(input: NormalizedInput): ParsedList {
       min_amount: min,
       selections,
       interpretation: interpret(type, min, selections.length),
+      reason,
     };
   });
   const auditor = input.text.match(/\b([A-Z][A-Za-z&]+(?: & [A-Z][a-z]+)?(?: LLP| & Co\.?| CPAs?))/)?.[1] ?? null;

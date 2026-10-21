@@ -40,6 +40,7 @@ export const AuditRequestSchema = z.object({
   min_amount: z.number().nullable().describe("Dollar threshold the request mentions, or null"),
   selections: z.array(SelectionSchema).describe("Specific items the auditor selected for this request, if any"),
   interpretation: z.string().describe("One short sentence: what Tickmark will pull from Ramp to answer this"),
+  reason: z.string().optional().describe("A few words on why the request got its type, quoting the request where possible"),
 });
 
 export const ParsedListSchema = z.object({
