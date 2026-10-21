@@ -26,6 +26,7 @@ export async function POST(req: Request) {
       results,
       business: snap.business_name,
       source: source.info,
+      warnings: (snap as { notes?: { warnings: string[] } }).notes?.warnings ?? [],
       counts: { transactions: snap.transactions.length, bills: snap.bills.length, receipts: snap.receipts.length, vendors: snap.vendors.length, users: snap.users.length },
       ms: Date.now() - t0,
     });

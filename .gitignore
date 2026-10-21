@@ -43,3 +43,7 @@ next-env.d.ts
 !.env.example
 
 /demo-out/
+
+# written by next dev
+AGENTS.md
+CLAUDE.md

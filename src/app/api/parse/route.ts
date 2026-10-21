@@ -2,6 +2,8 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { normalizeFile, normalizeText } from "@/lib/parse/input";
 import { parseRequests } from "@/lib/parse/claude";
+import { getConnection } from "@/lib/ramp/source";
+import { fitSampleToLiveData } from "@/lib/engine/live-sample";
 
 export const maxDuration = 120;
 
@@ -26,7 +28,11 @@ export async function POST(req: Request) {
       const name = SAMPLES[body.sample];
       const bytes = new Uint8Array(await readFile(path.join(process.cwd(), "public/samples", name)));
       const input = await normalizeFile(name, bytes);
-      return Response.json({ ...(await parseRequests(input)), input_name: name });
+      const parsed = await parseRequests(input);
+      const conn = getConnection();
+      // On a real Ramp business, the FY2025 sample would find nothing; fit it to the live data.
+      const fitted = conn.connected ? await fitSampleToLiveData(parsed, conn.source) : parsed;
+      return Response.json({ ...fitted, input_name: name });
     }
     if (body.text?.trim()) return Response.json({ ...(await parseRequests(normalizeText(body.text))), input_name: "Pasted text" });
     return Response.json({ error: "Paste a request list or upload a file" }, { status: 400 });

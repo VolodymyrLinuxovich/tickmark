@@ -21,7 +21,7 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [runs, setRuns] = useState<RunState[]>([]);
-  const [meta, setMeta] = useState<{ ms: number; counts: Record<string, number>; business: string } | null>(null);
+  const [meta, setMeta] = useState<{ ms: number; counts: Record<string, number>; business: string; warnings: string[] } | null>(null);
   const [record, setRecord] = useState<RecordRef | null>(null);
   const closeRecord = useCallback(() => setRecord(null), []);
   const search = useSearchParams();
@@ -61,7 +61,7 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
     const states: RunState[] = requests.map(() => ({ status: "wait" }));
     setRuns([...states]);
     const t0 = performance.now();
-    let last: { counts: Record<string, number>; business: string } | null = null;
+    let last: { counts: Record<string, number>; business: string; warnings: string[] } | null = null;
     for (let i = 0; i < requests.length; i++) {
       states[i] = { status: "spin" };
       setRuns([...states]);
@@ -70,13 +70,13 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
         const json = await res.json();
         if (!res.ok) throw new Error(json.error);
         states[i] = { status: "done", result: json.results[0] };
-        last = { counts: json.counts, business: json.business };
+        last = { counts: json.counts, business: json.business, warnings: json.warnings ?? [] };
       } catch (e) {
         states[i] = { status: "error", error: String((e as Error).message) };
       }
       setRuns([...states]);
     }
-    setMeta({ ms: performance.now() - t0, counts: last?.counts ?? {}, business: last?.business ?? "" });
+    setMeta({ ms: performance.now() - t0, counts: last?.counts ?? {}, business: last?.business ?? "", warnings: last?.warnings ?? [] });
     setTimeout(() => setStage("results"), 450);
   }
 
@@ -281,7 +281,7 @@ function Advanced({ models, source, scopes }: { models: string[]; source: Source
           <h3>Data source</h3>
           <p>
             {source.kind === "fixture"
-              ? "This site runs on Acme Robotics, a generated demo company whose records use Ramp's API field names. No Ramp account is connected."
+              ? "No Ramp account is connected, so this runs on Acme Robotics, a generated sample company whose records use Ramp's API field names."
               : `Connected to ${source.label}${source.base_url ? ` (${source.base_url})` : ""}.`}{" "}
             Requests are read by {models.length ? `${models.join(", then ")}, falling back to keyword rules if the call fails` : "keyword rules, since no model key is set"}. Pass or fail is always decided by code, not the model.
           </p>
@@ -292,7 +292,7 @@ function Advanced({ models, source, scopes }: { models: string[]; source: Source
           <p className="scopes">{scopes.split(" ").map((s) => <code key={s}>{s}</code>)}</p>
           <p>
             It writes in one case: when you approve a drafted follow-up, it posts that comment to the Ramp transaction or bill, which needs <code>transactions:write</code> or <code>bills:write</code>.
-            {source.kind === "fixture" ? " On demo data, approved comments go to a demo outbox instead." : ""}
+            {source.kind === "fixture" ? " On sample data, approved comments go to a sample outbox instead." : ""}
           </p>
         </section>
       </div>
@@ -316,7 +316,7 @@ function Plan({ parsed, requests, setRequests, onRun, source }: { parsed: Parsed
           </p>
         </div>
         <button className="btn primary" onClick={onRun} disabled={!requests.length}>
-          Pull evidence from {source.kind === "fixture" ? "demo data" : source.label}
+          Pull evidence from {source.kind === "fixture" ? "sample data" : source.label}
         </button>
       </div>
       {parsed.warnings.map((w) => (
@@ -391,7 +391,7 @@ function Running({ requests, runs, source }: { requests: AuditRequest[]; runs: R
 }
 
 // ---------------------------------------------------------------- results
-function Results({ requests, runs, meta, auditor, source, openRecord }: { requests: AuditRequest[]; runs: RunState[]; meta: { ms: number; counts: Record<string, number>; business: string }; auditor: string | null; source: SourceInfo; openRecord: (r: RecordRef) => void }) {
+function Results({ requests, runs, meta, auditor, source, openRecord }: { requests: AuditRequest[]; runs: RunState[]; meta: { ms: number; counts: Record<string, number>; business: string; warnings: string[] }; auditor: string | null; source: SourceInfo; openRecord: (r: RecordRef) => void }) {
   const results = runs.map((r) => r.result).filter((r): r is RequestResult => !!r);
   const allFindings = useMemo(() => {
     const m = new Map<string, { f: Finding; refs: string[] }>();
@@ -434,6 +434,9 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
         </div>
         <button className="btn primary" onClick={download} disabled={downloading}>{downloading ? "Building binder..." : "Download binder (.zip)"}</button>
       </div>
+      {meta.warnings.map((w) => (
+        <div className="note" key={w}>{w}</div>
+      ))}
       <div className="card stats">
         <div className="stat"><div className="k">Answered from Ramp</div><div className="v">{auto.length}/{results.length}</div><div className="s">{results.length - auto.length} left for the team</div></div>
         <div className="stat"><div className="k">Evidence rows</div><div className="v">{tested.toLocaleString("en-US")}</div><div className="s">each tied to a Ramp record</div></div>
@@ -585,7 +588,7 @@ function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f: Findin
           <textarea value={msg} onChange={(e) => setMsg(e.target.value)} aria-label="Comment draft" />
           <div className="row end" style={{ marginTop: 8 }}>
             <span className="muted" style={{ marginRight: "auto", fontSize: 12 }}>
-              Posts to the {f.comment.object_type === "bills" ? "bill" : "transaction"} thread{source.kind === "fixture" ? " (demo outbox, no Ramp account connected)" : ` in ${source.label}`}.
+              Posts to the {f.comment.object_type === "bills" ? "bill" : "transaction"} thread{source.kind === "fixture" ? " (sample outbox, no Ramp account connected)" : ` in ${source.label}`}.
             </span>
             <button className="btn primary small" onClick={post} disabled={posting || !msg.trim()}>{posting ? "Sending..." : "Approve and send"}</button>
           </div>

@@ -56,7 +56,9 @@ export default function Landing() {
               <Link href="/app?sample=xlsx" className="btn primary lg">Try it with a sample audit</Link>
               <Link href="/app" className="btn lg">Upload your list</Link>
             </div>
-            <p className="fine pop" style={{ animationDelay: "240ms" }}>Runs on a demo company. No sign-up.</p>
+            <p className="fine pop" style={{ animationDelay: "240ms" }}>
+              {info.kind === "fixture" ? "No Ramp account connected here yet, so the sample audit uses a generated company." : `Connected to ${info.label}.`}
+            </p>
           </div>
 
           <div className="lp-stack" aria-hidden>
@@ -154,7 +156,7 @@ export default function Landing() {
           </div>
           <Link href="/eval" className="lp-proof stagger" style={{ transitionDelay: "240ms" }}>
             <span className="lp-proof-v">8 of 8</span>
-            <span>planted problems found in the demo company, with 0 false alarms.</span>
+            <span>planted problems found in the sample company, with 0 false alarms.</span>
             <span className="lp-proof-a">See the accuracy check</span>
           </Link>
         </Reveal>

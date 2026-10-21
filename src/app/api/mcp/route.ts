@@ -89,7 +89,8 @@ const handler = createMcpHandler(
         const snap = await source.snapshot(period(reqs));
         const ix = buildIndex(snap);
         const results = reqs.map((r) => runRequest(r, ix));
-        return json({ business: snap.business_name, data_source: source.info.label, parser, ...summarize(results, include_rows) });
+        const warnings = (snap as { notes?: { warnings: string[] } }).notes?.warnings ?? [];
+        return json({ business: snap.business_name, data_source: source.info.label, parser, warnings, ...summarize(results, include_rows) });
       },
     );
 
@@ -102,21 +103,7 @@ const handler = createMcpHandler(
         annotations: { readOnlyHint: true },
       },
       async ({ type, id }) => {
-        const snap = await getSource().snapshot({ from: "2025-01-01", to: "2025-12-31" });
-        const record =
-          type === "transaction"
-            ? (() => {
-                const t = snap.transactions.find((x) => x.id === id);
-                return t && { transaction: t, receipts: snap.receipts.filter((r) => r.transaction_id === id), approval: snap.approvals.find((a) => a.entity_id === id) ?? null };
-              })()
-            : type === "bill"
-              ? (() => {
-                  const b = snap.bills.find((x) => x.id === id);
-                  return b && { bill: b, approval: snap.approvals.find((a) => a.entity_id === id) ?? null };
-                })()
-              : type === "vendor"
-                ? snap.vendors.find((x) => x.id === id)
-                : snap.users.find((x) => x.id === id);
+        const record = await getSource().record(type, id);
         if (!record) return { ...json({ error: `No ${type} ${id}` }), isError: true };
         return json(record);
       },

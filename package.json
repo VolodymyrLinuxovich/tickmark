@@ -9,6 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "samples": "tsx scripts/make-samples.ts",
+    "ramp:check": "tsx scripts/ramp-check.ts",
+    "mock:ramp": "tsx scripts/mock-ramp-server.ts",
     "corpus": "tsx scripts/make-corpus.ts",
     "eval:parser": "tsx scripts/eval-parser.ts"
   },
