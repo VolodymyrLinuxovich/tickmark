@@ -5,6 +5,7 @@ import Link from "next/link";
 import { getSource } from "@/lib/ramp/source";
 import { TopBar } from "./topbar";
 import { Reveal } from "./landing/reveal";
+import { CoverageChart } from "./landing/coverage";
 
 // Copy for the landing sections, kept as data so the JSX stays short.
 const PROBLEMS = [
@@ -27,17 +28,6 @@ const STEPS = [
   { t: "Gather the evidence", d: "Receipts, approvals, bills and vendors come straight from Ramp, matched to the exact items the auditor picked." },
   { t: "Test the controls", d: "The checks auditors run, written as code: receipts, approvals, split purchases, duplicates, new vendors." },
   { t: "Fix and hand over", d: "Send the follow-ups you approve, then download a binder with an index, workpapers and every document." },
-];
-
-const CHECKS = [
-  ["Missing receipts", "Card charges above the receipt threshold with nothing attached."],
-  ["Receipt mismatches", "The receipt total does not match what the card was charged."],
-  ["Split purchases", "Charges just under the approval limit that add up to more than it."],
-  ["Self-approval", "The person who spent or owns the bill also approved it."],
-  ["Approval after payment", "Money left the account before anyone approved it."],
-  ["Duplicate invoices", "The same vendor invoice entered and paid twice."],
-  ["Fast-paid new vendors", "A vendor paid within days of being set up."],
-  ["Restricted merchants", "Spend at liquor stores, gambling sites and similar categories."],
 ];
 
 export default function Landing() {
@@ -70,6 +60,7 @@ export default function Landing() {
               <div className="mini-k">Request from Hartwell &amp; Co.</div>
               <div className="mini-t"><span className="mono">PBC-03</span> Invoice, approval and proof of payment for all bills over $10,000.</div>
             </div>
+            <span className="lp-arrow pop-card" style={{ animationDelay: "500ms" }}>&rarr;</span>
             <div className="mini ok pop-card" style={{ animationDelay: "650ms" }}>
               <span className="mini-icon">
                 <svg width="12" height="12" viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -79,6 +70,7 @@ export default function Landing() {
                 <div className="mini-k">Invoices attached, approvals traced, payments matched</div>
               </div>
             </div>
+            <span className="lp-arrow pop-card" style={{ animationDelay: "850ms" }}>&rarr;</span>
             <div className="mini ex pop-card" style={{ animationDelay: "1000ms" }}>
               <span className="mini-icon">!</span>
               <div>
@@ -96,18 +88,30 @@ export default function Landing() {
           <h2>Audit season still runs on email and screenshots.</h2>
           <div className="lp-grid3">
             {PROBLEMS.map((p, i) => (
-              <div className="lp-card stagger" style={{ transitionDelay: `${i * 80}ms` }} key={p.t}>
+              <div className="lp-card stagger seq" style={{ transitionDelay: `${150 + i * 450}ms` }} key={p.t}>
                 <span className="lp-num">{String(i + 1).padStart(2, "0")}</span>
                 <h3>{p.t}</h3>
                 <p>{p.d}</p>
               </div>
             ))}
           </div>
-          <figure className="lp-quote stagger" style={{ transitionDelay: "240ms" }}>
-            <blockquote>&ldquo;Preparing for an audit means gathering receipts, matching transactions, and exporting clean records.&rdquo; It &ldquo;can take days.&rdquo;</blockquote>
-            <figcaption>
-              <a href="https://ramp.com/blog/prepare-data-for-audits-and-compliance-reviews" target="_blank" rel="noreferrer">Ramp blog, on audit prep</a>
-            </figcaption>
+          {/* The Ramp quote, shown as two comments in a thread after the cards. */}
+          <figure className="lp-thread">
+            {[
+              "Preparing for an audit means gathering receipts, matching transactions, and exporting clean records.",
+              "It can take days.",
+            ].map((text, i) => (
+              <div className="lp-comment stagger seq" style={{ transitionDelay: `${1650 + i * 600}ms` }} key={text}>
+                <span className="lp-avatar" aria-hidden>R</span>
+                <div>
+                  <div className="lp-comment-who">
+                    <a href="https://ramp.com/blog/prepare-data-for-audits-and-compliance-reviews" target="_blank" rel="noreferrer">Ramp blog</a>
+                    <span>on audit prep</span>
+                  </div>
+                  <blockquote>&ldquo;{text}&rdquo;</blockquote>
+                </div>
+              </div>
+            ))}
           </figure>
         </Reveal>
 
@@ -133,14 +137,7 @@ export default function Landing() {
         <Reveal className="lp-section wrap">
           <p className="eyebrow">What it checks</p>
           <h2>The tests auditors run, on every record.</h2>
-          <div className="lp-checks">
-            {CHECKS.map(([t, d], i) => (
-              <div className="lp-check stagger" style={{ transitionDelay: `${i * 40}ms` }} key={t}>
-                <b>{t}</b>
-                <p>{d}</p>
-              </div>
-            ))}
-          </div>
+          <CoverageChart />
         </Reveal>
 
         <Reveal className="lp-section wrap">
