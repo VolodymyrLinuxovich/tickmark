@@ -29,21 +29,76 @@ interface Ctx {
   generatedAt: Date;
 }
 
+/** Where the finance team stands on one exception, set in the app before download. */
+export interface ExceptionStatus {
+  status: "open" | "resolved" | "waived";
+  note?: string;
+}
+export type ExceptionStatuses = Record<string, ExceptionStatus>;
+
+const STATUS_LABEL: Record<ExceptionStatus["status"], string> = { open: "Open", resolved: "Resolved", waived: "Waived" };
+
+/** Workpaper reference for the nth request in the binder: WP-01, WP-02, ... */
+const wpRef = (i: number) => `WP-${String(i + 1).padStart(2, "0")}`;
+
+/** "2026-10-21" to "Oct 21, 2026". */
+const longDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+
+/** One line an auditor reads first: what the test concluded. */
+function conclusion(r: RequestResult): string {
+  if (r.status === "manual") return "Not tested by Tickmark. The request is outside Ramp data and is assigned to the finance team.";
+  if (!r.findings.length) return `No exceptions noted. ${r.tested} item${r.tested === 1 ? "" : "s"} tested; procedures performed without exception.`;
+  const n = r.findings.length;
+  return `Exceptions noted. See exception${n > 1 ? `s 1-${n}` : " 1"} below. Resolve or document each one before the binder goes to the auditor.`;
+}
+
 /** Minimal flowing-text layout over pdf-lib: wraps text, draws tables and starts a new page with a header when space runs out. Pages are US Letter in points. */
 class Writer {
   page!: PDFPage;
   y = 0;
-  constructor(private doc: PDFDocument, private font: PDFFont, private bold: PDFFont, private ctx: Ctx, private title: string) {
+  constructor(readonly doc: PDFDocument, private font: PDFFont, private bold: PDFFont, private ctx: Ctx, private title: string) {
     this.newPage();
   }
   newPage() {
     this.page = this.doc.addPage([612, 792]);
     this.y = 750;
     this.page.drawText(clean(`${this.ctx.business}  |  ${this.title}`), { x: 48, y: 770, size: 8, font: this.font, color: rgb(0.45, 0.45, 0.45) });
-    this.page.drawText(clean(`Prepared ${this.ctx.generatedAt.toISOString().slice(0, 10)} from ${this.ctx.sourceLabel}`), { x: 360, y: 770, size: 8, font: this.font, color: rgb(0.45, 0.45, 0.45) });
+    const right = clean(`Prepared ${longDate(this.ctx.generatedAt)} from ${this.ctx.sourceLabel}`);
+    this.page.drawText(right, { x: 564 - this.font.widthOfTextAtSize(right, 8), y: 770, size: 8, font: this.font, color: rgb(0.45, 0.45, 0.45) });
   }
   ensure(h: number) {
-    if (this.y - h < 48) this.newPage();
+    if (this.y - h < 60) this.newPage();
+  }
+  /** Footer on every page: workpaper reference on the left, "Page n of m" on the right. Call once, after all content. */
+  footers(ref: string) {
+    const pages = this.doc.getPages();
+    pages.forEach((p, i) => {
+      const grey = rgb(0.45, 0.45, 0.45);
+      p.drawLine({ start: { x: 48, y: 42 }, end: { x: 564, y: 42 }, thickness: 0.3, color: rgb(0.8, 0.8, 0.8) });
+      p.drawText(clean(ref), { x: 48, y: 30, size: 8, font: this.font, color: grey });
+      const label = `Page ${i + 1} of ${pages.length}`;
+      p.drawText(label, { x: 564 - this.font.widthOfTextAtSize(label, 8), y: 30, size: 8, font: this.font, color: grey });
+    });
+  }
+  /** Prepared by and reviewed by lines, the sign-off every workpaper carries. */
+  signOff() {
+    this.ensure(70);
+    this.y -= 6;
+    const grey = rgb(0.35, 0.35, 0.35);
+    const line = (x: number, y: number, w: number) => this.page.drawLine({ start: { x, y }, end: { x: x + w, y }, thickness: 0.6, color: rgb(0.55, 0.55, 0.55) });
+    const rows: [string, string, string][] = [
+      ["Prepared by", "Tickmark, from Ramp records", longDate(this.ctx.generatedAt)],
+      ["Reviewed by", "", ""],
+    ];
+    for (const [label, who, when] of rows) {
+      this.page.drawText(label, { x: 48, y: this.y, size: 9, font: this.bold, color: rgb(0.1, 0.1, 0.1) });
+      line(130, this.y - 2, 250);
+      if (who) this.page.drawText(clean(who), { x: 134, y: this.y + 1, size: 9, font: this.font, color: grey });
+      this.page.drawText("Date", { x: 400, y: this.y, size: 9, font: this.bold, color: rgb(0.1, 0.1, 0.1) });
+      line(430, this.y - 2, 134);
+      if (when) this.page.drawText(when, { x: 434, y: this.y + 1, size: 9, font: this.font, color: grey });
+      this.y -= 26;
+    }
   }
   wrap(text: string, size: number, width: number, font = this.font): string[] {
     const out: string[] = [];
@@ -91,13 +146,15 @@ class Writer {
 }
 
 /** Renders one request's workpaper PDF: request text, procedure, evidence table with tickmarks, exceptions and the tickmark legend. */
-async function workpaper(r: RequestResult, ctx: Ctx): Promise<Uint8Array> {
+async function workpaper(r: RequestResult, ctx: Ctx, ref: string, statuses: ExceptionStatuses): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const w = new Writer(doc, font, bold, ctx, `${r.request.ref} workpaper`);
+  const w = new Writer(doc, font, bold, ctx, `${ref}  ${r.request.ref} workpaper`);
   w.text(`${r.request.ref}  ${REQUEST_TYPE_INFO[r.request.type].label}`, { size: 16, bold: true, gap: 2 });
   w.text(r.headline, { size: 10, color: r.findings.length ? [0.62, 0.32, 0] : [0.1, 0.45, 0.25], gap: 10 });
+  w.text("Conclusion", { bold: true, size: 9 });
+  w.text(conclusion(r), { size: 9, gap: 8 });
   w.text("Request", { bold: true, size: 9 });
   w.text(r.request.text, { size: 9, gap: 8 });
   w.text("Procedure performed", { bold: true, size: 9 });
@@ -115,13 +172,17 @@ async function workpaper(r: RequestResult, ctx: Ctx): Promise<Uint8Array> {
   if (r.findings.length) {
     w.text(`Exceptions (${r.findings.length})`, { bold: true, size: 9 });
     r.findings.forEach((f, i) => {
+      const st = statuses[f.id];
       w.text(`${i + 1}. [${f.severity.toUpperCase()}] ${f.title}`, { size: 9, bold: true, indent: 6, gap: 0 });
       w.text(f.detail, { size: 9, indent: 18, gap: 0 });
+      w.text(`Status: ${STATUS_LABEL[st?.status ?? "open"]}${st?.note ? `. ${st.note}` : ""}`, { size: 8.5, indent: 18, color: st?.status === "resolved" ? [0.1, 0.45, 0.25] : st?.status === "waived" ? [0.35, 0.35, 0.35] : [0.62, 0.32, 0], gap: 0 });
       if (f.records.length) w.text(`Records: ${f.records.map((x) => `${x.label} (${x.type} ${x.id})`).join("; ")}`, { size: 7.5, indent: 18, color: [0.4, 0.4, 0.4], gap: 6 });
     });
   }
   w.text("Tickmarks", { bold: true, size: 9 });
-  w.text(Object.entries(TICKMARKS).map(([k, v]) => `${k} = ${v}`).join("    "), { size: 8, color: [0.35, 0.35, 0.35] });
+  w.text(Object.entries(TICKMARKS).map(([k, v]) => `${k} = ${v}`).join("    "), { size: 8, color: [0.35, 0.35, 0.35], gap: 10 });
+  w.signOff();
+  w.footers(`${ctx.business}  |  ${ref}  ${r.request.ref}`);
   return doc.save();
 }
 
@@ -150,7 +211,7 @@ async function demoDocument(kind: "receipt" | "invoice", lines: [string, string]
  * source cannot serve a file (demo data), a labeled stand-in PDF is rendered from the Ramp
  * record so the binder layout is still complete. At most 200 files per request keeps the ZIP bounded.
  */
-export async function buildBinder(results: RequestResult[], snap: RampSnapshot, source: RampSource, auditor: string | null): Promise<Uint8Array> {
+export async function buildBinder(results: RequestResult[], snap: RampSnapshot, source: RampSource, auditor: string | null, statuses: ExceptionStatuses = {}): Promise<Uint8Array> {
   const ctx: Ctx = { business: snap.business_name, auditor, sourceLabel: source.info.label, generatedAt: new Date() };
   const zip = new JSZip();
   const root = zip.folder(safe(`${snap.business_name} audit binder`))!;
@@ -159,6 +220,7 @@ export async function buildBinder(results: RequestResult[], snap: RampSnapshot, 
   const wb = new ExcelJS.Workbook();
   const idx = wb.addWorksheet("Index");
   idx.columns = [
+    { header: "Workpaper", width: 11 },
     { header: "Ref", width: 9 },
     { header: "Type", width: 20 },
     { header: "Request", width: 70 },
@@ -169,7 +231,7 @@ export async function buildBinder(results: RequestResult[], snap: RampSnapshot, 
     { header: "Folder", width: 34 },
   ];
   idx.getRow(1).font = { bold: true };
-  for (const r of results) idx.addRow([r.request.ref, REQUEST_TYPE_INFO[r.request.type].label, r.request.text, r.status, r.headline, r.tested, r.findings.length, folderName(r)]);
+  results.forEach((r, i) => idx.addRow([wpRef(i), r.request.ref, REQUEST_TYPE_INFO[r.request.type].label, r.request.text, r.status, r.headline, r.tested, r.findings.length, folderName(r)]));
   const fs = wb.addWorksheet("Exceptions");
   fs.columns = [
     { header: "Ref", width: 9 },
@@ -179,6 +241,8 @@ export async function buildBinder(results: RequestResult[], snap: RampSnapshot, 
     { header: "Detail", width: 70 },
     { header: "Owner", width: 18 },
     { header: "Ramp record ids", width: 40 },
+    { header: "Status", width: 10 },
+    { header: "Note", width: 50 },
   ];
   fs.getRow(1).font = { bold: true };
     // A finding can come up under several requests; list it once, under the first request that found it.
@@ -187,7 +251,8 @@ export async function buildBinder(results: RequestResult[], snap: RampSnapshot, 
     for (const f of r.findings) {
       if (seen.has(f.id)) continue;
       seen.add(f.id);
-      fs.addRow([r.request.ref, f.severity, f.code, f.title, f.detail, f.owner?.name ?? "", f.records.map((x) => x.id).join(", ")]);
+      const st = statuses[f.id];
+      fs.addRow([r.request.ref, f.severity, f.code, f.title, f.detail, f.owner?.name ?? "", f.records.map((x) => x.id).join(", "), STATUS_LABEL[st?.status ?? "open"], st?.note ?? ""]);
     }
   for (const r of results.filter((x) => x.rows.length)) {
     const ws = wb.addWorksheet(r.request.ref.slice(0, 31));
@@ -215,9 +280,9 @@ export async function buildBinder(results: RequestResult[], snap: RampSnapshot, 
   const txn = new Map(snap.transactions.map((t) => [t.id, t]));
   const bill = new Map(snap.bills.map((b) => [b.id, b]));
   const receipt = new Map(snap.receipts.map((r) => [r.receipt_url, r]));
-  for (const r of results) {
+  for (const [i, r] of results.entries()) {
     const folder = root.folder(folderName(r))!;
-    folder.file("Workpaper.pdf", await workpaper(r, ctx));
+    folder.file("Workpaper.pdf", await workpaper(r, ctx, wpRef(i), statuses));
     const files = r.rows.flatMap((row) => row.files.map((url) => ({ url, row })));
     for (const { url, row } of files.slice(0, 200)) {
       const live = await source.file(url).catch(() => null);

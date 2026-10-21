@@ -67,7 +67,7 @@ export function ProductDemo() {
   const p = Math.min(1, Math.max(0, (t - START) / (DONE - START)));
   const ease = 1 - Math.pow(1 - p, 3);
   const exceptions = Math.round(8 * ease);
-  const rows = Math.round(73 * ease);
+  const rows = Math.round(78 * ease);
   const answered = REQUESTS.slice(0, done).filter((r) => r.status !== "manual").length;
   const typed = t < TYPE ? 0 : Math.min(DRAFT.length, Math.round(((t - TYPE) / TYPE_MS) * DRAFT.length));
   const typing = t >= TYPE && t < APPROVE;
