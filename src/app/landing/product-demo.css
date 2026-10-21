@@ -1,0 +1,25 @@
+/* Follow-up animation in the landing product demo: type, approve, send. */
+
+.demo-slot { position: relative; }
+.demo-draft { min-height: 58px; transition: opacity .45s ease, transform .55s cubic-bezier(.5,0,.75,0); }
+.demo-draft.flying { opacity: 0; transform: translate(40px, -26px) scale(.85); }
+.demo-caret { display: inline-block; width: 1.5px; height: 1.05em; margin-left: 1px; vertical-align: -2px; background: var(--ink); animation: demo-blink .8s steps(1) infinite; }
+@keyframes demo-blink { 50% { opacity: 0; } }
+
+/* The sent message, as it appears on the transaction's comment thread in Ramp. */
+.demo-thread { display: flex; gap: 8px; align-items: flex-start; position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); opacity: 0; transform: translateY(12px) scale(.96); transition: opacity .35s ease .25s, transform .5s cubic-bezier(.2,.9,.25,1.2) .25s; pointer-events: none; }
+.demo-thread.in { opacity: 1; transform: none; }
+.demo-thread-av { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 600; background: var(--tick-bg); color: var(--tick); }
+.demo-thread-k { font-size: 11px; color: var(--ink-3); }
+.demo-thread-t { font-size: 12.5px; color: var(--ink); }
+
+.demo-send { display: inline-flex !important; align-items: center; gap: 6px; }
+.demo-send.press { transform: scale(.93); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); }
+.demo-send.sent { animation: demo-pop .45s cubic-bezier(.2,.9,.25,1.4); }
+@keyframes demo-pop { 0% { transform: scale(.9); } 60% { transform: scale(1.06); } 100% { transform: scale(1); } }
+.demo-check path { stroke-dasharray: 16; stroke-dashoffset: 16; animation: demo-draw .4s ease .15s forwards; }
+@keyframes demo-draw { to { stroke-dashoffset: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-caret, .demo-send.sent, .demo-check path { animation: none; stroke-dashoffset: 0; }
+}

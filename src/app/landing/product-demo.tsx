@@ -4,6 +4,7 @@
 // Numbers and text are the real results of the sample request list on the sample company.
 
 import { useEffect, useRef, useState } from "react";
+import "./product-demo.css";
 
 const REQUESTS: { ref: string; type: string; headline: string; status: "ok" | "ex" | "manual" }[] = [
   { ref: "PBC-01", type: "Manual", headline: "Outside Ramp data. Assigned to the team.", status: "manual" },
@@ -22,9 +23,12 @@ const START = 600;
 const STEP = 420;
 const DONE = START + REQUESTS.length * STEP;
 const FINDING = DONE + 500;
-const APPROVE = FINDING + 1700;
-const SENT = APPROVE + 900;
-const LOOP = SENT + 3200;
+const DRAFT = "Hi Avery, these Digi-Key charges add up to $9,585.50, above the limit that needs pre-approval. Was this one order?";
+const TYPE = FINDING + 700; // the follow-up starts typing
+const TYPE_MS = 1900;
+const APPROVE = TYPE + TYPE_MS + 600; // button press
+const SENT = APPROVE + 350; // message leaves, thread bubble lands
+const LOOP = SENT + 3600;
 
 function useInView<T extends Element>() {
   const ref = useRef<T>(null);
@@ -65,6 +69,8 @@ export function ProductDemo() {
   const exceptions = Math.round(8 * ease);
   const rows = Math.round(73 * ease);
   const answered = REQUESTS.slice(0, done).filter((r) => r.status !== "manual").length;
+  const typed = t < TYPE ? 0 : Math.min(DRAFT.length, Math.round(((t - TYPE) / TYPE_MS) * DRAFT.length));
+  const typing = t >= TYPE && t < APPROVE;
 
   return (
     <div className="demo" ref={ref} aria-hidden>
@@ -106,10 +112,28 @@ export function ProductDemo() {
               <span className="demo-sev">High</span>
             </div>
             <p>Two Digi-Key charges 17 minutes apart, $4,860.00 and $4,725.50. Each is under the $5,000 approval limit; together they exceed it.</p>
-            <div className="demo-draft">
-              Hi Avery, these Digi-Key charges add up to $9,585.50, above the limit that needs pre-approval. Was this one order?
+            {/* The follow-up types itself, then flies into the Ramp thread once approved. */}
+            <div className="demo-slot">
+              <div className={`demo-draft ${t >= SENT ? "flying" : ""}`}>
+                {DRAFT.slice(0, typed)}
+                {typing && <span className="demo-caret" />}
+              </div>
+              <div className={`demo-thread ${t >= SENT ? "in" : ""}`}>
+                <span className="demo-thread-av">A</span>
+                <div>
+                  <div className="demo-thread-k">Ramp thread · Digi-Key $4,860.00</div>
+                  <div className="demo-thread-t">Hi Avery, these Digi-Key charges add up to $9,585.50…</div>
+                </div>
+              </div>
             </div>
-            <span className={`demo-send ${t >= APPROVE ? "press" : ""} ${t >= SENT ? "sent" : ""}`}>{t >= SENT ? "Sent to the Ramp thread" : "Approve and send"}</span>
+            <span className={`demo-send ${t >= APPROVE && t < SENT ? "press" : ""} ${t >= SENT ? "sent" : ""}`}>
+              {t >= SENT && (
+                <svg className="demo-check" width="14" height="14" viewBox="0 0 16 16" aria-hidden>
+                  <path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+              {t >= SENT ? "Sent to the Ramp thread" : "Approve and send"}
+            </span>
           </div>
         </div>
       </div>
