@@ -32,7 +32,11 @@ function rows(): Row[] {
 }
 
 export function CoverageChart() {
-  const data = rows().map((r) => ({ ...r, manual: Math.min(MANUAL_SAMPLE, r.n) }));
+  // The five checks that cover the most records, largest first.
+  const data = rows()
+    .sort((a, b) => b.n - a.n)
+    .slice(0, 5)
+    .map((r) => ({ ...r, manual: Math.min(MANUAL_SAMPLE, r.n) }));
   return (
     <figure className="cov">
       <CoverageLive data={data} manualSample={MANUAL_SAMPLE} />
