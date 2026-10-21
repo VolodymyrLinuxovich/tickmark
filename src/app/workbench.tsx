@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useSearchParams } from "next/navigation";
 import type { AuditRequest, ParsedList, RequestType } from "@/lib/parse/schema";
 import { REQUEST_TYPE_INFO, REQUEST_TYPES } from "@/lib/parse/schema";
 import type { Finding, RecordRef, RequestResult } from "@/lib/engine/types";
@@ -23,6 +24,18 @@ export default function Workbench({ source, claude, scopes }: { source: SourceIn
   const [meta, setMeta] = useState<{ ms: number; counts: Record<string, number>; business: string } | null>(null);
   const [record, setRecord] = useState<RecordRef | null>(null);
   const closeRecord = useCallback(() => setRecord(null), []);
+  const search = useSearchParams();
+  const autoSample = search.get("sample");
+  const started = useRef(false);
+  useEffect(() => {
+    // /app?sample=xlsx or ?sample=email opens straight on the sample list.
+    if (started.current || (autoSample !== "xlsx" && autoSample !== "email")) return;
+    const t = setTimeout(() => {
+      started.current = true;
+      void parse({ sample: autoSample }, autoSample);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [autoSample]);
 
   async function parse(body: FormData | { text?: string; sample?: string }, label: string) {
     setBusy(label);

@@ -1,0 +1,15 @@
+import { chromium } from "playwright-core";
+const out = process.argv[2]; const base = "https://tickmark-eta.vercel.app";
+const b = await chromium.launch({ executablePath: "/Users/volodymyrborysenko/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing" }); const page = await b.newPage({ viewport: { width: 1440, height: 900 } });
+const errs = []; page.on("console", m => m.type()==="error" && errs.push(m.text()));
+await page.goto(base); await page.waitForTimeout(1500); await page.screenshot({ path: `${out}/1-home.png`, fullPage: true });
+await page.goto(base); await page.waitForTimeout(800);
+await page.getByText("Try the sample list").click(); await page.waitForTimeout(4000); await page.screenshot({ path: `${out}/3a-after-sample.png`, fullPage: true }); console.log((await page.locator("button").allInnerTexts()).join(" | ")); await page.getByRole("button", { name: /Pull evidence|Gather/ }).first().waitFor();
+await page.waitForTimeout(500); await page.screenshot({ path: `${out}/3-plan.png`, fullPage: true });
+await page.getByRole("button", { name: /Pull evidence|Gather/ }).first().click(); await page.getByRole("button", { name: /Download|binder|Export/ }).first().waitFor({ timeout: 30000 });
+await page.waitForTimeout(800); await page.screenshot({ path: `${out}/4-results.png`, fullPage: true });
+await page.locator(".req-item", { hasText: "PBC-02" }).click(); await page.waitForTimeout(500); await page.getByRole("button", { name: /^Evidence/ }).click(); await page.waitForTimeout(600);
+await page.screenshot({ path: `${out}/5-evidence.png`, fullPage: true });
+await page.goto(`${base}/eval`); await page.waitForTimeout(1500); await page.screenshot({ path: `${out}/6-eval.png`, fullPage: true });
+const m = await b.newPage({ viewport: { width: 390, height: 844 } }); await m.goto(base); await m.waitForTimeout(1000); await m.screenshot({ path: `${out}/7-mobile.png`, fullPage: true });
+console.log("console errors:", errs.length, errs.slice(0,3)); await b.close();

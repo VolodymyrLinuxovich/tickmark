@@ -56,7 +56,7 @@ async function scrollBy(dy, steps = 20) {
   await wait(500);
 }
 
-await page.goto(base);
+await page.goto(`${base}/app`);
 await page.mouse.move(mouse.x, mouse.y);
 mark("Problem: the auditor's request list");
 await wait(5000);
