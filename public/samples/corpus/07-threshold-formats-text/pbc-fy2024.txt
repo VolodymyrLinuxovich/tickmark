@@ -1,0 +1,12 @@
+Acme Holdings - FY2024 PBC (calendar year)
+
+1) Vendor bills $10k+: invoice, approval and payment support.
+2) Card spend without receipts, greater than $5,000.
+3) Bills in excess of $25,000.00 paid in December 2024: approval evidence.
+4) Duplicate payments analysis for vendor payments > $1,500.
+5) Missing receipts for card transactions of at least $500.
+6) Vendor bills exceeding $1.2M.
+7) Card transactions >= $2,000 lacking receipts.
+8) Support for bills over USD 7,500.
+9) Card transactions of more than $250 without receipts.
+10) Vendor invoices of $50K and above with approval history.

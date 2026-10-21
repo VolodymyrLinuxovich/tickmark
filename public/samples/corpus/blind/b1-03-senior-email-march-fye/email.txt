@@ -1,0 +1,63 @@
+From: Priya Raman <praman@hollisterkeane.example>
+To: Dana Whitfield <dwhitfield@cascadeoutdoorco.example>
+Cc: Mark Ostrowski <mostrowski@hollisterkeane.example>
+Subject: RE: Cascade Outdoor - FY26 audit - next round of requests
+Date: Tue, 14 Apr 2026 10:42 AM
+
+Hi Dana,
+
+Thanks for the call yesterday. As discussed, below are our next requests for the audit
+of the fiscal year ended March 31, 2026. If you can get us items 1-4 by Friday that
+would be great, the rest can come next week.
+
+1. Corporate card: please provide the receipt, the approval and a short note on
+   business purpose for the following transactions we selected from the Amex detail:
+
+   05/06/2025   Delta Air Lines                  $1,284.60
+   06/19/2025   Marriott Seattle Waterfront      $2,117.43
+   08/02/2025   Amazon Mktplace                    $389.99
+   10/27/2025   REI #112 Bend OR                   $642.15
+   01/09/2026   Uber Trip                           $57.80
+   02/23/2026   Costco Whse #0471                $1,905.32
+   03/30/2026   Zoom.us                            $149.90
+
+2. For vendor bills paid over ten thousand dollars between January 1 and March 31,
+   2026, the invoice, approval in the AP system and the payment confirmation.
+
+3. Card transactions over $100 that don't have a receipt attached. A system report
+   is fine, no need to pull them one by one.
+
+4. A listing of any duplicate payments to vendors identified during the year and how
+   they were resolved (credit memo, refund, etc.).
+
+5. Inventory count sheets from the 3/31 count at the Bend warehouse and the final
+   count recap.
+
+6. Accrued liabilities detail as of March 31, 2026, and your search for unrecorded
+   liabilities (invoices received and paid after year end).
+
+7. Who has admin access in the card platform? A system export of users and their
+   roles is fine.
+
+Let me know if anything is unclear. Happy to jump on a quick call.
+
+Thanks,
+Priya
+
+Priya Raman | Senior Associate, Audit & Assurance
+Hollister Keane LLP
+503.555.0187 | praman@hollisterkeane.example
+
+This message may contain confidential information. If you are not the intended
+recipient, please notify the sender and delete it.
+
+-----Original Message-----
+From: Dana Whitfield <dwhitfield@cascadeoutdoorco.example>
+Sent: Monday, April 6, 2026 4:58 PM
+To: Priya Raman <praman@hollisterkeane.example>
+Subject: RE: Cascade Outdoor - FY26 audit - next round of requests
+
+> Hi Priya,
+> The trial balance and the March bank statements are uploaded to the portal.
+> Let me know what else you need for the next round.
+> Dana

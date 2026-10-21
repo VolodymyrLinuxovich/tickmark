@@ -1,0 +1,8 @@
+Contoso Robotics LLC - Audit of financial statements, FYE 12/31/2024
+
+Item No.	Description of Item Requested	Client Contact	Due Date	Status
+1	Listing of card transactions $500+ without receipts	A. Ruiz	1/15/2025	Open
+2	Vendor bills greater than $5,000 with invoice and approval	A. Ruiz	1/15/2025	Open
+3	Listing of users with access to the card program and their roles	IT	1/15/2025	Open
+4	Payroll tax filings for Q4 2024	HR	1/15/2025	Open
+5	Duplicate payment report	A. Ruiz	1/15/2025	Open

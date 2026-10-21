@@ -1,0 +1,46 @@
+{
+  "input": "pasted.txt",
+  "about": "Rows copied from Excel and pasted as tab-separated text, with a title line above the header, 'Item No.' and 'Description of Item Requested' columns, a numeric FYE (12/31/2024) and a Q4 period in a payroll distractor.",
+  "requests": [
+    {
+      "ref": "1",
+      "type": "receipt_completeness",
+      "period_from": "2024-01-01",
+      "period_to": "2024-12-31",
+      "min_amount": 500,
+      "selections": 0
+    },
+    {
+      "ref": "2",
+      "type": "bill_support",
+      "period_from": "2024-01-01",
+      "period_to": "2024-12-31",
+      "min_amount": 5000,
+      "selections": 0
+    },
+    {
+      "ref": "3",
+      "type": "user_access",
+      "period_from": "2024-01-01",
+      "period_to": "2024-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "4",
+      "type": "unsupported",
+      "period_from": "2024-10-01",
+      "period_to": "2024-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "5",
+      "type": "duplicate_payments",
+      "period_from": "2024-01-01",
+      "period_to": "2024-12-31",
+      "min_amount": null,
+      "selections": 0
+    }
+  ]
+}

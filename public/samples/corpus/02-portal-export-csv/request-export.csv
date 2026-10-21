@@ -1,0 +1,7 @@
+ID,Category,Request Title,Request Details,Assigned To,Due Date,Status,Period Start,Period End
+REQ-1041,Expenses,Corporate card expenses - missing receipts,"Provide a listing of all corporate card transactions greater than $5,000 that do not have a receipt attached.",Priya Shah,2026-02-06,Requested,2025-01-01,2025-12-31
+REQ-1042,Controls,Split purchases,"Provide evidence of monitoring for purchases split to circumvent the $5,000 approval threshold.",Priya Shah,2026-02-06,Requested,2025-01-01,2025-12-31
+REQ-1043,Accounts Payable,Subsequent disbursements,"Listing of all disbursements in excess of $25,000 made from January 1, 2026 through the date of fieldwork, with invoices.",Priya Shah,2026-02-06,Requested,2026-01-01,2026-02-28
+REQ-1044,Payroll,Payroll register,Payroll registers for two selected pay periods and a reconciliation of payroll expense to the general ledger.,Priya Shah,2026-02-06,Requested,2025-01-01,2025-12-31
+REQ-1045,Fixed Assets,Additions,"Invoices supporting fixed asset additions over $5,000.",Priya Shah,2026-02-06,Requested,2025-01-01,2025-12-31
+REQ-1046,IT,Access review,"Provide a system-generated listing of users and their roles in the expense management system, highlighting users with admin rights.",Priya Shah,2026-02-06,Requested,2025-01-01,2025-12-31

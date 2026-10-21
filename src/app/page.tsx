@@ -19,7 +19,7 @@ const PROBLEMS = [
 ];
 
 const STEPS = [
-  { t: "Upload the request list", d: "Excel, CSV or the auditor's email. Tickmark reads each request into a plan you can check and edit." },
+  { t: "Upload the request list", d: "Excel, CSV, PDF or the auditor's email. Tickmark reads each request into a plan you can check and edit." },
   { t: "Gather the evidence", d: "Receipts, approvals, bills and vendors come straight from Ramp, matched to the exact items the auditor picked." },
   { t: "Test the controls", d: "The checks auditors run, written as code: receipts, approvals, split purchases, duplicates, new vendors." },
   { t: "Fix and hand over", d: "Send the follow-ups you approve, then download a binder with an index, workpapers and every document." },

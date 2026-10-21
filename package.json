@@ -10,7 +10,9 @@
     "test": "vitest run",
     "samples": "tsx scripts/make-samples.ts",
     "ramp:check": "tsx scripts/ramp-check.ts",
-    "mock:ramp": "tsx scripts/mock-ramp-server.ts"
+    "mock:ramp": "tsx scripts/mock-ramp-server.ts",
+    "corpus": "tsx scripts/make-corpus.ts",
+    "eval:parser": "tsx scripts/eval-parser.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.136.0",
@@ -22,6 +24,7 @@
     "pdf-lib": "^1.17.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "unpdf": "^1.7.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

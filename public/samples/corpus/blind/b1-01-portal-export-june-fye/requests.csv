@@ -1,0 +1,15 @@
+Request List Export,,,,,,,
+Engagement: Brightwater Logistics Inc. - FY2025 Financial Statement Audit,,,,,,,
+Fiscal year ended June 30 2025,,,,,,,
+Exported 08/04/2025 3:12 PM by Kayla Moreno,,,,,,,
+,,,,,,,
+Request #,Category,Request Name,Description,Requested Date,Due Date,Owner,Status
+PBC-001,Cash,Bank reconciliations,"Bank reconciliations for all operating and payroll accounts as of June 30, 2025, with the June bank statements and outstanding check listing.",07/28/2025,08/08/2025,Controller,Open
+PBC-002,Accounts Payable,AP disbursements > $25k,"For all vendor disbursements greater than $25,000 during the fiscal year, please provide the vendor invoice, evidence of approval and proof of payment (check copy or ACH remittance).",07/28/2025,08/15/2025,AP Manager,Open
+PBC-003,Accounts Payable,Vendor master file,"Complete vendor master listing as of year end including vendor name, address, tax ID and date added. Please flag the vendors that were added during FY25.",07/28/2025,08/15/2025,AP Manager,In Progress
+PBC-004,Corporate Cards,Missing receipts,"Report of corporate card transactions over $75 with no receipt attached, for the period July 1, 2024 - June 30, 2025.",07/28/2025,08/15/2025,Controller,Open
+PBC-005,Payroll,Payroll registers,"Payroll registers for two pay periods (we will select) and reconciliation of total payroll expense to the general ledger.",07/28/2025,08/22/2025,HR / Payroll,Open
+PBC-006,IT General Controls,Expense system - admin users,"System-generated listing of users with administrator rights in the corporate card / expense management system, including role and date access was granted.",07/28/2025,08/22/2025,IT,Open
+PBC-007,Accounts Payable,Duplicate payments,"Any analysis performed to identify duplicate vendor payments (same vendor, same amount or same invoice number) during the year, and support for any refunds received.",07/28/2025,08/22/2025,AP Manager,Open
+PBC-008,Fixed Assets,Fixed asset rollforward,"Fixed asset rollforward for the year with invoices for all additions over $10,000.",07/28/2025,08/22/2025,Controller,Open
+PBC-009,Corporate Cards,Card policy exceptions,"Listing of corporate card transactions flagged as policy violations, including split transactions and purchases at restricted merchant categories (MCC). Q4 only (April 1, 2025 - June 30, 2025).",07/28/2025,08/22/2025,Controller,Open

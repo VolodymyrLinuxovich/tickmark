@@ -1,0 +1,54 @@
+{
+  "input": "request-export.csv",
+  "about": "Portal export with 'ID', 'Category', 'Request Title' and 'Request Details' columns, ISO period columns, a subsequent disbursements request in 2026, and fixed asset and payroll distractors.",
+  "requests": [
+    {
+      "ref": "REQ-1041",
+      "type": "receipt_completeness",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": 5000,
+      "selections": 0
+    },
+    {
+      "ref": "REQ-1042",
+      "type": "control_testing",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "REQ-1043",
+      "type": "bill_support",
+      "period_from": "2026-01-01",
+      "period_to": "2026-02-28",
+      "min_amount": 25000,
+      "selections": 0
+    },
+    {
+      "ref": "REQ-1044",
+      "type": "unsupported",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "REQ-1045",
+      "type": "unsupported",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": 5000,
+      "selections": 0
+    },
+    {
+      "ref": "REQ-1046",
+      "type": "user_access",
+      "period_from": "2025-01-01",
+      "period_to": "2025-12-31",
+      "min_amount": null,
+      "selections": 0
+    }
+  ]
+}

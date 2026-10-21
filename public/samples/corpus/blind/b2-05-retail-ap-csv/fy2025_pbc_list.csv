@@ -1,0 +1,13 @@
+#,Request,Owner,Due Date,Period Start,Period End,Comments
+PBC-101,"Vendor bill support for the AP selections below: invoice, approval, and proof of payment.
+- Harlan Display Co. INV 88213, 2024-04-11, $18,420.00
+- Westshore Freight INV W-55901, 2024-09-03, $7,215.60
+- Pinecrest Packaging INV 3307, 2024-12-19, $26,980.25",K. Abara (AP),2025-03-07,2024-02-01,2025-01-31,Selections made from the FY2025 AP subledger.
+PBC-102,Duplicate payment analysis on all vendor payments for the fiscal year.,K. Abara (AP),2025-03-07,2024-02-01,2025-01-31,
+PBC-103,"Vendor master file extract with vendor ID, name, date created, created by, and bank account last changed date.",K. Abara (AP),2025-03-07,2024-02-01,2025-01-31,Full file not just active vendors
+PBC-104,Bills where the approval date is later than the payment date.,K. Abara (AP),2025-03-14,2024-02-01,2025-01-31,"If none, please confirm in writing."
+PBC-105,"Physical inventory count sheets for the January 2025 count, and inbound freight vendor invoices for the last 5 days before and after year end (cutoff).",S. Lim (Ops),2025-02-14,2025-01-27,2025-02-05,Count was at the Reno DC.
+PBC-106,Sales and use tax returns filed for the fiscal year with reconciliation to the GL.,T. Fournier (Tax),2025-03-21,2024-02-01,2025-01-31,
+PBC-107,Corporate card transactions over $250 that are missing a receipt (holiday season only).,M. Duarte (Controller),2025-03-07,2024-11-01,2025-01-31,"Holiday season = Nov through Jan.
+Exclude airline fees under the travel exception."
+PBC-108,"Possible split purchases on corporate cards: same cardholder, same merchant, same day, combined amount above the cardholder's single purchase limit.",M. Duarte (Controller),2025-03-14,2024-02-01,2025-01-31,

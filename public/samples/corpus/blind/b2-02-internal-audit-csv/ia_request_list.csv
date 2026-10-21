@@ -1,0 +1,11 @@
+Request ID,Control Ref,Request Description,Period,Threshold,Notes
+IA-01,P2P-C07,"Report of corporate card purchases that appear to be split to stay under the single transaction limit (same cardholder, same merchant, same or consecutive day).",01/01/2025 - 09/30/2025,,"Single transaction limit per Card Policy 4.2 is $5,000.
+Include the cardholder's department."
+IA-02,P2P-C08,Card transactions where the approver is the same person as the cardholder (self-approved).,01/01/2025 - 09/30/2025,,
+IA-03,P2P-C11,"AP bills where the approval was recorded after the payment was released.
+Please include bill ID, approver, approval timestamp and payment date.",Jan 1 2025 to Sep 30 2025,"$10,000 and above",Population will be used for design + operating effectiveness.
+IA-04,P2P-C12,Duplicate vendor payment analysis (same vendor and amount within 7 days; same invoice number paid twice).,01/01/2025 - 09/30/2025,,"If the system flags possible duplicates, send the flag report as well."
+IA-05,ITGC-AC03,User access listing for the spend management platform showing each user's role and permissions.,01/01/2025 - 09/30/2025,,"We will compare to HR terminations list.
+Note admin roles separately if possible."
+IA-06,TR-C02,Monthly bank reconciliations for the operating account including reconciling items (outstanding checks to vendors).,01/01/2025 - 09/30/2025,,Treasury owns this one.
+IA-07,P2P-C09,Card transactions without a receipt uploaded.,01/01/2025 - 09/30/2025,USD 75.00,Receipt policy requires receipts for any charge of $75 or more.

@@ -1,0 +1,54 @@
+{
+  "input": "Northwind PBC FYE 6-30-25.xlsx",
+  "about": "FYE June 30, 2025 in the title only, 'Item No.' refs as numbers, period columns as raw Excel serial numbers on one row and blank on others, 'fiscal 2025' in words, a date range in words, and a stock option distractor.",
+  "requests": [
+    {
+      "ref": "1",
+      "type": "receipt_completeness",
+      "period_from": "2024-07-01",
+      "period_to": "2025-06-30",
+      "min_amount": 3000,
+      "selections": 0
+    },
+    {
+      "ref": "2",
+      "type": "bill_support",
+      "period_from": "2024-07-01",
+      "period_to": "2025-06-30",
+      "min_amount": 5000,
+      "selections": 0
+    },
+    {
+      "ref": "3",
+      "type": "control_testing",
+      "period_from": "2024-07-01",
+      "period_to": "2025-06-30",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "4",
+      "type": "bill_support",
+      "period_from": "2025-04-01",
+      "period_to": "2025-06-30",
+      "min_amount": 1000,
+      "selections": 0
+    },
+    {
+      "ref": "5",
+      "type": "unsupported",
+      "period_from": "2024-07-01",
+      "period_to": "2025-06-30",
+      "min_amount": null,
+      "selections": 0
+    },
+    {
+      "ref": "6",
+      "type": "user_access",
+      "period_from": "2024-07-01",
+      "period_to": "2025-06-30",
+      "min_amount": null,
+      "selections": 0
+    }
+  ]
+}

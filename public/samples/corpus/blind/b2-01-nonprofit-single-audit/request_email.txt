@@ -1,0 +1,37 @@
+From: Dana Whitfield <dwhitfield@morrowkeane-cpa.example>
+To: Luis Ortega <lortega@hopewellchp.example>
+Cc: Priya Natarajan <pnatarajan@hopewellchp.example>
+Subject: Hopewell CHP - Single Audit fieldwork, initial PBC requests
+
+Hi Luis,
+
+Thanks for the time on Tuesday. As discussed, we are starting fieldwork for the Uniform Guidance single audit of Hopewell Community Health Partners for the fiscal year ended June 30, 2025. Below is our first round of requests. Please upload everything to the portal folder "FY25 Single Audit - Round 1" and let me know if anything is unclear.
+
+(1) Schedule of Expenditures of Federal Awards (SEFA) for the year, reconciled to the general ledger, with the CFDA/ALN numbers and pass-through entity identifiers.
+
+(2) For our allowable costs testing on the HRSA Health Center Program award, we will be sampling non-payroll disbursements charged to the grant. Please provide the vendor invoice, the program manager's approval, and proof of payment (check copy or ACH remittance) for each vendor disbursement we select. We will send the sample list once we receive the grant expense detail.
+
+(3) A listing of all corporate credit card transactions of $2,500 or more that do not have an itemized receipt attached in the card system.
+
+(4) A report of vendors added to the vendor master during the year, including date added and who set them up. We use this for our suspension and debarment checks on new vendors.
+
+(5) Grant revenue reconciliation by award, together with the drawdown reports and the reimbursement invoices submitted to the grantor agencies.
+
+(6) Support for the following corporate card charges selected from the July 2024 through June 2025 card statements. For each, please send the receipt, the business purpose, and the supervisor's approval:
+
+    08/14/2024   Staples #1192 - office supplies           $412.67
+    11/03/2024   Delta Air Lines - conference travel       $1,128.40
+    02/21/2025   Amazon Mktplace - exam room supplies      $689.15
+    05/09/2025   Hilton Garden Inn Sacramento              $957.32
+
+(7) Time and effort certifications for employees charged to federal awards, and the payroll allocation report for the year.
+
+(8) A list of users who have administrator rights in the corporate card and bill pay system, with their role and the date access was granted.
+
+We'd like items (1) through (4) by September 19 if possible. The rest can follow the week after.
+
+Thanks,
+Dana
+
+Dana Whitfield, CPA
+Audit Senior | Morrow Keane LLP
