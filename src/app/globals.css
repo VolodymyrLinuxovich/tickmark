@@ -738,3 +738,4 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 .lp-flow .mini-chip { font-size: 13px; margin-top: 12px; padding: 4px 10px; background: var(--warn-bg); color: var(--warn); border-color: transparent; font-weight: 500; }
 @media (prefers-color-scheme: dark) { .lp-flow .mini { box-shadow: 0 0 0 1px rgba(255,255,255,.02); } }
 @media (max-width: 900px) { .lp-flow { grid-template-columns: 1fr; gap: 22px; } }
+@media (max-height: 800px) and (min-width: 901px) { .lp-hero { padding-top: 48px; gap: 40px; } .lp-hero h1 { margin-bottom: 16px; } .lp-hero .lede { margin-bottom: 24px; } }

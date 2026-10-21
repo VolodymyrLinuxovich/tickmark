@@ -62,29 +62,38 @@ export default function Landing() {
             </p>
           </div>
 
-          <div className="lp-stack" aria-hidden>
-            <div className="mini pop-card" style={{ animationDelay: "300ms" }}>
-              <div className="mini-k">Request from Hartwell &amp; Co.</div>
-              <div className="mini-t"><span className="mono">PBC-03</span> Invoice, approval and proof of payment for all bills over $10,000.</div>
-            </div>
-            <div className="mini ok pop-card" style={{ animationDelay: "650ms" }}>
-              <span className="mini-icon">
-                <svg width="12" height="12" viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-              </span>
-              <div>
-                <div className="mini-t">31 bills tested</div>
-                <div className="mini-k">Invoices attached, approvals traced, payments matched</div>
+          <ol className="lp-stack lp-flow" aria-label="What Tickmark does with one request">
+            <li className="pop-card" style={{ animationDelay: "300ms" }}>
+              <span className="flow-k">1 · The auditor asks</span>
+              <div className="mini ask">
+                <div className="mini-k">Request from Hartwell &amp; Co.</div>
+                <div className="mini-t"><span className="mono">PBC-03</span> Invoice, approval and proof of payment for every bill over $10,000.</div>
               </div>
-            </div>
-            <div className="mini ex pop-card" style={{ animationDelay: "1000ms" }}>
-              <span className="mini-icon">!</span>
-              <div>
-                <div className="mini-t">Paid Jun 2, approved Jun 9</div>
-                <div className="mini-k">Crestline Contract Manufacturing, $22,300.00</div>
-                <div className="mini-chip">Follow-up drafted for the bill owner</div>
+            </li>
+            <li className="pop-card" style={{ animationDelay: "700ms" }}>
+              <span className="flow-k">2 · Tickmark tests it in Ramp</span>
+              <div className="mini ok">
+                <span className="mini-icon">
+                  <svg width="13" height="13" viewBox="0 0 16 16" aria-hidden><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </span>
+                <div>
+                  <div className="mini-t">31 bills tested</div>
+                  <div className="mini-k">Invoices attached, approvals traced, payments matched.</div>
+                </div>
               </div>
-            </div>
-          </div>
+            </li>
+            <li className="pop-card" style={{ animationDelay: "1100ms" }}>
+              <span className="flow-k">3 · It flags what&rsquo;s wrong</span>
+              <div className="mini ex">
+                <span className="mini-icon">!</span>
+                <div>
+                  <div className="mini-t">Paid Jun 2, approved Jun 9</div>
+                  <div className="mini-k">Crestline Contract Manufacturing, $22,300.00</div>
+                  <div className="mini-chip">Follow-up drafted for the bill owner</div>
+                </div>
+              </div>
+            </li>
+          </ol>
         </section>
 
         {/* Problem */}
