@@ -12,7 +12,8 @@
     "ramp:check": "tsx scripts/ramp-check.ts",
     "mock:ramp": "tsx scripts/mock-ramp-server.ts",
     "corpus": "tsx scripts/make-corpus.ts",
-    "eval:parser": "tsx scripts/eval-parser.ts"
+    "eval:parser": "tsx scripts/eval-parser.ts",
+    "check:ramp-spec": "tsx scripts/check-ramp-spec.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.136.0",
