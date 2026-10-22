@@ -468,6 +468,7 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
   const [sent, setSent] = useState<Record<string, string>>({});
   const statusApi = useStatuses();
   const [extras, setExtras] = useState<BinderExtra[]>([]);
+  const [tool, setTool] = useState<null | "receipts" | "share" | "ask">(null);
   const periodFrom = requests.map((r) => r.period_from).filter(Boolean).sort()[0] ?? null;
   const periodTo = requests.map((r) => r.period_to).filter(Boolean).sort().at(-1) ?? null;
   const auto = results.filter((r) => r.status !== "manual");
@@ -507,8 +508,9 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
       <div className="section-head">
         <div>
           <h2>Evidence binder{meta.business ? ` for ${meta.business}` : ""}</h2>
-          <p>
-            Answered {auto.length} of {results.length} requests in {(meta.ms / 1000).toFixed(1)} s from {meta.counts.transactions?.toLocaleString("en-US")} transactions, {meta.counts.receipts?.toLocaleString("en-US")} receipts and {meta.counts.bills} bills.
+          <p className="lead">{summaryLine(auto.length, results.length, allFindings.map((x) => x.f.code))}</p>
+          <p className="muted small">
+            Checked {meta.counts.transactions?.toLocaleString("en-US")} transactions, {meta.counts.receipts?.toLocaleString("en-US")} receipts and {meta.counts.bills} bills in {(meta.ms / 1000).toFixed(1)} s.
           </p>
         </div>
         <button className="btn primary" onClick={download} disabled={downloading}>{downloading ? "Building binder..." : "Download binder (.zip)"}</button>
@@ -522,9 +524,26 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
         <div className="stat"><div className="k">Exceptions</div><div className="v" style={{ color: allFindings.length ? "var(--warn)" : "var(--tick)" }}>{allFindings.length}</div><div className="s">{high} high severity</div></div>
         <LoopStat sent={Object.keys(sent).length} ready={allFindings.filter((x) => x.f.comment).length} live={source.kind !== "fixture"} />
       </div>
-      {missingReceipts.length > 0 && <ReceiptHunter findings={missingReceipts} source={source} />}
-      <PortalShare requests={requests} business={meta.business} auditor={auditor} />
-      <AskBooks periodFrom={periodFrom} periodTo={periodTo} openRecord={openRecord} extras={extras} onAdd={(x) => setExtras((xs) => [...xs, x])} />
+      <div className="tools" role="group" aria-label="Next steps">
+        {missingReceipts.length > 0 && (
+          <button type="button" className={`tool ${tool === "receipts" ? "on" : ""}`} aria-expanded={tool === "receipts"} onClick={() => setTool(tool === "receipts" ? null : "receipts")}>
+            <b>Find missing receipts</b>
+            <span>{missingReceipts.length} charges have none</span>
+          </button>
+        )}
+        <button type="button" className={`tool ${tool === "share" ? "on" : ""}`} aria-expanded={tool === "share"} onClick={() => setTool(tool === "share" ? null : "share")}>
+          <b>Share with your auditor</b>
+          <span>Read-only link, questions in one place</span>
+        </button>
+        <button type="button" className={`tool ${tool === "ask" ? "on" : ""}`} aria-expanded={tool === "ask"} onClick={() => setTool(tool === "ask" ? null : "ask")}>
+          <b>Ask your books</b>
+          <span>{extras.length ? `${extras.length} added to the binder` : "Any question about spend"}</span>
+        </button>
+      </div>
+      {/* Tools stay mounted while hidden so a half-finished upload or answer is not lost. */}
+      {missingReceipts.length > 0 && <div hidden={tool !== "receipts"}><ReceiptHunter findings={missingReceipts} source={source} /></div>}
+      <div hidden={tool !== "share"}><PortalShare requests={requests} business={meta.business} auditor={auditor} /></div>
+      <div hidden={tool !== "ask"}><AskBooks periodFrom={periodFrom} periodTo={periodTo} openRecord={openRecord} extras={extras} onAdd={(x) => setExtras((xs) => [...xs, x])} /></div>
       <div className="results">
         <div className="card req-list">
           <button className={`req-item ${sel === "all" ? "on" : ""}`} onClick={() => setSel("all")}>
@@ -551,10 +570,8 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
           ) : (
             <>
               <h3>All exceptions</h3>
-              <div className="headline muted">Sorted by severity. Each one lists the Ramp records behind it and the request that surfaced it.</div>
-              <div className="label">
-                Exceptions ({allFindings.length})
-                {allFindings.length > 0 && ` · ${allFindings.filter(({ f }) => (statusApi.statuses[f.id]?.status ?? "open") === "open").length} open`}
+              <div className="headline muted">
+                {allFindings.length > 0 && `${allFindings.filter(({ f }) => (statusApi.statuses[f.id]?.status ?? "open") === "open").length} open, most serious first. Click any record to see it in Ramp.`}
               </div>
               {allFindings.length ? (
                 <ExceptionList items={allFindings} openRecord={openRecord} sent={sent} setSent={setSent} source={source} />
@@ -570,9 +587,22 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
   );
 }
 
+/** One plain sentence for the top of the results: what was answered and what needs a look. */
+function summaryLine(answered: number, total: number, codes: FindingCode[]): string {
+  const head = `Tickmark answered ${answered} of ${total} requests from Ramp.`;
+  if (!codes.length) return `${head} Nothing needs a follow-up.`;
+  const counts = new Map<FindingCode, number>();
+  for (const c of codes) counts.set(c, (counts.get(c) ?? 0) + 1);
+  const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2);
+  const words = top.map(([c, n]) => `${n.toLocaleString("en-US")} ${(n === 1 ? ONE_LABEL[c] : GROUP_LABEL[c]).toLowerCase()}`);
+  return `${head} ${codes.length.toLocaleString("en-US")} items need a look, mostly ${words.join(" and ")}.`;
+}
+
 /** Fourth stat: findings Ramp now shows as fixed, and follow-ups still being watched. */
 function LoopStat({ sent, ready, live }: { sent: number; ready: number; live: boolean }) {
   const { resolved, watching } = useWatch();
+  // Before any follow-up goes out, "0 resolved" is noise, so the stat appears only once there is progress.
+  if (!sent && !resolved && !watching) return null;
   return (
     <div className="stat">
       <div className="k">{live ? "Resolved in Ramp" : "Resolved"}</div>
