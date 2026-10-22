@@ -16,10 +16,10 @@ export interface BinderExtra {
 }
 
 const EXAMPLES = [
-  "Card charges over $1,000 with no memo",
+  "Charges over $75 with no receipt",
   "Weekend charges over $500",
-  "Top 10 largest charges",
-  "Charges over $75 with no receipt in the last 30 days",
+  "Charges in the Software category over $1,000",
+  "Bills over $20,000",
   "Users with admin access",
 ];
 
