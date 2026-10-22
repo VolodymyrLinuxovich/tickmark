@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getFixture } from "../src/lib/fixtures/generate";
 import { planWithRules } from "../src/lib/ask/plan";
 import { runPlan, vocabulary } from "../src/lib/ask/run";
-import { buildIndex } from "../src/lib/engine/run";
+import { buildIndex, lastApproval } from "../src/lib/engine/run";
 
 const snap = getFixture().snapshot;
 const vocab = vocabulary(snap);
@@ -12,6 +12,9 @@ const ask = (q: string) => {
   if (!plan) throw new Error(`rules found nothing in: ${q}`);
   return runPlan(plan, snap, ix);
 };
+const plan = (q: string) => planWithRules(q, vocab, new Date("2026-01-15T00:00:00Z"))?.filters;
+// runPlan only counts settled charges, so direct counts do the same.
+const settled = snap.transactions.filter((t) => t.state === "CLEARED" || t.state === "COMPLETION");
 
 describe("ask your books: keyword plans run on real records", () => {
   it("finds the one charge over $75 with no receipt", () => {
@@ -55,5 +58,51 @@ describe("ask your books: keyword plans run on real records", () => {
 
   it("returns null when it cannot find anything to filter on, so the model is asked only then", () => {
     expect(planWithRules("which purchases look suspicious to you?", vocab)).toBeNull();
+  });
+
+  it("reads 'approved by nobody' as not approved", () => {
+    const q = "Charges over $5,000 approved by nobody";
+    expect(plan(q)).toEqual([{ field: "amount", op: "gt", value: "5000" }, { field: "approved", op: "is_false", value: null }]);
+    expect(ask(q).total).toBe(settled.filter((t) => t.entity_amount.value > 500000 && !lastApproval(ix, t.id).last).length);
+  });
+
+  it("finds unpaid bills over a threshold", () => {
+    const q = "Bills over $10,000 that are unpaid";
+    expect(plan(q)).toEqual([{ field: "amount", op: "gt", value: "10000" }, { field: "paid", op: "is_false", value: null }]);
+    expect(ask(q).total).toBe(snap.bills.filter((b) => b.amount.amount > 1000000 && !b.paid_at).length);
+  });
+
+  it("finds vendors created in the last 90 days", () => {
+    const q = "Vendors added in the last 90 days";
+    expect(ask(q).entity).toBe("vendors");
+    expect(plan(q)).toEqual([{ field: "created", op: "on_or_after", value: "2025-10-17" }]);
+    expect(ask(q).total).toBe(snap.vendors.filter((v) => v.created_at.slice(0, 10) >= "2025-10-17").length);
+  });
+
+  it("filters a category and an amount", () => {
+    const q = "Charges in the Software category over $1,000";
+    expect(plan(q)).toEqual([{ field: "amount", op: "gt", value: "1000" }, { field: "category", op: "contains", value: "Software" }]);
+    expect(ask(q).total).toBe(settled.filter((t) => t.sk_category_name === "Software" && t.entity_amount.value > 100000).length);
+  });
+
+  it("finds round dollar charges over a threshold", () => {
+    const q = "Round dollar charges over $1,000";
+    expect(plan(q)).toEqual([{ field: "amount", op: "gt", value: "1000" }, { field: "is_round", op: "is_true", value: null }]);
+    expect(ask(q).total).toBe(settled.filter((t) => t.entity_amount.value > 100000 && t.entity_amount.value % 10000 === 0).length);
+  });
+
+  it("reads 'Saturday or Sunday by <name>' as weekend charges by that cardholder", () => {
+    const q = "Charges on Saturday or Sunday by Luis Ortega";
+    expect(plan(q)).toEqual([{ field: "is_weekend", op: "is_true", value: null }, { field: "cardholder", op: "contains", value: "Luis" }]);
+    const direct = settled.filter((t) => {
+      const d = new Date(t.user_transaction_time).getUTCDay();
+      return (d === 0 || d === 6) && t.card_holder.first_name === "Luis";
+    }).length;
+    expect(direct).toBeGreaterThan(0);
+    expect(ask(q).total).toBe(direct);
+  });
+
+  it("leaves vague questions to the model", () => {
+    expect(planWithRules("anything suspicious?", vocab)).toBeNull();
   });
 });
