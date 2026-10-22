@@ -51,6 +51,9 @@ export interface Vocab {
   vendors: string[];
 }
 
+// Auditors often phrase it as a missing approver: "approved by nobody", "no one approved", "never approved".
+const NOBODY_APPROVED = /approved by (nobody|no one|no-one)|(nobody|no one) approved|never approved|no approver/;
+
 const MONTHS = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
 
 /** Free keyword reader for common audit questions. Returns null when it finds nothing to filter on. */
@@ -72,14 +75,14 @@ export function planWithRules(question: string, vocab: Vocab, today = new Date()
   if (entity === "transactions") {
     if (/(no|without|missing) (a )?memo|no business purpose/.test(q)) filters.push({ field: "has_memo", op: "is_false", value: null });
     if (/(no|without|missing) (a )?receipts?/.test(q)) filters.push({ field: "has_receipt", op: "is_false", value: null });
-    if (/(not approved|unapproved|without approval|pending approval|no approval)/.test(q)) filters.push({ field: "approved", op: "is_false", value: null });
+    if (/(not approved|unapproved|without approval|pending approval|no approval)/.test(q) || NOBODY_APPROVED.test(q)) filters.push({ field: "approved", op: "is_false", value: null });
     if (/weekend|saturday|sunday/.test(q)) filters.push({ field: "is_weekend", op: "is_true", value: null });
     if (/round(-| )?(dollar|number|amount)/.test(q)) filters.push({ field: "is_round", op: "is_true", value: null });
   }
   if (entity === "bills") {
     if (/\bunpaid|\bopen\b|not paid/.test(q)) filters.push({ field: "paid", op: "is_false", value: null });
     else if (/\bpaid\b/.test(q)) filters.push({ field: "paid", op: "is_true", value: null });
-    if (/(not approved|unapproved|without approval|no approval)/.test(q)) filters.push({ field: "approved", op: "is_false", value: null });
+    if (/(not approved|unapproved|without approval|no approval)/.test(q) || NOBODY_APPROVED.test(q)) filters.push({ field: "approved", op: "is_false", value: null });
   }
   if (entity === "users") {
     if (/admin|elevated|owner|bookkeeper/.test(q)) filters.push({ field: "role", op: "contains", value: /bookkeeper/.test(q) ? "bookkeeper" : /owner/.test(q) ? "owner" : "admin" });
