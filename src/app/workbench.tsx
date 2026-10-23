@@ -482,7 +482,7 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
   async function download() {
     setDownloading(true);
     try {
-      const res = await fetch("/api/binder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests, auditor, statuses: statusApi.statuses, extras: extras.map((x) => ({ question: x.question, plan: x.plan })) }) });
+      const res = await fetch("/api/binder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests, auditor, statuses: statusApi.statuses, extras: extras.map((x) => ({ question: x.question, plan: x.plan, period: x.period })) }) });
       if (!res.ok) throw new Error("Binder failed");
       const blob = await res.blob();
       const name = res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ?? "audit-binder.zip";

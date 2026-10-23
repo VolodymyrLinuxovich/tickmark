@@ -140,3 +140,18 @@ describe("ask your books: limits", () => {
     expect(full.rows).toHaveLength(full.total);
   });
 });
+
+describe("ask your books: period", () => {
+  it("limits charges and bills to the period it answered on", () => {
+    const q = planWithRules("largest charges", vocab)!;
+    const period = { from: "2025-03-01", to: "2025-03-31" };
+    const r = runPlan(q, snap, ix, { cap: Infinity, period });
+    const direct = settled.filter((t) => t.user_transaction_time.slice(0, 10) >= period.from && t.user_transaction_time.slice(0, 10) <= period.to).length;
+    expect(direct).toBeGreaterThan(0);
+    expect(direct).toBeLessThan(settled.length);
+    expect(r.total).toBe(direct);
+    expect(r.period).toEqual(period);
+    const bills = runPlan(planWithRules("bills over $1", vocab)!, snap, ix, { cap: Infinity, period });
+    expect(bills.total).toBeLessThan(runPlan(planWithRules("bills over $1", vocab)!, snap, ix, { cap: Infinity }).total);
+  });
+});

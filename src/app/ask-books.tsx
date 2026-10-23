@@ -13,6 +13,7 @@ export interface BinderExtra {
   plan: Plan;
   title: string;
   total: number;
+  period?: { from: string; to: string };
 }
 
 const EXAMPLES = [
@@ -106,7 +107,7 @@ export function AskBooks({ periodFrom, periodTo, openRecord, extras, onAdd }: { 
             <b>{answer.result.total.toLocaleString("en-US")}</b> {answer.result.entity}
             {answer.result.sum != null && <> · <b>{usd(answer.result.sum)}</b></>}
             <span className="ask-by">Read by {answer.by}</span>
-            <button type="button" className="btn small" disabled={!!added || answer.result.total === 0} onClick={() => onAdd({ question: answer.question, plan: answer.plan, title: answer.result.title, total: answer.result.total })}>
+            <button type="button" className="btn small" disabled={!!added || answer.result.total === 0} onClick={() => onAdd({ question: answer.question, plan: answer.plan, title: answer.result.title, total: answer.result.total, period: answer.result.period })}>
               {added ? "Added to binder" : "Add to binder"}
             </button>
           </div>
