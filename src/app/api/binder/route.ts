@@ -8,23 +8,18 @@ import { runAll } from "@/lib/engine/run";
 import { buildBinder } from "@/lib/binder/build";
 import { AuditRequestSchema } from "@/lib/parse/schema";
 import { z } from "zod";
-import { PlanSchema } from "@/lib/ask/plan";
+import { ExtrasSchema, StatusesSchema } from "@/lib/binder/options";
 import { runPlan } from "@/lib/ask/run";
 import type { RequestResult } from "@/lib/engine/types";
 
 // Building the ZIP can download every receipt and invoice file, so this route gets the longest limit.
 export const maxDuration = 300;
 
-const Day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
-const Status = z.object({ status: z.enum(["open", "resolved", "waived"]), note: z.string().max(500).optional() });
 const Body = z.object({
   requests: z.array(AuditRequestSchema).min(1).max(100),
   auditor: z.string().nullable().optional(),
-  // Exception statuses set in the app, keyed by finding id. Shown in the workpapers and the index.
-  statuses: z.record(z.string(), Status).optional(),
-  // "Ask your books" questions added to the binder. The plan is rerun here on Ramp data.
-  // `period` is the one Ask answered on, so the rerun returns the rows the user saw.
-  extras: z.array(z.object({ question: z.string().max(500), plan: PlanSchema, period: z.object({ from: Day, to: Day }).optional() })).max(20).optional(),
+  statuses: StatusesSchema.optional(),
+  extras: ExtrasSchema.optional(),
 });
 
 export async function POST(req: Request) {

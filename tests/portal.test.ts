@@ -38,3 +38,38 @@ describe("auditor portal store", async () => {
     expect((await s.getPortal(portal.id))!.questions[0].answer).not.toBeNull();
   });
 });
+
+describe("auditor portal: writes at the same time", async () => {
+  const s = await import("../src/lib/portal/store");
+
+  it("keeps every question when several are asked at once", async () => {
+    const { portal } = await s.createPortal({ business: "B", auditor: null, requests: [req] });
+    await Promise.all(Array.from({ length: 5 }, (_, i) => s.addQuestion(portal.id, { ref: "PBC-01", text: `Question ${i}`, name: null })));
+    expect((await s.getPortal(portal.id))!.questions).toHaveLength(5);
+  });
+
+  it("keeps a question asked while another is answered", async () => {
+    const { portal, ownerKey } = await s.createPortal({ business: "B", auditor: null, requests: [req] });
+    const first = await s.addQuestion(portal.id, { ref: "PBC-01", text: "First", name: null });
+    await Promise.all([s.answerQuestion(portal.id, ownerKey, first!.id, "Answer"), s.addQuestion(portal.id, { ref: "PBC-01", text: "Second", name: null })]);
+    const p = (await s.getPortal(portal.id))!;
+    expect(p.questions.map((q) => q.text)).toEqual(["First", "Second"]);
+    expect(p.questions[0].answer?.text).toBe("Answer");
+  });
+});
+
+describe("auditor portal: kept in step with the app", async () => {
+  const s = await import("../src/lib/portal/store");
+  const req2 = { ...(req as object), ref: "PBC-02" } as never;
+
+  it("lets only the owner update requests, statuses and Ask questions", async () => {
+    const { portal, ownerKey } = await s.createPortal({ business: "B", auditor: null, requests: [req] });
+    expect(await s.updateShared(portal.id, "x".repeat(43), { requests: [req, req2] })).toBeNull();
+    const extras = [{ question: "top 5 largest charges", plan: { entity: "transactions" as const, filters: [], sort: "amount_desc" as const, limit: 5, title: "Top 5" } }];
+    await s.updateShared(portal.id, ownerKey, { requests: [req, req2], statuses: { f1: { status: "waived", note: "Immaterial" } }, extras });
+    const p = s.publicView((await s.getPortal(portal.id))!);
+    expect(p.requests).toHaveLength(2);
+    expect(p.statuses).toEqual({ f1: { status: "waived", note: "Immaterial" } });
+    expect(p.extras).toEqual(extras);
+  });
+});

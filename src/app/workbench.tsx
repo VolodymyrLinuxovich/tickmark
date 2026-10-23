@@ -542,7 +542,7 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
       </div>
       {/* Tools stay mounted while hidden so a half-finished upload or answer is not lost. */}
       {missingReceipts.length > 0 && <div hidden={tool !== "receipts"}><ReceiptHunter findings={missingReceipts} source={source} /></div>}
-      <div hidden={tool !== "share"}><PortalShare requests={requests} business={meta.business} auditor={auditor} /></div>
+      <div hidden={tool !== "share"}><PortalShare requests={requests} business={meta.business} auditor={auditor} statuses={statusApi.statuses} extras={extras.map((x) => ({ question: x.question, plan: x.plan, period: x.period }))} /></div>
       <div hidden={tool !== "ask"}><AskBooks periodFrom={periodFrom} periodTo={periodTo} openRecord={openRecord} extras={extras} onAdd={(x) => setExtras((xs) => [...xs, x])} /></div>
       <div className="results">
         <div className="card req-list">

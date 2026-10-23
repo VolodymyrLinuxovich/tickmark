@@ -9,9 +9,11 @@ import { REQUEST_TYPE_INFO } from "@/lib/parse/schema";
 import type { RequestResult } from "@/lib/engine/types";
 import type { PortalQuestion } from "@/lib/portal/store";
 import type { AuditRequest } from "@/lib/parse/schema";
+import type { ExceptionStatuses } from "@/lib/binder/build";
+import type { BinderExtraInput } from "@/lib/binder/options";
 
 interface View {
-  portal: { id: string; business: string; auditor: string | null; requests: AuditRequest[]; questions: PortalQuestion[]; expires_at: string; created_at: string };
+  portal: { id: string; business: string; auditor: string | null; requests: AuditRequest[]; questions: PortalQuestion[]; expires_at: string; created_at: string; statuses?: ExceptionStatuses; extras?: BinderExtraInput[] };
   business?: string;
   results?: RequestResult[];
   error?: string;
@@ -62,7 +64,7 @@ export function PortalView({ id }: { id: string }) {
     if (!view) return;
     setDownloading(true);
     try {
-      const res = await fetch("/api/binder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests: view.portal.requests, auditor: view.portal.auditor }) });
+      const res = await fetch("/api/binder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests: view.portal.requests, auditor: view.portal.auditor, statuses: view.portal.statuses ?? {}, extras: view.portal.extras ?? [] }) });
       if (!res.ok) throw new Error("Binder failed");
       const blob = await res.blob();
       const a = document.createElement("a");
