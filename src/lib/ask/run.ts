@@ -65,7 +65,8 @@ export function vocabulary(snap: RampSnapshot): Vocab {
   };
 }
 
-export function runPlan(plan: Plan, snap: RampSnapshot, ix: Index = buildIndex(snap)): AskResult {
+/** `cap` keeps the on-screen answer small; the binder passes Infinity so it lists every match. */
+export function runPlan(plan: Plan, snap: RampSnapshot, ix: Index = buildIndex(snap), opts: { cap?: number } = {}): AskResult {
   const dept = (id?: string | null) => snap.departments.find((d) => d.id === id)?.name ?? null;
   let rows: { sortAmount: number; sortDate: string; row: AskRow; cents: number | null }[] = [];
 
@@ -150,7 +151,8 @@ export function runPlan(plan: Plan, snap: RampSnapshot, ix: Index = buildIndex(s
   else if (s === "date_desc") rows.sort((a, b) => b.sortDate.localeCompare(a.sortDate));
   const total = rows.length;
   const sum = plan.entity === "transactions" || plan.entity === "bills" ? rows.reduce((a, r) => a + (r.cents ?? 0), 0) : null;
-  const limit = Math.min(plan.limit ?? 200, 200);
+  const cap = opts.cap ?? 200;
+  const limit = Math.min(plan.limit ?? cap, cap);
   rows = rows.slice(0, limit);
 
   const columns =

@@ -129,3 +129,14 @@ describe("ask your books: people's names", () => {
     expect(planWithRules("charges by C++ Bot", odd)?.filters).toEqual([{ field: "cardholder", op: "contains", value: "C++ Bot" }]);
   });
 });
+
+describe("ask your books: limits", () => {
+  it("keeps a top N limit and lifts the screen cap only when asked", () => {
+    const top = planWithRules("top 5 largest charges", vocab)!;
+    expect(runPlan(top, snap, ix, { cap: Infinity }).rows).toHaveLength(5);
+    const all = planWithRules("largest charges", vocab)!;
+    expect(runPlan(all, snap, ix).rows.length).toBeLessThanOrEqual(200);
+    const full = runPlan(all, snap, ix, { cap: Infinity });
+    expect(full.rows).toHaveLength(full.total);
+  });
+});

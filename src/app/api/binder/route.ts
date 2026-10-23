@@ -37,17 +37,18 @@ export async function POST(req: Request) {
   // Rerun from source data so the binder never contains numbers the server did not compute.
   const results = runAll(reqs, snap);
   (parsed.data.extras ?? []).forEach((x, i) => {
-    const r = runPlan({ ...x.plan, limit: null }, snap);
+    // Keep the question's own limit ("top 5"), but no screen cap: the binder lists every match.
+    const r = runPlan(x.plan, snap, undefined, { cap: Infinity });
     const extra: RequestResult = {
       request: { ref: `ASK-${String(i + 1).padStart(2, "0")}`, text: x.question, type: "unsupported", period_from: from ?? null, period_to: to ?? null, min_amount: null, selections: [], interpretation: r.title },
       status: "complete",
-      headline: `${r.total} matching ${r.entity}`,
+      headline: r.rows.length < r.total ? `Top ${r.rows.length} of ${r.total} matching ${r.entity}` : `${r.total} matching ${r.entity}`,
       procedure: [`Asked: "${x.question}". Ran the filter (${r.filters.join(", ") || "all records"}) on every ${r.entity.replace(/s$/, "")} in Ramp for the period.`],
       columns: r.columns,
       rows: r.rows.map((row) => ({ record: row.record, cells: row.cells, tickmarks: [], finding_ids: [], files: [] })),
       findings: [],
       population: r.total,
-      tested: r.total,
+      tested: r.rows.length,
     };
     results.push(extra);
   });

@@ -131,7 +131,12 @@ export function AskBooks({ periodFrom, periodTo, openRecord, extras, onAdd }: { 
           ) : (
             <p className="muted">No records match.</p>
           )}
-          {answer.result.total > answer.result.rows.length && <p className="muted ask-more">Showing {answer.result.rows.length} of {answer.result.total}. The binder includes all of them.</p>}
+          {answer.result.total > answer.result.rows.length && (
+            <p className="muted ask-more">
+              Showing {answer.result.rows.length} of {answer.result.total}.{" "}
+              {answer.plan.limit != null ? `The binder keeps the top ${answer.plan.limit}.` : "The binder includes all of them."}
+            </p>
+          )}
         </div>
       )}
       {extras.length > 0 && <p className="ask-added">In the binder: {extras.map((x) => x.title).join(" · ")}</p>}
