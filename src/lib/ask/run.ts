@@ -18,6 +18,7 @@ export interface AskResult {
   total: number; // matches before the limit
   sum: number | null; // cents, for money entities
   filters: string[]; // the plan in plain words, shown to the user
+  period?: { from: string; to: string }; // charges and bills were limited to this period
 }
 
 type Val = string | number | boolean | null;
@@ -65,13 +66,19 @@ export function vocabulary(snap: RampSnapshot): Vocab {
   };
 }
 
-export function runPlan(plan: Plan, snap: RampSnapshot, ix: Index = buildIndex(snap)): AskResult {
+/** `cap` keeps the on-screen answer small; the binder passes Infinity so it lists every match. */
+export function runPlan(plan: Plan, snap: RampSnapshot, ix: Index = buildIndex(snap), opts: { cap?: number; period?: { from: string; to: string } } = {}): AskResult {
+  // The period Ask answered on, so the binder rerun returns the same rows. Same rule as the checks:
+  // charges by date, bills when issued or paid in the period.
+  const p = opts.period;
+  const inPeriod = (iso: string | null | undefined) => !p || (!!iso && iso.slice(0, 10) >= p.from && iso.slice(0, 10) <= p.to);
   const dept = (id?: string | null) => snap.departments.find((d) => d.id === id)?.name ?? null;
   let rows: { sortAmount: number; sortDate: string; row: AskRow; cents: number | null }[] = [];
 
   if (plan.entity === "transactions") {
     for (const t of snap.transactions) {
       if (t.state !== "CLEARED" && t.state !== "COMPLETION") continue;
+      if (!inPeriod(t.user_transaction_time)) continue;
       const cents = t.entity_amount?.value ?? 0;
       const when = new Date(t.user_transaction_time);
       const approved = !!lastApproval(ix, t.id).last;
@@ -104,6 +111,7 @@ export function runPlan(plan: Plan, snap: RampSnapshot, ix: Index = buildIndex(s
     }
   } else if (plan.entity === "bills") {
     for (const b of snap.bills) {
+      if (p && !inPeriod(b.issued_at) && !inPeriod(b.paid_at)) continue;
       const cents = b.amount.amount;
       const approved = !!lastApproval(ix, b.id).last;
       const get: Getter = (f) =>
@@ -150,7 +158,8 @@ export function runPlan(plan: Plan, snap: RampSnapshot, ix: Index = buildIndex(s
   else if (s === "date_desc") rows.sort((a, b) => b.sortDate.localeCompare(a.sortDate));
   const total = rows.length;
   const sum = plan.entity === "transactions" || plan.entity === "bills" ? rows.reduce((a, r) => a + (r.cents ?? 0), 0) : null;
-  const limit = Math.min(plan.limit ?? 200, 200);
+  const cap = opts.cap ?? 200;
+  const limit = Math.min(plan.limit ?? cap, cap);
   rows = rows.slice(0, limit);
 
   const columns =
@@ -158,5 +167,5 @@ export function runPlan(plan: Plan, snap: RampSnapshot, ix: Index = buildIndex(s
     : plan.entity === "bills" ? ["Issued", "Vendor", "Invoice", "Amount", "Paid", "Approved"]
     : plan.entity === "vendors" ? ["Vendor", "Category", "Created"]
     : ["Name", "Email", "Role", "Status", "Department"];
-  return { title: plan.title, entity: plan.entity, columns, rows: rows.map((r) => r.row), total, sum, filters: plan.filters.map(describeFilter) };
+  return { title: plan.title, entity: plan.entity, columns, rows: rows.map((r) => r.row), total, sum, filters: plan.filters.map(describeFilter), ...(p ? { period: p } : {}) };
 }

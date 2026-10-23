@@ -93,10 +93,10 @@ describe("ask your books: keyword plans run on real records", () => {
 
   it("reads 'Saturday or Sunday by <name>' as weekend charges by that cardholder", () => {
     const q = "Charges on Saturday or Sunday by Luis Ortega";
-    expect(plan(q)).toEqual([{ field: "is_weekend", op: "is_true", value: null }, { field: "cardholder", op: "contains", value: "Luis" }]);
+    expect(plan(q)).toEqual([{ field: "is_weekend", op: "is_true", value: null }, { field: "cardholder", op: "contains", value: "Luis Ortega" }]);
     const direct = settled.filter((t) => {
       const d = new Date(t.user_transaction_time).getUTCDay();
-      return (d === 0 || d === 6) && t.card_holder.first_name === "Luis";
+      return (d === 0 || d === 6) && t.card_holder.first_name === "Luis" && t.card_holder.last_name === "Ortega";
     }).length;
     expect(direct).toBeGreaterThan(0);
     expect(ask(q).total).toBe(direct);
@@ -104,5 +104,54 @@ describe("ask your books: keyword plans run on real records", () => {
 
   it("leaves vague questions to the model", () => {
     expect(planWithRules("anything suspicious?", vocab)).toBeNull();
+  });
+});
+
+describe("ask your books: amounts with k", () => {
+  it("reads $1.5k as $1,500", () => {
+    expect(plan("charges over $1.5k")).toEqual([{ field: "amount", op: "gt", value: "1500" }]);
+    expect(plan("charges between $2k and $2.25k")).toEqual([
+      { field: "amount", op: "gte", value: "2000" },
+      { field: "amount", op: "lte", value: "2250" },
+    ]);
+  });
+});
+
+describe("ask your books: people's names", () => {
+  it("filters on the full name when only the last name is asked", () => {
+    expect(plan("charges by Ortega")).toEqual([{ field: "cardholder", op: "contains", value: "Luis Ortega" }]);
+  });
+
+  it("does not fail on names with symbols", () => {
+    const odd = { ...vocab, people: ["Ana (Contractor)", "C++ Bot", ...vocab.people] };
+    expect(() => planWithRules("charges by Ana (Contractor)", odd)).not.toThrow();
+    expect(planWithRules("charges by Ana (Contractor)", odd)?.filters).toEqual([{ field: "cardholder", op: "contains", value: "Ana (Contractor)" }]);
+    expect(planWithRules("charges by C++ Bot", odd)?.filters).toEqual([{ field: "cardholder", op: "contains", value: "C++ Bot" }]);
+  });
+});
+
+describe("ask your books: limits", () => {
+  it("keeps a top N limit and lifts the screen cap only when asked", () => {
+    const top = planWithRules("top 5 largest charges", vocab)!;
+    expect(runPlan(top, snap, ix, { cap: Infinity }).rows).toHaveLength(5);
+    const all = planWithRules("largest charges", vocab)!;
+    expect(runPlan(all, snap, ix).rows.length).toBeLessThanOrEqual(200);
+    const full = runPlan(all, snap, ix, { cap: Infinity });
+    expect(full.rows).toHaveLength(full.total);
+  });
+});
+
+describe("ask your books: period", () => {
+  it("limits charges and bills to the period it answered on", () => {
+    const q = planWithRules("largest charges", vocab)!;
+    const period = { from: "2025-03-01", to: "2025-03-31" };
+    const r = runPlan(q, snap, ix, { cap: Infinity, period });
+    const direct = settled.filter((t) => t.user_transaction_time.slice(0, 10) >= period.from && t.user_transaction_time.slice(0, 10) <= period.to).length;
+    expect(direct).toBeGreaterThan(0);
+    expect(direct).toBeLessThan(settled.length);
+    expect(r.total).toBe(direct);
+    expect(r.period).toEqual(period);
+    const bills = runPlan(planWithRules("bills over $1", vocab)!, snap, ix, { cap: Infinity, period });
+    expect(bills.total).toBeLessThan(runPlan(planWithRules("bills over $1", vocab)!, snap, ix, { cap: Infinity }).total);
   });
 });
