@@ -106,3 +106,13 @@ describe("ask your books: keyword plans run on real records", () => {
     expect(planWithRules("anything suspicious?", vocab)).toBeNull();
   });
 });
+
+describe("ask your books: amounts with k", () => {
+  it("reads $1.5k as $1,500", () => {
+    expect(plan("charges over $1.5k")).toEqual([{ field: "amount", op: "gt", value: "1500" }]);
+    expect(plan("charges between $2k and $2.25k")).toEqual([
+      { field: "amount", op: "gte", value: "2000" },
+      { field: "amount", op: "lte", value: "2250" },
+    ]);
+  });
+});

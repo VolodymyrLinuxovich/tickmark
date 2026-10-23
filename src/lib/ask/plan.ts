@@ -41,7 +41,11 @@ export interface PlannedQuestion {
   note?: string;
 }
 
-const money = (s: string) => Number(s.replace(/[$,\s]/g, "").replace(/k$/i, "000"));
+// "$1.5k" is 1500, so k multiplies instead of appending zeros.
+const money = (s: string) => {
+  const n = Number(s.replace(/[$,\s]/g, "").replace(/k$/i, ""));
+  return /k$/i.test(s) ? n * 1000 : n;
+};
 
 /** Known words in the data (merchants, categories, people) so "at Asana" or "by Michael" become filters. */
 export interface Vocab {
