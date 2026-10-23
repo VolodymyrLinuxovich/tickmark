@@ -93,10 +93,10 @@ describe("ask your books: keyword plans run on real records", () => {
 
   it("reads 'Saturday or Sunday by <name>' as weekend charges by that cardholder", () => {
     const q = "Charges on Saturday or Sunday by Luis Ortega";
-    expect(plan(q)).toEqual([{ field: "is_weekend", op: "is_true", value: null }, { field: "cardholder", op: "contains", value: "Luis" }]);
+    expect(plan(q)).toEqual([{ field: "is_weekend", op: "is_true", value: null }, { field: "cardholder", op: "contains", value: "Luis Ortega" }]);
     const direct = settled.filter((t) => {
       const d = new Date(t.user_transaction_time).getUTCDay();
-      return (d === 0 || d === 6) && t.card_holder.first_name === "Luis";
+      return (d === 0 || d === 6) && t.card_holder.first_name === "Luis" && t.card_holder.last_name === "Ortega";
     }).length;
     expect(direct).toBeGreaterThan(0);
     expect(ask(q).total).toBe(direct);
@@ -114,5 +114,18 @@ describe("ask your books: amounts with k", () => {
       { field: "amount", op: "gte", value: "2000" },
       { field: "amount", op: "lte", value: "2250" },
     ]);
+  });
+});
+
+describe("ask your books: people's names", () => {
+  it("filters on the full name when only the last name is asked", () => {
+    expect(plan("charges by Ortega")).toEqual([{ field: "cardholder", op: "contains", value: "Luis Ortega" }]);
+  });
+
+  it("does not fail on names with symbols", () => {
+    const odd = { ...vocab, people: ["Ana (Contractor)", "C++ Bot", ...vocab.people] };
+    expect(() => planWithRules("charges by Ana (Contractor)", odd)).not.toThrow();
+    expect(planWithRules("charges by Ana (Contractor)", odd)?.filters).toEqual([{ field: "cardholder", op: "contains", value: "Ana (Contractor)" }]);
+    expect(planWithRules("charges by C++ Bot", odd)?.filters).toEqual([{ field: "cardholder", op: "contains", value: "C++ Bot" }]);
   });
 });

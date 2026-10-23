@@ -102,8 +102,11 @@ export function planWithRules(question: string, vocab: Vocab, today = new Date()
       const c = hit(vocab.categories) ?? hit(vocab.categories.map((x) => x.replace(/s$/, "")));
       if (c) filters.push({ field: "category", op: "contains", value: c });
     }
-    const person = vocab.people.find((p) => p.split(" ").some((part) => part.length > 2 && new RegExp(`\\b${part.toLowerCase()}\\b`).test(q)));
-    if (person && /\bby\b|\bfrom\b|'s\b/.test(q)) filters.push({ field: "cardholder", op: "contains", value: person.split(" ")[0] });
+    // Names come from Ramp, so they are escaped before going into a pattern. The filter uses the
+    // full name: "by Ortega" should not also return every other Luis.
+    const word = (part: string) => new RegExp(`(^|[^a-z0-9])${part.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z0-9])`);
+    const person = vocab.people.find((p) => p.split(" ").some((part) => part.length > 2 && word(part).test(q)));
+    if (person && /\bby\b|\bfrom\b|'s\b/.test(q)) filters.push({ field: "cardholder", op: "contains", value: person });
   }
   if (entity === "bills") {
     const v = hit(vocab.vendors);
