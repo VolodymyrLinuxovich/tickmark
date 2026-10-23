@@ -3,7 +3,7 @@
 // Controller side of the auditor portal: create a share link, then see and answer the auditor's questions.
 // The owner key lives only in this browser (localStorage); without it nobody can answer.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AuditRequest } from "@/lib/parse/schema";
 import type { PortalQuestion } from "@/lib/portal/store";
 import type { ExceptionStatuses } from "@/lib/binder/build";
@@ -73,9 +73,19 @@ export function PortalShare({ requests, business, auditor, statuses, extras }: {
   }, [shared, refresh]);
 
   // Exception statuses and Ask questions follow the app, so the auditor's binder matches the controller's.
+  // Only changes made while this page is open are sent: a fresh page has no Ask questions yet, and
+  // opening the panel must not wipe the ones already on the link.
   const syncKey = JSON.stringify([statuses, extras]);
+  const synced = useRef<string | null>(null);
   useEffect(() => {
     if (!shared) return;
+    const key = `${shared.id}|${syncKey}`;
+    if (synced.current === null || !synced.current.startsWith(`${shared.id}|`)) {
+      synced.current = key; // first look at this link: nothing changed yet
+      return;
+    }
+    if (synced.current === key) return;
+    synced.current = key;
     const t = setTimeout(() => {
       void fetch(`/api/portal/${shared.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner_key: shared.owner_key, statuses, extras }) }).catch(() => null);
     }, 800);
@@ -90,7 +100,7 @@ export function PortalShare({ requests, business, auditor, statuses, extras }: {
     setBusy(true);
     setErr(null);
     try {
-      const r = await fetch(`/api/portal/${shared.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner_key: shared.owner_key, requests, statuses, extras }) });
+      const r = await fetch(`/api/portal/${shared.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner_key: shared.owner_key, requests }) });
       if (r.status === 404) return void (await share()); // expired: make a new one
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
