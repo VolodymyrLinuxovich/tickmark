@@ -880,6 +880,8 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 .share-link { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
 .share-link code { flex: 1; min-width: 0; overflow-x: auto; white-space: nowrap; font: 12.5px var(--font-mono), monospace; padding: 8px 10px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 7px; }
 .share-fine { font-size: 12.5px; margin: 6px 0 0; }
+.share-stale { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-top: 12px; padding: 8px 12px; border-radius: 8px; color: var(--warn); background: var(--warn-bg); font-size: 13px; }
+.share-stale p { margin: 0; }
 .pq { border-top: 1px solid var(--line); padding: 10px 0; }
 .pq p { margin: 3px 0 0; }
 .pq-ans { margin: 8px 0 0 16px; padding-left: 12px; border-left: 2px solid var(--tick); }

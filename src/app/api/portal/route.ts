@@ -3,11 +3,14 @@
 import { z } from "zod";
 import { AuditRequestSchema } from "@/lib/parse/schema";
 import { createPortal } from "@/lib/portal/store";
+import { ExtrasSchema, StatusesSchema } from "@/lib/binder/options";
 
 const Body = z.object({
   requests: z.array(AuditRequestSchema).min(1).max(100),
   business: z.string().max(200),
   auditor: z.string().max(200).nullable().optional(),
+  statuses: StatusesSchema.optional(),
+  extras: ExtrasSchema.optional(),
   days: z.number().int().min(1).max(60).optional(),
 });
 

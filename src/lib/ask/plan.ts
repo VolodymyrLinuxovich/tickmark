@@ -113,9 +113,13 @@ export function planWithRules(question: string, vocab: Vocab, today = new Date()
     if (v) filters.push({ field: "vendor", op: "contains", value: v });
   }
 
-  // Dates: "last 30 days", "this month", "in March", "since 2026-01-01".
+  // Dates: "last 30 days", "this month", "in March", "since 2026-01-01". Bills go by issue date unless
+  // the question is about when they were paid. Users have no date in Ramp, so a dated user question
+  // goes to the model instead of silently dropping the date.
   const iso = (d: Date) => d.toISOString().slice(0, 10);
-  const dateField = entity === "bills" ? "paid_date" : entity === "transactions" ? "date" : "created";
+  const dated = /last \d+ days|this month|last month/.test(q) || MONTHS.some((m) => new RegExp(`\\bin ${m}\\b`).test(q));
+  if (entity === "users" && dated) return null;
+  const dateField = entity === "bills" ? (/\bpaid (in|on|during|since|this|last)\b/.test(q) ? "paid_date" : "date") : entity === "transactions" ? "date" : "created";
   const lastN = q.match(/last (\d+) days/);
   if (lastN) filters.push({ field: dateField, op: "on_or_after", value: iso(new Date(today.getTime() - Number(lastN[1]) * 864e5)) });
   else if (/this month/.test(q)) filters.push({ field: dateField, op: "on_or_after", value: iso(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1))) });
@@ -131,8 +135,11 @@ export function planWithRules(question: string, vocab: Vocab, today = new Date()
     }
   }
 
-  // A question with no filter is still answerable when it asks for a ranking ("top 10 largest charges").
-  if (!filters.length && entity === "transactions" && !/\b(top|largest|biggest|all)\b/.test(q)) return null;
+  // Vendors and users have no amount, so an amount there is something the rules misread.
+  if ((entity === "vendors" || entity === "users") && filters.some((f) => f.field === "amount")) return null;
+  // A question with no filter is still answerable when it asks for a ranking ("top 10 largest charges")
+  // or for everything ("list all vendors"). Anything else goes to the model.
+  if (!filters.length && !/\b(top|largest|biggest|all|every|list)\b/.test(q)) return null;
   const top = q.match(/\btop (\d+)\b|\blargest (\d+)\b|\bbiggest (\d+)\b/);
   return {
     entity,

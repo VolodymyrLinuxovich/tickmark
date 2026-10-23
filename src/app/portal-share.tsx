@@ -3,16 +3,27 @@
 // Controller side of the auditor portal: create a share link, then see and answer the auditor's questions.
 // The owner key lives only in this browser (localStorage); without it nobody can answer.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AuditRequest } from "@/lib/parse/schema";
 import type { PortalQuestion } from "@/lib/portal/store";
+import type { ExceptionStatuses } from "@/lib/binder/build";
+import type { BinderExtraInput } from "@/lib/binder/options";
 
 interface Shared {
   id: string;
   owner_key: string;
   expires_at: string;
   business: string;
+  sig?: string; // fingerprint of the request list the link was made or last updated with
 }
+
+/** Short fingerprint of the request list, to tell when the shared link is out of date. */
+const fingerprint = (requests: AuditRequest[]) => {
+  const s = JSON.stringify(requests);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  return `${s.length}:${(h >>> 0).toString(36)}`;
+};
 
 const KEY = "tickmark.portals";
 const loadShared = (): Shared[] => {
@@ -30,12 +41,14 @@ const saveShared = (xs: Shared[]) => {
   }
 };
 
-export function PortalShare({ requests, business, auditor }: { requests: AuditRequest[]; business: string; auditor: string | null }) {
+export function PortalShare({ requests, business, auditor, statuses, extras }: { requests: AuditRequest[]; business: string; auditor: string | null; statuses: ExceptionStatuses; extras: BinderExtraInput[] }) {
   const [shared, setShared] = useState<Shared | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [questions, setQuestions] = useState<PortalQuestion[]>([]);
+  const sig = fingerprint(requests);
+  const stale = !!shared && shared.sig !== sig;
 
   // Reuse the latest portal shared for this business from this browser.
   useEffect(() => {
@@ -59,14 +72,56 @@ export function PortalShare({ requests, business, auditor }: { requests: AuditRe
     };
   }, [shared, refresh]);
 
+  // Exception statuses and Ask questions follow the app, so the auditor's binder matches the controller's.
+  // Only changes made while this page is open are sent: a fresh page has no Ask questions yet, and
+  // opening the panel must not wipe the ones already on the link.
+  const syncKey = JSON.stringify([statuses, extras]);
+  const synced = useRef<string | null>(null);
+  useEffect(() => {
+    if (!shared) return;
+    const key = `${shared.id}|${syncKey}`;
+    if (synced.current === null || !synced.current.startsWith(`${shared.id}|`)) {
+      synced.current = key; // first look at this link: nothing changed yet
+      return;
+    }
+    if (synced.current === key) return;
+    synced.current = key;
+    const t = setTimeout(() => {
+      void fetch(`/api/portal/${shared.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner_key: shared.owner_key, statuses, extras }) }).catch(() => null);
+    }, 800);
+    return () => clearTimeout(t);
+    // syncKey stands in for statuses and extras, which are new objects on every render
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shared, syncKey]);
+
+  /** The request list changed: put the new list on the same link. */
+  async function updateLink() {
+    if (!shared) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await fetch(`/api/portal/${shared.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner_key: shared.owner_key, requests }) });
+      if (r.status === 404) return void (await share()); // expired: make a new one
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error);
+      const s = { ...shared, sig };
+      saveShared(loadShared().map((x) => (x.id === s.id ? s : x)));
+      setShared(s);
+    } catch (e) {
+      setErr(String((e as Error).message));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function share() {
     setBusy(true);
     setErr(null);
     try {
-      const r = await fetch("/api/portal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests, business, auditor }) });
+      const r = await fetch("/api/portal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests, business, auditor, statuses, extras }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error);
-      const s: Shared = { id: j.id, owner_key: j.owner_key, expires_at: j.expires_at, business };
+      const s: Shared = { id: j.id, owner_key: j.owner_key, expires_at: j.expires_at, business, sig };
       saveShared([...loadShared(), s]);
       setShared(s);
       setQuestions([]);
@@ -91,6 +146,12 @@ export function PortalShare({ requests, business, auditor }: { requests: AuditRe
       {err && <div className="error">{err}</div>}
       {shared && (
         <>
+          {stale && (
+            <div className="share-stale">
+              <p>The request list changed since this link was shared. The auditor still sees the old list.</p>
+              <button className="btn primary small" onClick={updateLink} disabled={busy}>{busy ? "Updating..." : "Update link"}</button>
+            </div>
+          )}
           <div className="share-link">
             <code>{url}</code>
             <button
