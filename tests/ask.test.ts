@@ -155,3 +155,31 @@ describe("ask your books: period", () => {
     expect(bills.total).toBeLessThan(runPlan(planWithRules("bills over $1", vocab)!, snap, ix, { cap: Infinity }).total);
   });
 });
+
+describe("ask your books: dates and fallbacks for bills, vendors and users", () => {
+  it("dates bills by when they were issued, so unpaid bills are not dropped", () => {
+    const q = "unpaid bills in the last 30 days";
+    const f = plan(q)!;
+    expect(f).toContainEqual({ field: "date", op: "on_or_after", value: "2025-12-16" });
+    // The sample company pays every bill, so add an open one issued in the window.
+    const open = { ...snap.bills[0], id: "bill_open_test", issued_at: "2025-12-20T00:00:00Z", paid_at: null };
+    const withOpen = { ...snap, bills: [...snap.bills, open] };
+    const r = runPlan(planWithRules(q, vocab, new Date("2026-01-15T00:00:00Z"))!, withOpen);
+    expect(r.total).toBe(1);
+    expect(r.rows[0].record.id).toBe("bill_open_test");
+  });
+
+  it("uses the paid date when the question asks when bills were paid", () => {
+    expect(plan("bills paid in the last 30 days")).toContainEqual({ field: "paid_date", op: "on_or_after", value: "2025-12-16" });
+  });
+
+  it("sends dated user questions to the model, since users have no date", () => {
+    expect(planWithRules("users added in the last 30 days", vocab)).toBeNull();
+  });
+
+  it("sends vague vendor and user questions to the model instead of listing everything", () => {
+    expect(planWithRules("which vendors look risky?", vocab)).toBeNull();
+    expect(planWithRules("vendors over $10,000", vocab)).toBeNull();
+    expect(planWithRules("list all vendors", vocab)?.filters).toEqual([]);
+  });
+});
