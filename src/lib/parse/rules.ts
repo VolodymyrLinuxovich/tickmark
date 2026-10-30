@@ -391,6 +391,7 @@ export function splitFreeText(text: string): InputRow[] {
   let gap = false;
   let heading = "";
   let section: { num: string; row: InputRow; title: string } | null = null;
+  let parent: InputRow | null = null; // latest numbered request, which lettered sub-points belong to
   const sectionRows = new Set<InputRow>();
   const close = () => {
     cur = null;
@@ -412,11 +413,22 @@ export function splitFreeText(text: string): InputRow[] {
     }
     if (SIGN_OFF.test(line.trim())) {
       close();
+      parent = null;
       last = null;
       gap = false;
       continue;
     }
     const mk = marker(line);
+    // Under a numbered request with its own wording ("3. Population: Obtain a listing... a) Transaction Number"),
+    // a lettered or roman sub-point is part of that request. Under a bare heading ("4. Cash:") it is a request.
+    const headingOnly = section && section.row === parent && section.row.text === section.title;
+    if (mk?.sub && mk.rest.trim() && parent && !headingOnly) {
+      parent.text += "\n" + line.trim();
+      cur = parent;
+      last = parent;
+      gap = false;
+      continue;
+    }
     if (mk && mk.rest.trim() && (!mk.bullet || !(LOGISTICS_HEADING.test(heading) || LOGISTICS_BULLET.test(mk.rest.trim())))) {
       const row: InputRow = { ref: mk.ref ?? `PBC-${pad(rows.length + 1)}`, area: "", text: mk.rest.trim(), period_from: null, period_to: null };
       if (mk.sub && section && section.row.text === section.title) {
@@ -424,6 +436,7 @@ export function splitFreeText(text: string): InputRow[] {
         row.ref = `${section.num}.${mk.ref}`;
         row.area = section.title.replace(/\s*:$/, "");
       } else if (!mk.bullet && !mk.sub) {
+        parent = row;
         const title = mk.rest.trim();
         section = mk.section && title.length <= 80 && title.endsWith(":") ? { num: mk.section, row, title } : null;
       }

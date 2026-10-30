@@ -183,9 +183,12 @@ describe("public list shapes", () => {
     expect(parsed.requests[0].type).toBe("unsupported");
   });
 
-  it("keeps a numbered request with its own text, and its lettered parts, as they are", () => {
-    const text = "3. Population:\nObtain a listing of all P-Card transactions containing the following information:\na) Transaction Number\nb) Vendor Name";
-    expect(parseWithRules(normalizeText(text)).requests.map((r) => r.ref)).toEqual(["PBC-03", "a", "b"]);
+  it("keeps lettered sub-points inside a numbered request that has its own wording (#36)", () => {
+    const text = "3. Population:\nObtain a listing of all P-Card transactions containing the following information:\na) Transaction Number\nb) Vendor Name\n4. Risk assessment\nReview the cards:\ni. Card issuance\nii. Training";
+    const out = parseWithRules(normalizeText(text)).requests;
+    expect(out.map((r) => r.ref)).toEqual(["PBC-03", "PBC-04"]);
+    expect(out[0].text).toContain("a) Transaction Number\nb) Vendor Name");
+    expect(out[1].text).toContain("ii. Training");
   });
 
   it.each([
