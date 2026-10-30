@@ -8,7 +8,7 @@ import type { AuditRequest } from "../parse/schema";
 import { toIsoDate } from "../parse/input";
 import type { RampApproval, RampBill, RampReceipt, RampSnapshot, RampTransaction, RampUser, RampVendor } from "../ramp/types";
 import { monetaryUnitSample } from "./sampling";
-import { findingId, type EvidenceRow, type Finding, type RecordRef, type RequestResult, type Tickmark } from "./types";
+import { compareFindings, findingId, type EvidenceRow, type Finding, type RecordRef, type RequestResult, type Tickmark } from "./types";
 
 /** Reads a dollar amount from an env var and returns cents, or the fallback when unset or invalid. */
 function centsFromEnv(name: string, fallback: number): number {
@@ -57,6 +57,8 @@ export interface Index {
   receiptsByTxn: Map<string, RampReceipt[]>;
   approval: Map<string, RampApproval>;
   vendor: Map<string, RampVendor>;
+  txn: Map<string, RampTransaction>;
+  bill: Map<string, RampBill>;
 }
 
 /** Builds the lookup maps over a snapshot. Receipts without a transaction id are unattached uploads and are skipped. */
@@ -72,6 +74,8 @@ export function buildIndex(snap: RampSnapshot): Index {
     receiptsByTxn,
     approval: new Map(snap.approvals.map((a) => [a.entity_id, a])),
     vendor: new Map(snap.vendors.map((v) => [v.id, v])),
+    txn: new Map(snap.transactions.map((t) => [t.id, t])),
+    bill: new Map(snap.bills.map((b) => [b.id, b])),
   };
 }
 
@@ -109,6 +113,16 @@ export function lastApproval(ix: Index, id: string) {
 /** Display name for an approval step. A step with no user id is an automatic policy approval, which an auditor must not mistake for a human sign-off. */
 const approverName = (ix: Index, step: { user_id: string | null; user_email: string | null }) =>
   step.user_id ? (ix.user.has(step.user_id) ? name(ix.user.get(step.user_id)) : step.user_email ?? "Unknown user") : "Auto-approved by policy";
+
+/**
+ * A charge above the pre-approval limit with no approval is a failed control: high.
+ * An approval Ramp opened but nobody finished is follow-up work, graded by size so a
+ * $12,000 software charge is not listed next to an $8 coffee.
+ */
+function pendingSeverity(cents: number, opened: boolean): Finding["severity"] {
+  if (!opened || cents > POLICY.cardApprovalLimit) return "high";
+  return cents >= POLICY.receiptThreshold ? "medium" : "low";
+}
 
 /** Receipt total in cents from OCR line items plus tax, or null when OCR found no line items (an image with no readable total cannot be agreed). */
 function receiptTotal(r: RampReceipt): number | null {
@@ -199,7 +213,7 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
       findings.push({
         id: findingId("NOT_APPROVED", [t.id]),
         code: "NOT_APPROVED",
-        severity: "high",
+        severity: pendingSeverity(cents, Boolean(record)),
         title: record
           ? `Approval still ${String(record.status ?? "open").toLowerCase()} for ${usd(cents)} at ${t.merchant_name}`
           : `No approval recorded for ${usd(cents)} at ${t.merchant_name}`,
@@ -589,6 +603,20 @@ const CONTROL_TESTS: { name: string; codes: Finding["code"][]; population: (t: R
  * because pending or declined charges are not yet in the books.
  */
 export function runRequest(req: AuditRequest, ix: Index): RequestResult {
+  const r = answer(req, ix);
+  return { ...r, findings: r.findings.map((f) => ({ ...f, amount: f.amount ?? amountAtStake(ix, f) })).sort(compareFindings) };
+}
+
+/**
+ * Dollars behind a finding, read from its Ramp records. A duplicate is two copies of one
+ * bill, so the exposure is one copy; anything else (a split purchase) adds up.
+ */
+function amountAtStake(ix: Index, f: Finding): number {
+  const amounts = f.records.map((r) => (r.type === "transaction" ? ix.txn.get(r.id)?.entity_amount.value : r.type === "bill" ? ix.bill.get(r.id)?.amount.amount : undefined) ?? 0);
+  return f.code === "DUPLICATE_INVOICE" ? Math.max(0, ...amounts) : amounts.reduce((s, a) => s + a, 0);
+}
+
+function answer(req: AuditRequest, ix: Index): RequestResult {
   const snap = ix.snap;
   const txns = snap.transactions.filter((t) => (t.state === "CLEARED" || t.state === "COMPLETION") && inPeriod(t.user_transaction_time, req));
   const bills = snap.bills.filter((b) => inPeriod(b.issued_at, req) || inPeriod(b.paid_at, req));
@@ -610,6 +638,7 @@ export function runRequest(req: AuditRequest, ix: Index): RequestResult {
               code: "SELECTION_NOT_FOUND",
               severity: "medium",
               title: `${sel.ref}: no Ramp transaction for ${usd(Math.round(sel.amount * 100))} on ${sel.date}`,
+              amount: Math.round(sel.amount * 100),
               detail: `"${sel.description}" may be a bank or ERP entry outside Ramp. Pull support from the source system.`,
               records: [],
             };
@@ -664,6 +693,7 @@ export function runRequest(req: AuditRequest, ix: Index): RequestResult {
             code: "SELECTION_NOT_FOUND",
             severity: "medium",
             title: `${sel.ref}: no Ramp bill for ${usd(Math.round(sel.amount * 100))} on ${sel.date}`,
+            amount: Math.round(sel.amount * 100),
             detail: `"${sel.description}" may have been paid outside Ramp. Pull the invoice and payment from the source system.`,
             records: [],
           };
@@ -827,5 +857,5 @@ export function runAll(reqs: AuditRequest[], snap: RampSnapshot): RequestResult[
 
 /** All findings across requests, each listed once. */
 export function uniqueFindings(results: RequestResult[]): Finding[] {
-  return dedupe(results.flatMap((r) => r.findings));
+  return dedupe(results.flatMap((r) => r.findings)).sort(compareFindings);
 }

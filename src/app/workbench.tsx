@@ -12,7 +12,7 @@ import { useSearchParams } from "next/navigation";
 import type { AuditRequest, ParsedList, RequestType } from "@/lib/parse/schema";
 import { REQUEST_TYPE_INFO, REQUEST_TYPES } from "@/lib/parse/schema";
 import type { Finding, FindingCode, RecordRef, RequestResult } from "@/lib/engine/types";
-import { TICKMARKS } from "@/lib/engine/types";
+import { TICKMARKS, compareFindings } from "@/lib/engine/types";
 import { LiveThread, WatchProvider, useWatch } from "./loop";
 import { ReceiptHunter } from "./receipt-hunter";
 import { AskBooks, type BinderExtra } from "./ask-books";
@@ -25,9 +25,6 @@ type Stage = "intake" | "plan" | "run" | "results";
 type Parsed = ParsedList & { input_name?: string };
 /** Progress of one request during the run. Kept per request so a single failure does not sink the others. */
 type RunState = { status: "wait" | "spin" | "done" | "error"; result?: RequestResult; error?: string };
-
-/** Sort key so high severity exceptions are listed first. */
-const SEV_ORDER = { high: 0, medium: 1, low: 2 } as const;
 
 /**
  * Top level of the flow. Owns all cross-stage state: the parsed list, the editable `requests`
@@ -461,7 +458,7 @@ function Results({ requests, runs, meta, auditor, source, openRecord }: { reques
   const allFindings = useMemo(() => {
     const m = new Map<string, { f: Finding; refs: string[] }>();
     for (const r of results) for (const f of r.findings) m.set(f.id, { f, refs: [...(m.get(f.id)?.refs ?? []), r.request.ref] });
-    return [...m.values()].sort((a, b) => SEV_ORDER[a.f.severity] - SEV_ORDER[b.f.severity]);
+    return [...m.values()].sort((a, b) => compareFindings(a.f, b.f));
   }, [results]);
   const [sel, setSel] = useState<number | "all">("all");
   const [downloading, setDownloading] = useState(false);
@@ -718,6 +715,7 @@ function ExceptionList({ items, openRecord, sent, setSent, source }: { items: { 
   const [code, setCode] = useState<FindingCode | null>(null);
   const [shown, setShown] = useState(PAGE);
   const [allPeople, setAllPeople] = useState(false);
+  const [showLow, setShowLow] = useState(false);
 
   const { people, types } = useMemo(() => {
     const p = new Map<string, { n: number; high: number; codes: Map<FindingCode, number> }>();
@@ -737,7 +735,10 @@ function ExceptionList({ items, openRecord, sent, setSent, source }: { items: { 
     };
   }, [items]);
 
-  const filtered = items.filter(({ f }) => (!person || (f.owner?.name ?? NO_OWNER) === person) && (!code || f.code === code));
+  const matching = items.filter(({ f }) => (!person || (f.owner?.name ?? NO_OWNER) === person) && (!code || f.code === code));
+  // Low items are small and real, but listing them first buries what an auditor will ask about.
+  const lowCount = matching.filter(({ f }) => f.severity === "low").length;
+  const filtered = showLow ? matching : matching.filter(({ f }) => f.severity !== "low");
   const pick = (next: () => void) => {
     next();
     setShown(PAGE);
@@ -796,6 +797,11 @@ function ExceptionList({ items, openRecord, sent, setSent, source }: { items: { 
       {filtered.length > shown && (
         <button className="btn ex-page" onClick={() => setShown(shown + PAGE)}>
           Show {Math.min(PAGE, filtered.length - shown)} more of {filtered.length - shown} left
+        </button>
+      )}
+      {lowCount > 0 && filtered.length <= shown && (
+        <button className="ex-more" onClick={() => setShowLow(!showLow)}>
+          {showLow ? "Hide low severity items" : `Show ${lowCount} low severity item${lowCount > 1 ? "s" : ""}`}
         </button>
       )}
     </>
