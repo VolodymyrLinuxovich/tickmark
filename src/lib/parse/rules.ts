@@ -253,6 +253,19 @@ export function findPeriod(text: string, fye: FiscalYearEnd = { month: 12, day: 
 }
 
 /**
+ * The year end a document is about. A list can mention last year's ("journal entries for the year ended
+ * 6/30/14") before its own, so the date stated most often wins, and the later one on a tie.
+ */
+export function statedYearEnd(text: string): string | null {
+  const counts = new Map<string, number>();
+  for (const m of text.matchAll(new RegExp(YEAR_END_DATE.source, "gi"))) {
+    const d = wordDate(m[1]);
+    if (d) counts.set(d, (counts.get(d) ?? 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0]))[0]?.[0] ?? null;
+}
+
+/**
  * The fiscal year that contains a date, as a period. Used to widen a balance date ("as of June 30, 2026")
  * into the year under audit, since a one day window would test almost nothing.
  */
@@ -264,8 +277,8 @@ export function fiscalYearContaining(date: string, fye: FiscalYearEnd): Period {
 
 /** Fiscal year end stated anywhere in the document ("FYE June 30, 2025", "fiscal year ending 9/30/2025"). */
 export function findFiscalYearEnd(text: string): FiscalYearEnd | null {
-  const m = text.match(YEAR_END_DATE);
-  const d = m ? wordDate(m[1]) : null;
+  // Same choice as the document period, so the two never disagree.
+  const d = statedYearEnd(text);
   if (!d) {
     // "fiscal year end September 30", "a June 30 year end"
     const n =
@@ -441,14 +454,104 @@ const sameRef = (a: string, b: string) => a.toLowerCase().replace(/[^a-z0-9.]/g,
  * period stated for the whole document. Selections typed under a request stay with it; selections from a
  * separate sheet attach by their request column, or to every card request when there is none.
  */
-export function parseWithRules(input: NormalizedInput): ParsedList {
+/**
+ * Table rows flattened into text, where each row carries its own ref somewhere in the line
+ * ("FS/C-YE 01-General Items Y_PBC FSC-13 1 Bank reconciliations..."). A ref family (FSC, SA) counts when at
+ * least five lines use it; a list can have several. Text after the ref (minus a leading item number) is the request; lines
+ * up to the next ref continue it, except the leftover cells of the next row.
+ */
+export function splitEmbeddedRefs(text: string): InputRow[] {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  // The request may follow on the same line or, when the row wrapped, on the next one.
+  const REF = /(?:^|\s)([A-Z]{2,6}-\d{1,3}[a-z]?)(?:\s+(?:\d{1,3}(?:\.[a-z0-9]{1,4})?\.?\s+)?(\S.*))?$/;
+  const prefixes = new Map<string, number>();
+  for (const l of lines) {
+    const m = l.match(REF);
+    if (m) prefixes.set(m[1].split("-")[0], (prefixes.get(m[1].split("-")[0]) ?? 0) + 1);
+  }
+  const families = new Set([...prefixes].filter(([, n]) => n >= 5).map(([p]) => p));
+  if (!families.size) return [];
+  const rows: InputRow[] = [];
+  const cellStarts = new Set<string>(); // first words of the cells left of the ref, such as "FS/C-YE"
+  let cur: InputRow | null = null;
+  let junk = false;
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+    const m = line.match(REF);
+    if (m && families.has(m[1].split("-")[0])) {
+      const before = line.slice(0, line.indexOf(m[1])).trim();
+      if (before) cellStarts.add(before.split(/\s+/)[0]);
+      cur = { ref: m[1], area: "", text: (m[2] ?? "").trim(), period_from: null, period_to: null };
+      rows.push(cur);
+      junk = false;
+      continue;
+    }
+    // The next row's left cells can wrap onto lines of their own; skip them until its ref arrives.
+    if (cellStarts.has(line.split(/\s+/)[0])) junk = true;
+    if (cur && !junk) cur.text = cur.text ? cur.text + "\n" + line : line;
+  }
+  return rows.filter((r) => r.text);
+}
+
+const LETTER_LINE = /^(hi|hello|hey|dear|good (morning|afternoon)|thanks|thank you|best|regards|kind regards|sincerely|cheers|re|fw|fwd|subject|from|to|cc)\b[\s,:!]|\?\s*$/i;
+const ALL_CAPS = (line: string) => /[A-Z]{2}/.test(line) && line === line.toUpperCase() && line.length <= 60 && !/^\d+$/.test(line);
+
+/**
+ * A plain list with one item per line under ALL CAPS section headings and no numbers
+ * ("ACCOUNTS PAYABLE" then "Listing - Checks (Various)"). Needs at least two headings, so an ordinary
+ * email is never read this way. Lines before the first heading are the title block. A line that starts in
+ * lower case continues the item above it.
+ */
+export function splitLineList(text: string): InputRow[] {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n").map((l) => l.trim()).filter(Boolean);
+  const headings = lines.filter(ALL_CAPS);
+  if (headings.length < 2 || lines.length < 8) return [];
+  const items = lines.filter((l) => !ALL_CAPS(l));
+  // Long prose lines, a greeting, a sign-off or a question mean a letter, not a one-line-per-item list.
+  if (items.filter((l) => l.length > 110).length > items.length * 0.2) return [];
+  if (lines.some((l) => LETTER_LINE.test(l))) return [];
+  const rows: InputRow[] = [];
+  let area: string | null = null;
+  for (const line of lines) {
+    if (ALL_CAPS(line)) {
+      area = line;
+      continue;
+    }
+    if (area === null || /^\d{1,3}$/.test(line) || /^page \d+/i.test(line)) continue;
+    const prev = rows.at(-1);
+    if (prev && /^[a-z(&]/.test(line)) prev.text += " " + line;
+    else rows.push({ ref: `PBC-${pad(rows.length + 1)}`, area: area.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()), text: line, period_from: null, period_to: null });
+  }
+  return rows;
+}
+
+/**
+ * How the rules parser found the requests. "none" means it found no list it trusts (nothing, or one stray
+ * numbered line), so a model reads it when one is set up.
+ */
+export type SplitHow = "table" | "markers" | "embedded_refs" | "lines" | "none";
+
+/** Splits normalized input into rows: the spreadsheet if there is one, else numbered items, rows with refs, or a plain line list. */
+export function splitInput(input: NormalizedInput): { rows: InputRow[]; how: SplitHow } {
+  if (input.rows.length) return { rows: input.rows, how: "table" };
+  const marked = splitFreeText(input.text);
+  // A few stray "1." lines in a table of refs should not win over the refs.
+  const embedded = splitEmbeddedRefs(input.text);
+  if (embedded.length > marked.length * 2) return { rows: embedded, how: "embedded_refs" };
+  if (marked.length >= 2) return { rows: marked, how: "markers" };
+  const listed = splitLineList(input.text);
+  if (listed.length) return { rows: listed, how: "lines" };
+  return { rows: marked, how: "none" };
+}
+
+export function parseWithRules(input: NormalizedInput): ParsedList & { split: SplitHow } {
   const warnings: string[] = [];
-  const rows = input.rows.length ? input.rows : splitFreeText(input.text);
+  const { rows, how } = splitInput(input);
   if (!rows.length) warnings.push("No numbered requests found. Number each request (1. 2. 3.) or upload the PBC spreadsheet.");
   const fye = findFiscalYearEnd(input.text) ?? { month: 12, day: 31 };
   // A stated year end ("for the fiscal year ending June 30, 2026") is the document's period, ahead of a stray "FY25" earlier on.
-  const stated = input.text.match(YEAR_END_DATE);
-  const statedTo = stated ? wordDate(stated[1]) : null;
+  const statedTo = statedYearEnd(input.text);
   const globalPeriod = statedTo ? { from: monthsBack(statedTo, 12), to: statedTo } : findPeriod(input.text, fye);
   const linked = new Set(input.selections.filter((s) => s.request_ref && rows.some((r) => sameRef(r.ref, s.request_ref!))));
   const requests: AuditRequest[] = rows.map((row) => {
@@ -484,7 +587,7 @@ export function parseWithRules(input: NormalizedInput): ParsedList {
     };
   });
   const auditor = input.text.match(/\b([A-Z][A-Za-z&]+(?: & [A-Z][a-z]+)?(?: LLP| & Co\.?| CPAs?))/)?.[1] ?? null;
-  return { auditor, requests, parser: "rules", warnings };
+  return { auditor, requests, parser: "rules", warnings, split: how };
 }
 
 export { toIsoDate };

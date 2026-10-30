@@ -97,13 +97,13 @@ async function main() {
 
   if (useModel) {
     // One probe call first, so a dead key fails once instead of once per case.
-    const first = await parseRequests(loaded[0].input);
+    const first = await parseRequests(loaded[0].input, { useModel: true });
     if (first.parser === "rules") {
       console.log(`Model parser unavailable, scoring the rules parser only.\n  ${first.warnings.at(-1) ?? "unknown error"}\n`);
       useModel = false;
     } else {
       const results = [first];
-      for (let i = 1; i < loaded.length; i += 6) results.push(...(await Promise.all(loaded.slice(i, i + 6).map((c) => parseRequests(c.input)))));
+      for (let i = 1; i < loaded.length; i += 6) results.push(...(await Promise.all(loaded.slice(i, i + 6).map((c) => parseRequests(c.input, { useModel: true })))));
       results.forEach((parsed, i) => {
         const key = parsed.parser === "rules" ? "model fell back" : parsed.parser;
         scores[key] ??= empty();

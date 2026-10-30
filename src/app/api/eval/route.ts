@@ -21,7 +21,7 @@ export async function GET(req: Request) {
   const name = "hartwell-pbc-fy2025.xlsx";
   const input = await normalizeFile(name, new Uint8Array(await readFile(path.join(process.cwd(), "public/samples", name))));
   const t0 = Date.now();
-  const parsed = useClaude ? await parseRequests(input) : parseWithRules(input);
+  const parsed = useClaude ? await parseRequests(input, { useModel: true }) : parseWithRules(input);
   const parseMs = Date.now() - t0;
   const snap = getFixture().snapshot;
   const t1 = Date.now();

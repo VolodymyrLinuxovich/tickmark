@@ -42,6 +42,8 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
   }, [source.kind]);
     // Guards against parsing the sample twice when effects run twice in development.
   const started = useRef(false);
+  // The last list sent to /api/parse, so the plan screen can ask a model to read the same list again.
+  const lastBody = useRef<FormData | { text?: string; sample?: string; use_model?: boolean } | null>(null);
   useEffect(() => {
     // /app?sample=xlsx or ?sample=email opens straight on the sample list.
     // The parse is deferred with setTimeout so no state is set synchronously inside the effect.
@@ -57,7 +59,8 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
    * Intake step. Sends a file (multipart), pasted text or a sample name to /api/parse and moves
    * to the plan screen. `label` records which button started it so only that button shows "Reading...".
    */
-  async function parse(body: FormData | { text?: string; sample?: string }, label: string) {
+  async function parse(body: FormData | { text?: string; sample?: string; use_model?: boolean }, label: string) {
+    lastBody.current = body;
     setBusy(label);
     setError(null);
     try {
@@ -73,6 +76,19 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
     } finally {
       setBusy(null);
     }
+  }
+
+  /** Reads the same list again with the model, for when the keyword reading looks off. Asks first if the plan was edited. */
+  function readWithModel() {
+    const body = lastBody.current;
+    if (!body) return;
+    if (parsed && JSON.stringify(requests) !== JSON.stringify(parsed.requests) && !window.confirm("Reading again replaces the changes you made to this plan. Continue?")) return;
+    if (body instanceof FormData) {
+      const again = new FormData();
+      body.forEach((v, k) => again.append(k, v));
+      again.set("use_model", "1");
+      void parse(again, "model");
+    } else void parse({ ...body, use_model: true }, "model");
   }
 
   /**
@@ -120,7 +136,9 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
             <span className="sep">/</span>
             {stage === "run" || stage === "results" ? <b>Evidence</b> : <span>Evidence</span>}
           </div>
-          {stage === "plan" && parsed && <Plan parsed={parsed} requests={requests} setRequests={setRequests} onRun={run} source={source} />}
+          {stage === "plan" && parsed && (
+            <Plan parsed={parsed} requests={requests} setRequests={setRequests} onRun={run} source={source} onReadWithModel={models.length && parsed.parser === "rules" ? readWithModel : undefined} reading={busy === "model"} error={error} />
+          )}
           {stage === "run" && <Running requests={requests} runs={runs} source={source} />}
           {stage === "results" && meta && (
             <Results
