@@ -1,7 +1,7 @@
 // POST /api/parse
 // Body: multipart with `file` (Excel, CSV, PDF, text or .eml, up to 5 MB), or JSON
-// { text } for pasted text, or { sample: "xlsx" | "email" } for a bundled sample. `use_model` (JSON true or form
-// field "1") makes a model read the list even when the keyword rules can.
+// { text } for pasted text, or { sample: "xlsx" | "email" } for a bundled sample. Keyword rules read spreadsheets and
+// documents; a model reads short emails. `use_model` (JSON true or form field "1") makes a model read any list.
 // Response: ParsedList ({ requests, auditor, parser, warnings }) plus `input_name`, or { error } with 400.
 // Only reads the list; nothing is fetched from or sent to Ramp except when fitting a sample to live data.
 
