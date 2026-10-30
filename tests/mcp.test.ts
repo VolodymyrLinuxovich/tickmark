@@ -31,6 +31,8 @@ describe("MCP server", () => {
     const result = JSON.parse(out.result.content[0].text);
     expect(result.requests).toHaveLength(9);
     expect(result.exceptions).toHaveLength(8);
+    expect(result.exceptions_total).toBe(8);
+    expect(result.exceptions.every((e: { amount_usd: number }) => e.amount_usd > 0)).toBe(true);
     expect(result.exceptions.every((e: { draft_comment: unknown }) => e.draft_comment)).toBe(true);
     const id = result.exceptions[0].ramp_records[0].id;
     const rec = await rpc("tools/call", { name: "get_ramp_record", arguments: { type: result.exceptions[0].ramp_records[0].type, id } });
