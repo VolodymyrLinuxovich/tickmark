@@ -159,7 +159,8 @@ sequenceDiagram
 | Vendor listing | Vendor master; flags new vendors paid within 14 days of setup. |
 | User access | Owners, admins, bookkeepers, IT admins and auditors, with status. |
 
-5. **Hand over.** The results open with a plain summary, with exceptions grouped by person and type. Each exception
+5. **Hand over.** The results open with a plain summary, with exceptions grouped by person and type and sorted by
+   severity, then by dollars at stake. Each exception
    links to its Ramp records and carries a drafted comment for the cardholder or bill owner, or for the next approver
    when an approval is still pending. Approve it and it posts to that Ramp thread, starting one if none exists. Mark
    each exception open, resolved or waived with a note. The binder holds `00 Index.xlsx` (requests, exceptions with their status, evidence rows with Ramp ids), a PDF workpaper
@@ -174,6 +175,42 @@ sequenceDiagram
 | **Receipt hunter** | Drop in receipt emails (.eml), PDFs or photos. Each file is matched to a charge with no receipt by amount, merchant and date, with the reasons shown, and attached to the Ramp transaction after you confirm. A demo inbox shows the flow without mail. |
 | **Ask your books** | Plain-English questions ("weekend charges over $500", "bills approved by nobody") become filters run as code on the Ramp snapshot. A keyword reader handles common questions; a model reads the question only when asked, and never sees Ramp data. Every answer says who read it and can be added to the binder as its own workpaper. |
 | **Auditor portal** | A read-only share link for the auditor, valid 14 days. The auditor sees the requests and results, recomputed from Ramp on each visit, and can ask questions on any request. Only the controller's browser can answer. |
+
+---
+
+## Why We Built It This Way
+
+**The model reads. Code decides.** A language model only turns the auditor's list into a typed plan, checked against a
+zod schema. Every pass or fail is plain code over Ramp records. An auditor has to be able to re-perform a test and get
+the same answer, and a model verdict can't promise that. It also means no model sees Ramp data in the main flow.
+
+**A person checks the plan first.** A misread request is the most expensive mistake, because the binder then answers the
+wrong question with confidence. The plan screen shows the model's reason for each request, and a keyword parser counts
+the requests on its own and warns when the counts differ.
+
+**Nothing is written to Ramp without a click.** Comments and receipt uploads are drafted, then sent only after the
+controller approves each one. The MCP server is read-only for the same reason: an agent can run an audit request, but a
+person sends the follow-up.
+
+**The Developer API, not exports or MCP.** A binder needs every receipt file and every row. Ramp's MCP server returns at
+most 100 rows and can't download files. The Developer API gives both, and client credentials work on a server, so the hosted app runs on a real Ramp business.
+
+**Read once, test in memory.** One paged read of the period is cached for five minutes, and all nine requests run on it
+in under 100 ms. Repeated runs and follow-up questions don't hit Ramp's rate limits. The trade-off is data up to five
+minutes old, so Watch Ramp rechecks single records live after a fix.
+
+**Rank by money at stake.** On the Ramp sandbox, 116 of 122 exceptions were approvals Ramp opened that nobody finished.
+Listing them all as high buried the ones that matter. Open approvals are graded against the company's own limits: over
+the pre-approval limit is high, over the receipt floor is medium, the rest is low and folded away.
+
+**Score it on known answers.** Real books don't come with an answer key. So `/eval` runs on a generated company that
+uses Ramp's exact field names and has eight planted problems, and it counts false alarms as well as finds.
+
+**Hand over what auditors already use.** Workpapers with WP references, tickmarks, a conclusion and sign-off, plus an
+index workbook. The auditor doesn't learn a new tool, and every line keeps its Ramp id.
+
+**One Next.js app on Vercel.** The UI, the API routes and the MCP server ship as one deploy. Vercel Blob holds the
+auditor portal links. A two-person team can run it without separate services.
 
 ---
 
@@ -210,8 +247,21 @@ pre-signed files). It checks that:
 - The binder contains the **downloaded** receipt and invoice files.
 - Approved comments post to the right thread with a write-scoped token. Rate limits (429) are retried.
 
+### On a real Ramp sandbox
+
+The hosted app runs on a Ramp sandbox business, Save Time Inc: 43 users, 1,170 card transactions, 152 receipts, 6
+bills, 419 vendors and 143 approvals over the last 12 months.
+
+- The sample list, fitted to this business, answers 7 of 9 requests. The other two (bank reconciliation, fixed assets)
+  are outside Ramp data and go to the team.
+- 122 exceptions: 12 high, 74 medium, 36 low. The list opens on a $29,407.46 Hyatt charge with no approval and an
+  $18,000.00 approval still pending.
+- The receipt hunter's demo inbox matched 33 of 43 receipts to charges, with 0 wrong matches.
+- Writes are verified end to end: a receipt attached to an Office Depot charge, and an approver nudge posted as a Ramp
+  comment.
+
 **Caveats.** The planted company is generated, so a perfect score shows the checks work as designed, not accuracy on
-real books. The mock follows Ramp's published spec; the client has not yet run against a real Ramp sandbox account.
+real books. The sandbox is Ramp's demo data, not a company under audit. Neither replaces a run on a real audit.
 
 ---
 
@@ -338,8 +388,8 @@ node scripts/record-demo.mjs http://localhost:3790 demo-out
 
 ## Limits
 
-- The client is tested against a spec-shaped mock, not yet a real Ramp account. `npm run ramp:check` is the first thing
-  to run once credentials exist.
+- Tested on a spec-shaped mock and a Ramp sandbox business, not yet on a company's production Ramp account.
+  `npm run ramp:check` is the first thing to run once credentials exist.
 - Receipts follow Ramp's receipt policy, but the card approval limit and the receipt floor come from environment
   variables, and restricted merchant codes are fixed in code.
 - Receipt checks compare the OCR total Ramp stores with the charge. Receipt images are not re-read.
