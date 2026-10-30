@@ -28,7 +28,9 @@ function period(reqs: z.infer<typeof AuditRequestSchema>[]) {
  * Shapes engine results for an agent: one entry per request plus deduplicated exceptions with
  * their Ramp records and draft comments. Evidence rows are left out unless asked for, since they can be large.
  */
-function summarize(results: RequestResult[], includeRows: boolean) {
+function summarize(results: RequestResult[], includeRows: boolean, maxExceptions: number) {
+  // Findings arrive sorted by severity, then dollars, so a cap keeps the ones that matter.
+  const all = uniqueFindings(results);
   return {
     requests: results.map((r) => ({
       ref: r.request.ref,
@@ -40,10 +42,13 @@ function summarize(results: RequestResult[], includeRows: boolean) {
       finding_ids: r.findings.map((f) => f.id),
       ...(includeRows ? { columns: r.columns, rows: r.rows.map((row) => ({ ramp_id: row.record.id, cells: row.cells, tickmarks: row.tickmarks.join("") })) } : {}),
     })),
-    exceptions: uniqueFindings(results).map((f) => ({
+    exceptions_total: all.length,
+    exceptions_by_severity: Object.fromEntries(["high", "medium", "low"].map((s) => [s, all.filter((f) => f.severity === s).length])),
+    exceptions: all.slice(0, maxExceptions).map((f) => ({
       id: f.id,
       code: f.code,
       severity: f.severity,
+      amount_usd: f.amount != null ? f.amount / 100 : null,
       title: f.title,
       detail: f.detail,
       owner: f.owner?.name ?? null,
@@ -75,15 +80,16 @@ const handler = createMcpHandler(
       {
         title: "Answer audit requests from Ramp",
         description:
-          "Pull evidence from Ramp and run the audit checks for each request. Pass either the raw request list text or requests returned by read_request_list. Returns each request's result, every exception with the Ramp records behind it, and a drafted follow-up comment. Nothing is posted to Ramp.",
+          "Pull evidence from Ramp and run the audit checks for each request. Pass either the raw request list text or requests returned by read_request_list. Returns each request's result, exception counts by severity, and the top exceptions (most severe and largest first) with dollars at stake, the Ramp records behind them and a drafted follow-up comment. Nothing is posted to Ramp.",
         inputSchema: z.object({
           text: z.string().optional().describe("Raw request list; parsed first if given"),
           requests: z.array(AuditRequestSchema).optional().describe("Requests from read_request_list, possibly edited"),
           include_rows: z.boolean().default(false).describe("Include every evidence row (large)"),
+          max_exceptions: z.number().int().min(1).max(500).default(25).describe("Exceptions to return, most severe and largest first"),
         }),
         annotations: { readOnlyHint: true },
       },
-      async ({ text, requests, include_rows }) => {
+      async ({ text, requests, include_rows, max_exceptions }) => {
         let reqs = requests;
         let parser: string | null = null;
         if (!reqs?.length) {
@@ -97,7 +103,7 @@ const handler = createMcpHandler(
         const ix = buildIndex(snap);
         const results = reqs.map((r) => runRequest(r, ix));
         const warnings = (snap as { notes?: { warnings: string[] } }).notes?.warnings ?? [];
-        return json({ business: snap.business_name, data_source: source.info.label, parser, warnings, ...summarize(results, include_rows) });
+        return json({ business: snap.business_name, data_source: source.info.label, parser, warnings, ...summarize(results, include_rows, max_exceptions) });
       },
     );
 
