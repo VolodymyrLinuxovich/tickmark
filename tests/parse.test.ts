@@ -215,21 +215,27 @@ describe("long lists are read in parts", () => {
     expect(parts.join("\n")).toBe(lines.join("\n"));
     for (const p of parts) expect(p.split("\n")[0]).toMatch(/^\d+\. Provide/);
   });
+
+  it("does not cut at a wrapped line that starts like a ref", async () => {
+    const { splitIntoParts } = await import("../src/lib/parse/claude");
+    const lines = Array.from({ length: 120 }, (_, i) => [`${i + 1}. Bank statements for`, `Q4 2025 for all accounts.`]).flat();
+    for (const p of splitIntoParts(lines.join("\n"))) expect(p.split("\n")[0]).toMatch(/^\d+\. Bank/);
+  });
 });
 
 describe("refs joined from parts", () => {
   it("drops a column label that leaked into some refs", async () => {
     const { stripSharedPrefix } = await import("../src/lib/parse/claude");
-    const reqs = ["FSC-38", "FSC-39", "Y_PBC FSC-40", "Y_PBC FSC-41", "Y_PBC FSC-42"].map((ref) => ({ ref }));
-    stripSharedPrefix(reqs);
-    expect(reqs.map((r) => r.ref)).toEqual(["FSC-38", "FSC-39", "FSC-40", "FSC-41", "FSC-42"]);
+    const reqs = ["FSC-38", "FSC-39", "Y_PBC FSC-40", "Y_PBC FSC-41", "Y_PBC FSC-42a"].map((ref) => ({ ref }));
+    expect(stripSharedPrefix(reqs).map((r) => r.ref)).toEqual(["FSC-38", "FSC-39", "FSC-40", "FSC-41", "FSC-42a"]);
   });
 
   it("keeps a prefix that tells refs apart", async () => {
     const { stripSharedPrefix } = await import("../src/lib/parse/claude");
     const reqs = ["AP 1", "AP 2", "AP 3", "1", "2"].map((ref) => ({ ref }));
-    stripSharedPrefix(reqs);
-    expect(reqs.map((r) => r.ref)).toEqual(["AP 1", "AP 2", "AP 3", "1", "2"]);
+    expect(stripSharedPrefix(reqs).map((r) => r.ref)).toEqual(["AP 1", "AP 2", "AP 3", "1", "2"]);
+    const sections = ["Cash 1", "Cash 2", "Cash 3", "AP 1", "AP 2", "AP 3"].map((ref) => ({ ref }));
+    expect(stripSharedPrefix(sections).map((r) => r.ref)).toEqual(["Cash 1", "Cash 2", "Cash 3", "AP 1", "AP 2", "AP 3"]);
   });
 });
 
@@ -244,6 +250,7 @@ describe("balance dates from the model", () => {
         { period_from: "2025-08-01", period_to: "2025-08-01" },
         { period_from: "2025-07-01", period_to: null },
         { period_from: "2026-01-01", period_to: "2026-03-31" },
+        { period_from: null, period_to: "2027-03-15" },
       ],
       text,
     );
@@ -253,6 +260,7 @@ describe("balance dates from the model", () => {
       { period_from: "2025-07-01", period_to: "2026-06-30" },
       { period_from: "2025-07-01", period_to: null },
       { period_from: "2026-01-01", period_to: "2026-03-31" },
+      { period_from: null, period_to: "2027-03-15" },
     ]);
   });
 });

@@ -111,7 +111,7 @@ const lastDay = (y: number, m: number) => new Date(Date.UTC(y, m, 0)).getUTCDate
 const dateOf = (y: number, m: number, d: number) => `${y}-${pad(m)}-${pad(d)}`;
 
 /** Start of the N-month period that ends on `end` (ISO). */
-export function monthsBack(end: string, n: number): string {
+function monthsBack(end: string, n: number): string {
   const [y, m, d] = end.split("-").map(Number);
   if (d !== lastDay(y, m)) {
     const s = new Date(Date.UTC(y, m - 1 - n, d + 1));
@@ -252,18 +252,17 @@ export function findPeriod(text: string, fye: FiscalYearEnd = { month: 12, day: 
   return best?.period ?? null;
 }
 
-/** Fiscal year end stated anywhere in the document ("FYE June 30, 2025", "fiscal year ending 9/30/2025"). */
 /**
  * The fiscal year that contains a date, as a period. Used to widen a balance date ("as of June 30, 2026")
  * into the year under audit, since a one day window would test almost nothing.
  */
-export function fiscalYearContaining(date: string, fye: FiscalYearEnd): { from: string; to: string } {
+export function fiscalYearContaining(date: string, fye: FiscalYearEnd): Period {
   const y = Number(date.slice(0, 4));
-  const end = (yy: number) => `${yy}-${String(fye.month).padStart(2, "0")}-${String(Math.min(fye.day, lastDay(yy, fye.month))).padStart(2, "0")}`;
-  const to = date <= end(y) ? end(y) : end(y + 1);
-  return { from: monthsBack(to, 12), to };
+  const fy = fiscalYear(y, fye);
+  return date <= fy.to ? fy : fiscalYear(y + 1, fye);
 }
 
+/** Fiscal year end stated anywhere in the document ("FYE June 30, 2025", "fiscal year ending 9/30/2025"). */
 export function findFiscalYearEnd(text: string): FiscalYearEnd | null {
   const m = text.match(YEAR_END_DATE);
   const d = m ? wordDate(m[1]) : null;
