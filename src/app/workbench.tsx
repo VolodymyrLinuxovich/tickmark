@@ -44,7 +44,11 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
   const closeRecord = useCallback(() => setRecord(null), []);
   const search = useSearchParams();
   const autoSample = search.get("sample");
-  // Guards against parsing the sample twice when effects run twice in development.
+  // Start reading Ramp in the background while the user picks a list. Only useful on live data.
+  useEffect(() => {
+    if (source.kind !== "fixture") void fetch("/api/warm", { method: "POST" }).catch(() => {});
+  }, [source.kind]);
+    // Guards against parsing the sample twice when effects run twice in development.
   const started = useRef(false);
   useEffect(() => {
     // /app?sample=xlsx or ?sample=email opens straight on the sample list.

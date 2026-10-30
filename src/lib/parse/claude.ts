@@ -4,6 +4,7 @@
 // auditor wording needs a model to classify well, but the app must still run with no key, no network or a
 // refusal, so the deterministic keyword rules are always the last resort.
 
+import { createHash } from "node:crypto";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import OpenAI from "openai";
@@ -94,6 +95,7 @@ const openai: Provider = {
 
 // Order of preference.
 const PROVIDERS = [claude, openai];
+const MODELS = new Set(PROVIDERS.map((p) => p.model));
 
 /** Pulls the API's error message out of an SDK error, trimmed for display in a warning. */
 function shortError(err: unknown): string {
@@ -109,7 +111,26 @@ export function availableProviders(): string[] {
 }
 
 /** Parses with the first model that works; the rules parser is the cross-check and last fallback. */
-export async function parseRequests(input: NormalizedInput): Promise<ParsedList> {
+// A model read takes 10 to 20 seconds. The same list (the sample, or a re-upload) reads the same,
+// so good reads are kept for an hour in this process, keyed by the list's text.
+const PARSE_TTL_MS = 60 * 60_000;
+const PARSE_CACHE_MAX = 50;
+const parseCache = new Map<string, { at: number; p: Promise<ParsedList> }>();
+
+/** Model read of a request list, reusing an earlier read of identical input. Fallback reads are never kept, so a provider outage is retried next time. */
+export function parseRequests(input: NormalizedInput): Promise<ParsedList> {
+  const key = createHash("sha256").update(JSON.stringify([availableProviders(), input])).digest("hex");
+  const hit = parseCache.get(key);
+  if (hit && Date.now() - hit.at < PARSE_TTL_MS) return hit.p;
+  const p = parseUncached(input);
+  parseCache.set(key, { at: Date.now(), p });
+  // Map keeps insertion order, so the first key is the oldest.
+  if (parseCache.size > PARSE_CACHE_MAX) parseCache.delete(parseCache.keys().next().value!);
+  p.then((r) => { if (!MODELS.has(r.parser)) parseCache.delete(key); }, () => parseCache.delete(key));
+  return p;
+}
+
+async function parseUncached(input: NormalizedInput): Promise<ParsedList> {
   const rules = parseWithRules(input);
   const failures: string[] = [];
   for (const p of PROVIDERS.filter((x) => availableProviders().includes(x.name))) {

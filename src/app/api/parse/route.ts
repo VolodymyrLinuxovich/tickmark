@@ -9,7 +9,7 @@ import path from "node:path";
 import { normalizeFile, normalizeText } from "@/lib/parse/input";
 import { parseRequests } from "@/lib/parse/claude";
 import { getConnection } from "@/lib/ramp/source";
-import { fitSampleToLiveData } from "@/lib/engine/live-sample";
+import { fitSampleToLiveData, trailingYear } from "@/lib/engine/live-sample";
 
 // Parsing may call a model, which can take well over the default limit on a long list.
 export const maxDuration = 120;
@@ -36,8 +36,10 @@ export async function POST(req: Request) {
       const name = SAMPLES[body.sample];
       const bytes = new Uint8Array(await readFile(path.join(process.cwd(), "public/samples", name)));
       const input = await normalizeFile(name, bytes);
-      const parsed = await parseRequests(input);
       const conn = getConnection();
+      // Start the Ramp read now so it runs while the model reads the list, not after it.
+      if (conn.connected) conn.source.snapshot(trailingYear()).catch(() => {});
+      const parsed = await parseRequests(input);
       // On a real Ramp business, the FY2025 sample would find nothing; fit it to the live data.
       const fitted = conn.connected ? await fitSampleToLiveData(parsed, conn.source) : parsed;
       return Response.json({ ...fitted, input_name: name });

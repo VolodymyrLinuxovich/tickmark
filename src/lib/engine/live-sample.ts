@@ -10,6 +10,9 @@ import { monetaryUnitSample } from "./sampling";
 
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
+/** The trailing 12 months the live sample covers. Shared so a warm-up read lands on the same cached period. */
+export const trailingYear = (today = new Date()) => ({ from: ymd(new Date(today.getTime() - 365 * 864e5)), to: ymd(today) });
+
 /**
  * Rewrites the sample list for live data: period becomes the trailing 12 months and
  * transaction support requests get 12 selections drawn by monetary unit sampling from
@@ -17,8 +20,7 @@ const ymd = (d: Date) => d.toISOString().slice(0, 10);
  * (uppercase, truncated merchant) so the matcher is exercised as it would be on a real list.
  */
 export async function fitSampleToLiveData(parsed: ParsedList, source: RampSource, today = new Date()): Promise<ParsedList> {
-  const to = ymd(today);
-  const from = ymd(new Date(today.getTime() - 365 * 864e5));
+  const { from, to } = trailingYear(today);
   const snap = await source.snapshot({ from, to });
   const txns = snap.transactions.filter((t) => (t.state === "CLEARED" || t.state === "COMPLETION") && t.entity_amount.value > 0);
   const sample = monetaryUnitSample(txns.map((t) => ({ id: t.id, amount: t.entity_amount.value })), 12, 7);
