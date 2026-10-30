@@ -183,7 +183,7 @@ sequenceDiagram
 ## Why We Built It This Way
 
 **Keywords first, a model when needed. Code decides.** Most request lists are spreadsheets or numbered lists, and the
-keyword parser reads all five public lists we scored (375 of 375 requests, 95.5% typed right) in milliseconds with no
+keyword parser reads all five public lists we scored (375 of 375 requests, 95.7% typed right, see `docs/real-lists.md`) in milliseconds with no
 tokens. A language model reads the rest, and only turns the list into a typed plan checked against a zod schema. Every pass or fail is plain code over Ramp records. An auditor has to be able to re-perform a test and get
 the same answer, and a model verdict can't promise that. It also means no model sees Ramp data in the main flow.
 
