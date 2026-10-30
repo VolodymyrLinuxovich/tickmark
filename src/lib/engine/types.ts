@@ -37,13 +37,21 @@ export interface Finding {
   code: FindingCode;
     // high: a control failed or money is at risk (self-approval, duplicate payment).
     // medium: documentation is missing or needs follow-up (no receipt, new vendor paid fast).
+    // low: below the receipt threshold, worth fixing but not worth an auditor's time.
   severity: "high" | "medium" | "low";
   title: string;
   detail: string;
   records: RecordRef[];
   owner?: { user_id: string; name: string };
   comment?: { object_type: CommentObjectType; object_id: string; message: string; mention_user_ids: string[] };
+  amount?: number; // cents at stake, filled in by the engine from the records
 }
+
+const SEVERITY_RANK = { high: 0, medium: 1, low: 2 } as const;
+
+/** Most important first: severity, then dollars at stake, then id so the order is stable. */
+export const compareFindings = (a: Finding, b: Finding) =>
+  SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity] || (b.amount ?? 0) - (a.amount ?? 0) || a.id.localeCompare(b.id);
 
 // A tickmark is the short symbol an auditor writes next to an item to record which
 // check was done on it and that it passed. The letters here are this app's legend.
