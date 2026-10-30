@@ -192,7 +192,7 @@ the requests on its own and warns when the counts differ.
 controller approves each one. The MCP server is read-only for the same reason: an agent can run an audit request, but a
 person sends the follow-up.
 
-**The Developer API, not exports or MCP.** A binder needs every receipt file and every row. Ramp's MCP server returns at
+**The Developer API, not MCP.** A binder needs every receipt file and every row. Ramp's MCP server returns at
 most 100 rows and can't download files. The Developer API gives both, and client credentials work on a server, so the hosted app runs on a real Ramp business.
 
 **Read once, test in memory.** One paged read of the period is cached for five minutes, and all nine requests run on it
