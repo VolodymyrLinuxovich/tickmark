@@ -233,7 +233,7 @@ const parseCache = new Map<string, { at: number; p: Promise<ParsedList> }>();
 export function parseRequests(input: NormalizedInput, opts: { useModel?: boolean } = {}): Promise<ParsedList> {
   const useModel = opts.useModel || process.env.TICKMARK_PARSER === "model";
   const rules = parseWithRules(input);
-  if ((!useModel || !availableProviders().length) && rules.split !== "none" && rules.requests.length) return Promise.resolve(withoutSplit(rules));
+  if ((!useModel || !availableProviders().length) && rulesConfident(rules, input.text)) return Promise.resolve(withoutSplit(rules));
   const key = createHash("sha256").update(JSON.stringify([availableProviders(), input])).digest("hex");
   const hit = parseCache.get(key);
   if (hit && Date.now() - hit.at < PARSE_TTL_MS) return hit.p;
@@ -243,6 +243,20 @@ export function parseRequests(input: NormalizedInput, opts: { useModel?: boolean
   if (parseCache.size > PARSE_CACHE_MAX) parseCache.delete(parseCache.keys().next().value!);
   p.then((r) => { if (!MODELS.has(r.parser)) parseCache.delete(key); }, () => parseCache.delete(key));
   return p;
+}
+
+// A greeting, a sign-off or mail headers mark an email. Emails are short and phrased freely ("support for card
+// charges in the last 12 months"), which a model reads better for a few hundred tokens.
+const EMAIL_LINE = /^((hi|hello|hey|dear|good (morning|afternoon))\b|(subject|from|sent|to|cc):\s|(thanks|thank you|best|regards|kind regards|sincerely|cheers)\b[\s,!.]*(\w+)?\s*$)/im;
+
+/**
+ * Whether the keyword reading is used on its own. Spreadsheets and documents (numbered lists, rows with refs,
+ * lists under headings) are; they are where the rules are strong and a model is slow and costly. An email, or
+ * a list the rules could not split, goes to a model when one is set up.
+ */
+export function rulesConfident(rules: ParsedList & { split?: string }, text: string): boolean {
+  if (rules.split === "none" || !rules.requests.length) return false;
+  return rules.split === "table" || !EMAIL_LINE.test(text);
 }
 
 /** Drops the rules parser's internal split label before the list leaves the parser. */

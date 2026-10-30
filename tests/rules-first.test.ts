@@ -68,3 +68,33 @@ describe("review cases", () => {
     expect(findFiscalYearEnd("JEs for the year ended 6/30/14. Audit of the year ended December 31, 2015. Budget for the year ended December 31, 2015.")).toEqual({ month: 12, day: 31 });
   });
 });
+
+describe("prose requests (the MCP demo prompt)", () => {
+  const prompt = "Hi team, for interim fieldwork please send:\n1. Support for all card transactions over $5,000 in the last 12 months.\n2. Approval evidence for every bill paid in 2026.\n3. A list of users with admin access.";
+
+  it("reads card support, trailing months and a bare year", async () => {
+    const { parseWithRules } = await import("../src/lib/parse/rules");
+    const [a, b, c] = parseWithRules(normalizeText(prompt)).requests;
+    expect([a.type, a.min_amount, b.type, b.period_from, b.period_to, c.type]).toEqual(["transaction_support", 5000, "bill_support", "2026-01-01", "2026-12-31", "user_access"]);
+    const days = (Date.parse(a.period_to!) - Date.parse(a.period_from!)) / 864e5;
+    expect(days).toBeGreaterThanOrEqual(363);
+    expect(days).toBeLessThanOrEqual(365);
+  });
+
+  it("keeps supporting invoices for expenses a bill request, and reads a bare year in the document's fiscal year", async () => {
+    const { classify, findPeriod } = await import("../src/lib/parse/rules");
+    expect(classify("G/L detail for legal expense accounts and supporting invoices for all expenses > $5,000", false)).toBe("bill_support");
+    expect(classify("Receipts for all card charges over $500", false)).toBe("transaction_support");
+    expect(findPeriod("Loan servicer audit report for 2015", { month: 6, day: 30 })).toEqual({ from: "2014-07-01", to: "2015-06-30" });
+    expect(findPeriod("Charges during calendar 2025", { month: 6, day: 30 })).toEqual({ from: "2025-01-01", to: "2025-12-31" });
+  });
+
+  it("sends an email to a model, and keeps a document or spreadsheet with the rules", async () => {
+    const { parseWithRules } = await import("../src/lib/parse/rules");
+    const { rulesConfident } = await import("../src/lib/parse/claude");
+    const doc = "1. Support for card charges over $2,500 in 2025.\n2. List of admin users.";
+    expect(rulesConfident(parseWithRules(normalizeText(prompt)), prompt)).toBe(false);
+    expect(rulesConfident(parseWithRules(normalizeText(doc)), doc)).toBe(true);
+    expect(rulesConfident(parseWithRules(normalizeText(doc + "\nThanks,\nSam")), doc + "\nThanks,\nSam")).toBe(false);
+  });
+});

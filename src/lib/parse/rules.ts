@@ -49,6 +49,10 @@ export function classifyWithReason(text: string, hasSelections: boolean, area = 
   const picked = t.match(/(selected|selection|sample|\bselect\b|following)/);
   const card = t.match(/(transaction|card|expense|charge|spend|refund|credit)/);
   if (picked && card) return { type: "transaction_support", reason: `Asks about ${quote(picked)} ${quote(card)} items` };
+  // "Support for all card transactions over $5,000": evidence for card spend, sampled by the engine.
+  // The wording must name card transactions, so "supporting invoices for all expenses" stays a bill request.
+  m = t.match(/\b(support|documentation|backup|receipts?|approval evidence|evidence of approval) (for|of) (all |the |each |every |any )?([\w-]+ ){0,2}(card|p-?card|amex) (transactions?|charges?|purchases?|spend)\b/);
+  if (m) return { type: "transaction_support", reason: `Asks for ${quote(m)}` };
   m = t.match(/(\bbills?\b|invoice|vendor payment|accounts payable|disbursement|payments? to vendors)/);
   if (m) return { type: "bill_support", reason: `Mentions ${quote(m)}` };
   if (hasSelections && card) return { type: "transaction_support", reason: "Lists selected card items under the request" };
@@ -147,7 +151,26 @@ interface Rule {
   read: (m: RegExpMatchArray, fye: FiscalYearEnd) => Period | null;
 }
 
+const WORD_NUMBER: Record<string, number> = { three: 3, six: 6, nine: 9, twelve: 12, eighteen: 18, "twenty-four": 24 };
+
 const PERIOD_RULES: Rule[] = [
+  {
+    // in the last 12 months / past six months / trailing twelve months: ends today
+    re: /\b(?:last|past|prior|trailing|preceding)\s+(\d{1,2}|three|six|nine|twelve|eighteen|twenty-four)\s+months\b/i,
+    read: (m) => {
+      const n = Number(m[1]) || WORD_NUMBER[m[1].toLowerCase()];
+      if (!n) return null;
+      const today = new Date();
+      const from = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - n, today.getUTCDate() + 1));
+      return { from: from.toISOString().slice(0, 10), to: today.toISOString().slice(0, 10) };
+    },
+  },
+  {
+    // paid in 2026 / throughout 2025: the document's fiscal year ending that year (the calendar year by default).
+    // "calendar 2025" is always the calendar year.
+    re: /\b(?:in|during|for|throughout)\s+(calendar\s+(?:year\s+)?)?(20\d{2})\b(?![-/]\d)/i,
+    read: (m, fye) => (m[1] ? { from: `${m[2]}-01-01`, to: `${m[2]}-12-31` } : fiscalYear(Number(m[2]), fye)),
+  },
   {
     // July 1 - December 31, 2025 / between January 1 and March 31, 2026: first date takes the second's year
     re: new RegExp(String.raw`(?:from|between|period)?\s*(${MONTH})\s+(\d{1,2})(?:st|nd|rd|th)?\s*(?:through|thru|to|until|and|-|–)\s*${DATE}`, "i"),
