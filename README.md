@@ -363,7 +363,7 @@ node scripts/record-demo.mjs http://localhost:3790 demo-out
 | Path | What |
 |------|------|
 | `src/app/page.tsx` | Landing page: intro, problem, solution |
-| `src/app/workbench.tsx` | The app: upload, plan, run, results, drafts, record drawer |
+| `src/app/workbench/` | The app, one file per screen: intake, plan, running, results, exceptions, record drawer |
 | `src/app/eval/` | Accuracy page |
 | `src/app/ask-books.tsx`, `receipt-hunter.tsx`, `loop.tsx` | Ask your books, receipt hunter, Ramp watch |
 | `src/app/portal/`, `portal-share.tsx` | Auditor portal page and the controller's share panel |
