@@ -51,7 +51,7 @@ export function classifyWithReason(text: string, hasSelections: boolean, area = 
   if (picked && card) return { type: "transaction_support", reason: `Asks about ${quote(picked)} ${quote(card)} items` };
   // "Support for all card transactions over $5,000": evidence for card spend, sampled by the engine.
   // The wording must name card transactions, so "supporting invoices for all expenses" stays a bill request.
-  m = t.match(/\b(support|documentation|backup|receipts?|approval evidence|evidence of approval) (for|of) (all |the |each |every |any )?([\w-]+ ){0,2}(card|p-?card|amex) (transactions?|charges?|purchases?|spend)\b/);
+  m = t.match(/\b(support|documentation|backup|receipts?|approval evidence|evidence of approval) (for|of) (all |the |each |every |any )?([\w'-]+ ){0,3}(card|p-?card|amex) (transactions?|charges?|purchases?|expenses?|spend)\b/);
   if (m) return { type: "transaction_support", reason: `Asks for ${quote(m)}` };
   m = t.match(/(\bbills?\b|invoice|vendor payment|accounts payable|disbursement|payments? to vendors)/);
   if (m) return { type: "bill_support", reason: `Mentions ${quote(m)}` };
@@ -149,27 +149,36 @@ const YEAR_END_DATE = new RegExp(String.raw`(?:\byear[-\s]?end(?:ed|ing)?|\bFYE)
 interface Rule {
   re: RegExp;
   read: (m: RegExpMatchArray, fye: FiscalYearEnd) => Period | null;
+  weak?: boolean; // a loose cue, used only when no other period phrase is in the text
+}
+
+/** Today in the server's local time, so "the last 12 months" never ends tomorrow. */
+function localToday(): string {
+  const d = new Date();
+  return dateOf(d.getFullYear(), d.getMonth() + 1, d.getDate());
 }
 
 const WORD_NUMBER: Record<string, number> = { three: 3, six: 6, nine: 9, twelve: 12, eighteen: 18, "twenty-four": 24 };
 
 const PERIOD_RULES: Rule[] = [
   {
-    // in the last 12 months / past six months / trailing twelve months: ends today
-    re: /\b(?:last|past|prior|trailing|preceding)\s+(\d{1,2}|three|six|nine|twelve|eighteen|twenty-four)\s+months\b/i,
+    // in the last 12 months / past six months / trailing twelve months: ends today. "the last twelve months ended
+    // June 30, 2025" and "the last three months of FY2025" are left to the rules that read the stated end.
+    re: /\b(?:last|past|prior|trailing|preceding)\s+(\d{1,2}|three|six|nine|twelve|eighteen|twenty-four)\s+months\b(?!\s+(?:ended|ending|of|to|through|before)\b)/i,
     read: (m) => {
       const n = Number(m[1]) || WORD_NUMBER[m[1].toLowerCase()];
       if (!n) return null;
-      const today = new Date();
-      const from = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - n, today.getUTCDate() + 1));
-      return { from: from.toISOString().slice(0, 10), to: today.toISOString().slice(0, 10) };
+      const to = localToday();
+      return { from: monthsBack(to, n), to };
     },
+    weak: true,
   },
   {
     // paid in 2026 / throughout 2025: the document's fiscal year ending that year (the calendar year by default).
     // "calendar 2025" is always the calendar year.
-    re: /\b(?:in|during|for|throughout)\s+(calendar\s+(?:year\s+)?)?(20\d{2})\b(?![-/]\d)/i,
+    re: /\b(?:in|during|for|throughout)\s+(calendar\s+(?:year\s+)?)?(20\d{2})\b(?!\s*[-–/]\s*\d)(?!\s+Q[1-4]\b)/i,
     read: (m, fye) => (m[1] ? { from: `${m[2]}-01-01`, to: `${m[2]}-12-31` } : fiscalYear(Number(m[2]), fye)),
+    weak: true,
   },
   {
     // July 1 - December 31, 2025 / between January 1 and March 31, 2026: first date takes the second's year
@@ -259,8 +268,13 @@ const PERIOD_RULES: Rule[] = [
 
 /** Earliest period phrase in the text. `fye` sets what "FY2025" and fiscal quarters mean. */
 export function findPeriod(text: string, fye: FiscalYearEnd = { month: 12, day: 31 }): Period | null {
+  // Specific phrases first; a loose cue ("for 2025", "the last 12 months") only when none is found.
+  return earliestPeriod(text, fye, PERIOD_RULES.filter((r) => !r.weak)) ?? earliestPeriod(text, fye, PERIOD_RULES.filter((r) => r.weak));
+}
+
+function earliestPeriod(text: string, fye: FiscalYearEnd, rules: Rule[]): Period | null {
   let best: { at: number; period: Period } | null = null;
-  for (const rule of PERIOD_RULES) {
+  for (const rule of rules) {
     const re = new RegExp(rule.re.source, rule.re.flags.includes("g") ? rule.re.flags : rule.re.flags + "g");
     for (const m of text.matchAll(re)) {
       const at = m.index! + (m[0].length - m[0].trimStart().length);
@@ -370,6 +384,21 @@ function selectionsFromText(text: string): Selection[] {
 const HEADER_LINE = /^(from|sent|to|cc|bcc|subject|date|reply-to|importance):/i;
 const WROTE_LINE = /^on .{6,120} wrote:\s*$/i;
 const SIGN_OFF = /^(thanks|thank you|many thanks|best|best regards|regards|kind regards|cheers|sincerely|sent from my|--\s*$|__+)/i;
+// "Hi team," / "Dear Client," / "Hello Sam!": a greeting word, then a comma or ! soon after.
+const GREETING = /^(hi|hello|hey|dear|good (morning|afternoon))\b[^\n]{0,30}?[,!]/i;
+// A sign-off alone on its line ("Best regards,"), so a heading such as "Best Practices" is not one.
+const SIGN_OFF_LINE = /^(thanks|thank you|many thanks|best|best regards|regards|kind regards|warm regards|cheers|sincerely)[,!.]?$/i;
+
+/**
+ * Whether text is an email: mail headers, a greeting line, or a sign-off on a line of its own ("Best regards,",
+ * "Thanks,"). A heading such as "Best Practices" is not a sign-off.
+ */
+export function isEmail(text: string): boolean {
+  return text.split("\n").some((raw) => {
+    const l = raw.replace(/^(\s*>)+ ?/, "").trim();
+    return HEADER_LINE.test(l) || WROTE_LINE.test(l) || GREETING.test(l) || SIGN_OFF_LINE.test(l) || /^sent from my/i.test(l);
+  });
+}
 // Unnumbered bullets are requests unless they sit under a logistics heading or read like logistics.
 const LOGISTICS_HEADING = /^(logistics|timing|timeline|schedule|next steps|reminders?|notes?|agenda|key dates|other notes)\b/i;
 const LOGISTICS_BULLET = /^(fieldwork|please upload|upload|we('ll| will)|our (team|fieldwork)|let me know|feel free|the deadline|deadline|due date|call|meeting)\b/i;

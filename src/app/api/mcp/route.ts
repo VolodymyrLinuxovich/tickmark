@@ -65,7 +65,7 @@ const handler = createMcpHandler(
       {
         title: "Read an audit request list",
         description:
-          "Turn an auditor's PBC request list (pasted email or CSV text) into typed requests: type, period, dollar threshold and selected items. Keyword rules read it when they can; set use_model to have a language model read it. Review these before answering them.",
+          "Turn an auditor's PBC request list (pasted email or CSV text) into typed requests: type, period, dollar threshold and selected items. Keyword rules read spreadsheets and documents; a language model reads short emails, or any list when use_model is set. Review these before answering them.",
         inputSchema: z.object({ text: z.string().min(1).describe("The request list as text"), use_model: z.boolean().default(false).describe("Read with a language model even when the keyword rules can") }),
         annotations: { readOnlyHint: true },
       },

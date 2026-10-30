@@ -12,7 +12,7 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { AuditRequestSchema, ParsedListSchema, REQUEST_TYPE_INFO, REQUEST_TYPES, type ParsedList } from "./schema";
 import type { NormalizedInput } from "./input";
-import { findFiscalYearEnd, fiscalYearContaining, interpret, parseWithRules } from "./rules";
+import { findFiscalYearEnd, fiscalYearContaining, interpret, isEmail, parseWithRules } from "./rules";
 
 /** Model ids, also shown to the user as the parser that produced the plan. */
 export const MODEL = "claude-opus-5-5";
@@ -48,7 +48,10 @@ function userMessage(input: NormalizedInput): string {
   const selectionsNote = input.selections.length
     ? `\n\nSelections sheet (attach to the matching request; skip any whose request is not in this list):\n${input.selections.map((s) => `${s.request_ref ?? "?"} | ${s.ref} | ${s.date} | ${s.description} | ${s.amount}`).join("\n")}`
     : "";
-  return `<request_list>\n${input.text}${selectionsNote}\n</request_list>`;
+  // Relative periods ("the last 12 months") need today's date.
+  const d = new Date();
+  const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  return `Today is ${today}.\n<request_list>\n${input.text}${selectionsNote}\n</request_list>`;
 }
 
 /** One model backend. parse returns null for a refusal or empty result, so the caller moves on to the next provider. */
@@ -224,16 +227,17 @@ const PARSE_CACHE_MAX = 50;
 const parseCache = new Map<string, { at: number; p: Promise<ParsedList> }>();
 
 /**
- * Reads a request list. The keyword rules go first: when they find the requests (a spreadsheet, numbered items,
- * rows with refs or a plain line list), that reading is used and no model is called, which costs nothing and
- * returns at once. The model reads lists the rules cannot split, or any list when `useModel` is set (the plan
+ * Reads a request list. The keyword rules go first for spreadsheets and documents (numbered items, rows with refs,
+ * plain lists under headings): that reading is used and no model is called, which costs nothing and returns at
+ * once. A model reads short emails, lists the rules cannot split, and any list when `useModel` is set (the plan
  * screen's "Read with AI"). TICKMARK_PARSER=model makes the model go first, as before.
  * A model read is reused for identical input; fallback reads are never kept, so a provider outage is retried next time.
  */
 export function parseRequests(input: NormalizedInput, opts: { useModel?: boolean } = {}): Promise<ParsedList> {
   const useModel = opts.useModel || process.env.TICKMARK_PARSER === "model";
   const rules = parseWithRules(input);
-  if ((!useModel || !availableProviders().length) && rulesConfident(rules, input.text)) return Promise.resolve(withoutSplit(rules));
+  // With no model set up, the keyword reading is the answer either way.
+  if (!availableProviders().length || (!useModel && rulesConfident(rules, input.text))) return Promise.resolve(withoutSplit(rules));
   const key = createHash("sha256").update(JSON.stringify([availableProviders(), input])).digest("hex");
   const hit = parseCache.get(key);
   if (hit && Date.now() - hit.at < PARSE_TTL_MS) return hit.p;
@@ -245,18 +249,18 @@ export function parseRequests(input: NormalizedInput, opts: { useModel?: boolean
   return p;
 }
 
-// A greeting, a sign-off or mail headers mark an email. Emails are short and phrased freely ("support for card
-// charges in the last 12 months"), which a model reads better for a few hundred tokens.
-const EMAIL_LINE = /^((hi|hello|hey|dear|good (morning|afternoon))\b|(subject|from|sent|to|cc):\s|(thanks|thank you|best|regards|kind regards|sincerely|cheers)\b[\s,!.]*(\w+)?\s*$)/im;
+// An email is short and phrased freely ("support for card charges in the last 12 months"), which a model reads
+// better for a few hundred tokens. A long list stays with the rules even with a cover letter, since that is
+// where a model is slow and costly.
+const EMAIL_MAX_REQUESTS = 30;
 
 /**
- * Whether the keyword reading is used on its own. Spreadsheets and documents (numbered lists, rows with refs,
- * lists under headings) are; they are where the rules are strong and a model is slow and costly. An email, or
- * a list the rules could not split, goes to a model when one is set up.
+ * Whether the keyword reading is used on its own: spreadsheets, documents and long lists, where the rules are
+ * strong. A short email, or a list the rules could not split, goes to a model when one is set up.
  */
 export function rulesConfident(rules: ParsedList & { split?: string }, text: string): boolean {
   if (rules.split === "none" || !rules.requests.length) return false;
-  return rules.split === "table" || !EMAIL_LINE.test(text);
+  return rules.split === "table" || rules.requests.length > EMAIL_MAX_REQUESTS || !isEmail(text);
 }
 
 /** Drops the rules parser's internal split label before the list leaves the parser. */

@@ -98,3 +98,31 @@ describe("prose requests (the MCP demo prompt)", () => {
     expect(rulesConfident(parseWithRules(normalizeText(doc + "\nThanks,\nSam")), doc + "\nThanks,\nSam")).toBe(false);
   });
 });
+
+describe("review fixes", () => {
+  it("leaves a stated end to the specific rules, and a loose year to last", async () => {
+    const { findPeriod } = await import("../src/lib/parse/rules");
+    expect(findPeriod("Card charges for the last twelve months ended June 30, 2025")).toEqual({ from: "2024-07-01", to: "2025-06-30" });
+    expect(findPeriod("For 2025, provide card transactions from July 1 - December 31, 2025")).toEqual({ from: "2025-07-01", to: "2025-12-31" });
+  });
+
+  it("knows a sign-off from a heading, and keeps long lists with the rules", async () => {
+    const { isEmail, parseWithRules } = await import("../src/lib/parse/rules");
+    const { rulesConfident } = await import("../src/lib/parse/claude");
+    expect(isEmail("1. Bank statements\n2. Vendor list\nBest regards,\nSam")).toBe(true);
+    expect(isEmail("Best Practices\n1. Bank statements\n2. Vendor list")).toBe(false);
+    const long = "Dear Client,\n" + Array.from({ length: 40 }, (_, i) => `${i + 1}. Item ${i + 1} for FY2025`).join("\n");
+    expect(rulesConfident(parseWithRules(normalizeText(long)), long)).toBe(true);
+  });
+
+  it("reads card expense support with a few words before card", async () => {
+    const { classify } = await import("../src/lib/parse/rules");
+    expect(classify("Support for all corporate credit card expenses over $5,000", false)).toBe("transaction_support");
+    expect(classify("Backup for the company's corporate credit card transactions", false)).toBe("transaction_support");
+  });
+
+  it("tells the model today's date", async () => {
+    const src = (await import("node:fs")).readFileSync("src/lib/parse/claude.ts", "utf8");
+    expect(src).toMatch(/Today is \$\{today\}/);
+  });
+});
