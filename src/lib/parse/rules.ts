@@ -253,6 +253,19 @@ export function findPeriod(text: string, fye: FiscalYearEnd = { month: 12, day: 
 }
 
 /**
+ * The year end a document is about. A list can mention last year's ("journal entries for the year ended
+ * 6/30/14") before its own, so the date stated most often wins, and the later one on a tie.
+ */
+export function statedYearEnd(text: string): string | null {
+  const counts = new Map<string, number>();
+  for (const m of text.matchAll(new RegExp(YEAR_END_DATE.source, "gi"))) {
+    const d = wordDate(m[1]);
+    if (d) counts.set(d, (counts.get(d) ?? 0) + 1);
+  }
+  return [...counts].sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0]))[0]?.[0] ?? null;
+}
+
+/**
  * The fiscal year that contains a date, as a period. Used to widen a balance date ("as of June 30, 2026")
  * into the year under audit, since a one day window would test almost nothing.
  */
@@ -532,8 +545,7 @@ export function parseWithRules(input: NormalizedInput): ParsedList & { split: Sp
   if (!rows.length) warnings.push("No numbered requests found. Number each request (1. 2. 3.) or upload the PBC spreadsheet.");
   const fye = findFiscalYearEnd(input.text) ?? { month: 12, day: 31 };
   // A stated year end ("for the fiscal year ending June 30, 2026") is the document's period, ahead of a stray "FY25" earlier on.
-  const stated = input.text.match(YEAR_END_DATE);
-  const statedTo = stated ? wordDate(stated[1]) : null;
+  const statedTo = statedYearEnd(input.text);
   const globalPeriod = statedTo ? { from: monthsBack(statedTo, 12), to: statedTo } : findPeriod(input.text, fye);
   const linked = new Set(input.selections.filter((s) => s.request_ref && rows.some((r) => sameRef(r.ref, s.request_ref!))));
   const requests: AuditRequest[] = rows.map((row) => {

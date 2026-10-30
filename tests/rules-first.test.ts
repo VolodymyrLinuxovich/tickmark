@@ -36,3 +36,11 @@ describe("rules go first", () => {
     expect("split" in out).toBe(false);
   });
 });
+
+describe("the document's year end", () => {
+  it("prefers the year end stated most often over an earlier prior-year mention", async () => {
+    const { statedYearEnd } = await import("../src/lib/parse/rules");
+    expect(statedYearEnd("Journal entries for the year ended 6/30/14.\nBudget for the year ended 6/30/15.\nInvoices for the year ended 6/30/15.")).toBe("2015-06-30");
+    expect(statedYearEnd("Comparatives for the year ended 12/31/2024 and the year ended 12/31/2025.")).toBe("2025-12-31");
+  });
+});
