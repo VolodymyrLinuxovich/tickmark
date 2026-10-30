@@ -1,0 +1,16 @@
+{
+  "input": "P-Card AUP steps.pdf",
+  "source": "https://procurement.sc.gov/files/P-Card_AUPs_AC_7-1-25.pdf",
+  "about": "South Carolina Division of Procurement Services, 'Agreed Upon Procedures - Agency Purchasing Card Program', revised July 1, 2025: the steps every state agency's annual P-Card auditor runs, each saying what to obtain or request from the agency. Pages 5-7 (the nine numbered steps), copied unchanged; the cover, proviso text and exhibits are left out. Not a PBC list an auditor sent, but the closest public card-program request we found. The audit period is a placeholder ('[Audit Period Begin] to [Audit Period End]'), so periods are null. Steps have sub-items (3 a-m are fields of one listing, 6 i-v and 8 i-ii are tests on one population) that are part of their step, not separate requests. Ramp-answerable: 8 (scan the card population for blocked merchant categories and over-limit transactions: control_testing) and 9 (sample of 25 card transactions, request receipts: transaction_support, no selections listed yet). Judgment calls: 3 (listing of all card transactions for two statements, with approver and MCC) and 6 (listing of active cards with limits and last use) are data Ramp holds, but Tickmark has no listing type for them, so they are unsupported; this is a product gap, not a parser miss. 4 reviews the written P-Card manual, including separation of duties between cardholder and approver: a document review, scored unsupported. 7 asks for the blocked MCC list (configuration, unsupported). 6's threshold is the $2,500 single transaction limit that needs extra approval ($10,000 is the second tier).",
+  "requests": [
+    { "ref": "PBC-01", "type": "unsupported", "period_from": null, "period_to": null, "min_amount": null, "selections": 0 },
+    { "ref": "PBC-02", "type": "unsupported", "period_from": null, "period_to": null, "min_amount": null, "selections": 0 },
+    { "ref": "PBC-03", "type": "unsupported", "period_from": null, "period_to": null, "min_amount": null, "selections": 0 },
+    { "ref": "PBC-04", "type": "unsupported", "period_from": null, "period_to": null, "min_amount": null, "selections": 0 },
+    { "ref": "PBC-05", "type": "unsupported", "period_from": null, "period_to": null, "min_amount": null, "selections": 0 },
+    { "ref": "PBC-06", "type": "unsupported", "period_from": null, "period_to": null, "min_amount": 2500, "selections": 0 },
+    { "ref": "PBC-07", "type": "unsupported", "period_from": null, "period_to": null, "min_amount": null, "selections": 0 },
+    { "ref": "PBC-08", "type": "control_testing", "period_from": null, "period_to": null, "min_amount": null, "selections": 0 },
+    { "ref": "PBC-09", "type": "transaction_support", "period_from": null, "period_to": null, "min_amount": null, "selections": 0 }
+  ]
+}

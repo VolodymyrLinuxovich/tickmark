@@ -1,5 +1,5 @@
 // Scores the request parsers against public/samples/corpus.
-// Run: npm run eval:parser   (add -- --verbose to list every miss, -- --dir <path> for another corpus)
+// Run: npm run eval:parser   (add -- --verbose to list every miss, -- --dir <path> for another corpus, e.g. public/samples/corpus/real)
 // The model parser (Claude, then OpenAI) is scored only when a key is set and a first call succeeds.
 // Keys are read from .env.local when present.
 
@@ -21,10 +21,10 @@ const ROOT = dirArg > 0 ? process.argv[dirArg + 1] : "public/samples/corpus";
 const FIELDS = ["found", "ref", "type", "period_from", "period_to", "min_amount", "selections"] as const;
 type Field = (typeof FIELDS)[number];
 
-/** Case folders: generated ones at the top level, hand-written ones one level down (blind/). */
+/** Case folders: generated ones at the top level, hand-written ones one level down (blind/). Public lists in real/ are scored on their own (--dir). */
 function listCases(root: string): string[] {
   const out: string[] = [];
-  for (const d of readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+  for (const d of readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && e.name !== "real")) {
     if (existsSync(`${root}/${d.name}/expected.json`)) out.push(d.name);
     else for (const sub of readdirSync(`${root}/${d.name}`, { withFileTypes: true })) if (sub.isDirectory()) out.push(`${d.name}/${sub.name}`);
   }
