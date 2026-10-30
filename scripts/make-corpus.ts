@@ -27,6 +27,7 @@ export interface ExpectedSelection {
 
 export interface Expected {
   input: string;
+  source?: string; // URL of a publicly posted list (real/)
   about: string;
   acme_selections?: boolean; // selections are real Acme fixture items
   selections_detail?: ExpectedSelection[];

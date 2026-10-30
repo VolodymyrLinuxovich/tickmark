@@ -6,7 +6,7 @@ import { money, monthNumber, toIsoDate, type InputRow, type NormalizedInput } fr
 
 // Topics Ramp data cannot answer, even when the request mentions invoices, receipts or vendors.
 const OUTSIDE_RAMP =
-  /\b((?<!non-)payroll|w-[23]\b|fixed assets?|capital(ized)? assets?|pp&e|property and equipment|depreciation|bank (rec|statement|confirmation)|confirmation of (all )?bank|(all|operating) bank accounts?|covenant|revenue|customers?\b|sales invoices?|accounts receivable|receivables?|inventory|debt\b|loans?\b|notes payable|lease|equity|stock|board minutes|legal letters?|attorney|tax (returns?|filings?)|income tax|sales and use tax|accru|prepaid|insurance polic|deferred)/;
+  /\b((?<!non-)payroll|w-[23]\b|fixed assets?|capital(ized)? assets?|pp&e|property and equipment|depreciation|bank (rec|statement|confirmation)|confirmation of (all )?bank|(all|operating) bank accounts?|covenant|revenue|customers?\b|sales invoices?|accounts receivable|receivables?|inventory|debt\b|loans?\b|notes payable|lease|equity|stock|board minutes|legal letters?|attorney|tax (returns?|filings?)|income tax|sales and use tax|accru|prepaid|insurance polic|deferred|\baging\b|\baged\b)/;
 
 // Shorthand auditors use in terse lists.
 const SHORTHAND: [RegExp, string][] = [
@@ -44,7 +44,7 @@ export function classifyWithReason(text: string, hasSelections: boolean, area = 
   m = t.match(/(user access|administrator|admin (access|rights|roles?|permissions|privileges)|access (listing|rights|review)|users with|users and their roles|user listing|system access|list of users|users (in|of) the)/);
   if (m) return { type: "user_access", reason: `Mentions ${quote(m)}` };
   // A sample of vendor bills or disbursements with no card wording is bill support.
-  m = t.match(/(\bbills?\b|vendor invoice|disbursement|accounts payable|\bap\b)/);
+  m = t.match(/(\bbills?\b|vendor invoice|disbursement|accounts payable|\bap\b|checks? (?:written|issued)|check register)/);
   if (m && !/(card|amex|p-?card)/.test(t)) return { type: "bill_support", reason: `Mentions ${quote(m)} and no card spend` };
   const picked = t.match(/(selected|selection|sample|\bselect\b|following)/);
   const card = t.match(/(transaction|card|expense|charge|spend|refund|credit)/);
@@ -139,6 +139,9 @@ function fiscalQuarter(q: number, y: number, fye: FiscalYearEnd): Period {
 
 const fullYear = (s: string) => (s.length === 2 ? 2000 + Number(s) : Number(s));
 
+// "year ended December 31, 2025", "FYE 9/30/2025". PDF text often wraps between "year" and "ended".
+const YEAR_END_DATE = new RegExp(String.raw`(?:\byear[-\s]?end(?:ed|ing)?|\bFYE)[\s:|,]*(?:on\s+)?${DATE}`, "i");
+
 interface Rule {
   re: RegExp;
   read: (m: RegExpMatchArray, fye: FiscalYearEnd) => Period | null;
@@ -167,8 +170,8 @@ const PERIOD_RULES: Rule[] = [
     },
   },
   {
-    // April through September 2025
-    re: new RegExp(String.raw`\b(${MONTH})\s*(?:through|thru|to|until|-|–)\s*(${MONTH})\s+(\d{4})\b`, "i"),
+    // April through September 2025 / Jan – Mar, 2026
+    re: new RegExp(String.raw`\b(${MONTH})\s*(?:through|thru|to|until|-|–)\s*(${MONTH}),?\s+(\d{4})\b`, "i"),
     read: (m) => {
       const a = monthNumber(m[1].replace(".", ""));
       const b = monthNumber(m[2].replace(".", ""));
@@ -196,7 +199,7 @@ const PERIOD_RULES: Rule[] = [
   },
   {
     // year ended December 31, 2025 / FYE 9/30/2025 / Year end: 12/31/2025
-    re: new RegExp(String.raw`(?:\byear[- ]?end(?:ed|ing)?|\bFYE)[\s:|,]*(?:on\s+)?${DATE}`, "i"),
+    re: YEAR_END_DATE,
     read: (m) => {
       const to = wordDate(m[1]);
       return to ? { from: monthsBack(to, 12), to } : null;
@@ -251,13 +254,13 @@ export function findPeriod(text: string, fye: FiscalYearEnd = { month: 12, day: 
 
 /** Fiscal year end stated anywhere in the document ("FYE June 30, 2025", "fiscal year ending 9/30/2025"). */
 export function findFiscalYearEnd(text: string): FiscalYearEnd | null {
-  const m = text.match(new RegExp(String.raw`(?:\byear[- ]?end(?:ed|ing)?|\bFYE)[\s:|,]*(?:on\s+)?${DATE}`, "i"));
+  const m = text.match(YEAR_END_DATE);
   const d = m ? wordDate(m[1]) : null;
   if (!d) {
     // "fiscal year end September 30", "a June 30 year end"
     const n =
       text.match(new RegExp(String.raw`\b(?:fiscal )?year[- ]end(?:s|ing)?(?: is| of| on)?\s+(${MONTH})\s+(\d{1,2})\b(?!,?\s*\d{4})`, "i")) ??
-      text.match(new RegExp(String.raw`\b(${MONTH})\s+(\d{1,2})(?:st|nd|rd|th)?\s+(?:fiscal\s+)?year[- ]end`, "i"));
+      text.match(new RegExp(String.raw`\b(${MONTH})\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(?:fiscal\s+)?year[- ]end`, "i"));
     const month = n ? monthNumber(n[1].replace(".", "")) : null;
     return month ? { month, day: Number(n![2]) } : null;
   }
@@ -330,6 +333,8 @@ interface Marker {
   ref: string | null; // null: number it in order
   bullet: boolean;
   rest: string;
+  section?: string; // "1." / "(1)": may head lettered items
+  sub?: boolean; // "a)" / "ii.": may sit under a numbered heading
 }
 
 function marker(line: string): Marker | null {
@@ -340,11 +345,11 @@ function marker(line: string): Marker | null {
   m = line.match(/^\s*(\d{1,2}\.\d{1,2})[.)]?\s+(.*)$/);
   if (m) return { ref: m[1], bullet: false, rest: m[2] };
   m = line.match(/^\s*\(?(\d{1,2})[.)]\s+(.*)$/);
-  if (m) return { ref: `PBC-${pad(Number(m[1]))}`, bullet: false, rest: m[2] };
+  if (m) return { ref: `PBC-${pad(Number(m[1]))}`, bullet: false, rest: m[2], section: String(Number(m[1])) };
   m = line.match(/^\s*\(?((?:x{0,3})(?:ix|iv|v?i{1,3}|v))[.)]\s+(.*)$/);
-  if (m) return { ref: m[1], bullet: false, rest: m[2] };
+  if (m) return { ref: m[1], bullet: false, rest: m[2], sub: true };
   m = line.match(/^\s*\(?([a-z])\)\s+(.*)$/) ?? line.match(/^\s*([a-z])\.\s+(.*)$/);
-  if (m) return { ref: m[1], bullet: false, rest: m[2] };
+  if (m) return { ref: m[1], bullet: false, rest: m[2], sub: true };
   m = line.match(/^\s*[-*•▪◦–]\s+(.*)$/);
   if (m) return { ref: null, bullet: true, rest: m[1] };
   return null;
@@ -353,7 +358,8 @@ function marker(line: string): Marker | null {
 /**
  * Splits an email, pasted list or PDF text into requests. A new request starts at a marker (PBC-01, 1., (1), a), i., AP-3, a bullet).
  * Lines without a marker continue the current request until a blank line. Quote markers (>) and email headers are stripped,
- * a sign-off ends the list, and dated amount lines become selections of the request above them.
+ * a sign-off ends the list, and dated amount lines become selections of the request above them. A numbered line that is only a
+ * short heading ("4. Accounts Receivable:") followed by lettered items is a section: its items become 4.a, 4.b with the heading as area.
  */
 export function splitFreeText(text: string): InputRow[] {
   const rows: InputRow[] = [];
@@ -361,6 +367,8 @@ export function splitFreeText(text: string): InputRow[] {
   let last: InputRow | null = null; // most recent request, for selection lines after a gap
   let gap = false;
   let heading = "";
+  let section: { num: string; row: InputRow; title: string } | null = null;
+  const sectionRows = new Set<InputRow>();
   const close = () => {
     cur = null;
   };
@@ -388,6 +396,14 @@ export function splitFreeText(text: string): InputRow[] {
     const mk = marker(line);
     if (mk && mk.rest.trim() && (!mk.bullet || !(LOGISTICS_HEADING.test(heading) || LOGISTICS_BULLET.test(mk.rest.trim())))) {
       const row: InputRow = { ref: mk.ref ?? `PBC-${pad(rows.length + 1)}`, area: "", text: mk.rest.trim(), period_from: null, period_to: null };
+      if (mk.sub && section && section.row.text === section.title) {
+        sectionRows.add(section.row);
+        row.ref = `${section.num}.${mk.ref}`;
+        row.area = section.title.replace(/\s*:$/, "");
+      } else if (!mk.bullet && !mk.sub) {
+        const title = mk.rest.trim();
+        section = mk.section && title.length <= 80 && title.endsWith(":") ? { num: mk.section, row, title } : null;
+      }
       rows.push(row);
       cur = row;
       last = row;
@@ -402,7 +418,7 @@ export function splitFreeText(text: string): InputRow[] {
     }
     gap = false;
   }
-  return rows;
+  return rows.filter((r) => !sectionRows.has(r));
 }
 
 // ---------- main ----------
@@ -420,7 +436,10 @@ export function parseWithRules(input: NormalizedInput): ParsedList {
   const rows = input.rows.length ? input.rows : splitFreeText(input.text);
   if (!rows.length) warnings.push("No numbered requests found. Number each request (1. 2. 3.) or upload the PBC spreadsheet.");
   const fye = findFiscalYearEnd(input.text) ?? { month: 12, day: 31 };
-  const globalPeriod = findPeriod(input.text, fye);
+  // A stated year end ("for the fiscal year ending June 30, 2026") is the document's period, ahead of a stray "FY25" earlier on.
+  const stated = input.text.match(YEAR_END_DATE);
+  const statedTo = stated ? wordDate(stated[1]) : null;
+  const globalPeriod = statedTo ? { from: monthsBack(statedTo, 12), to: statedTo } : findPeriod(input.text, fye);
   const linked = new Set(input.selections.filter((s) => s.request_ref && rows.some((r) => sameRef(r.ref, s.request_ref!))));
   const requests: AuditRequest[] = rows.map((row) => {
     const inline = selectionsFromText(row.text);

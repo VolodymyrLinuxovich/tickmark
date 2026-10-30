@@ -3,14 +3,14 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { getFixture } from "../src/lib/fixtures/generate";
 import { buildIndex, matchSelection } from "../src/lib/engine/run";
 import { money, normalizeFile, normalizeText, toIsoDate } from "../src/lib/parse/input";
-import { findPeriod, findThreshold, parseWithRules } from "../src/lib/parse/rules";
+import { classify, findFiscalYearEnd, findPeriod, findThreshold, parseWithRules } from "../src/lib/parse/rules";
 import type { Expected } from "../scripts/make-corpus";
 
 const ROOT = "public/samples/corpus";
-/** Case folders: generated ones at the top level, hand-written ones one level down (blind/). */
+/** Case folders: generated ones at the top level, hand-written ones one level down (blind/). real/ is a scoreboard, not a regression test. */
 function listCases(root: string): string[] {
   const out: string[] = [];
-  for (const d of readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory())) {
+  for (const d of readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && e.name !== "real")) {
     if (existsSync(`${root}/${d.name}/expected.json`)) out.push(d.name);
     else for (const sub of readdirSync(`${root}/${d.name}`, { withFileTypes: true })) if (sub.isDirectory()) out.push(`${d.name}/${sub.name}`);
   }
@@ -149,11 +149,52 @@ describe("periods", () => {
     ["FY2025", undefined, ["2025-01-01", "2025-12-31"]],
     ["calendar year 2024", SEP, ["2024-01-01", "2024-12-31"]],
     ["bank reconciliations for September 2025", undefined, ["2025-09-01", "2025-09-30"]],
+    // Found in public lists (docs/real-lists.md): PDF line wraps and a comma before the year
+    ["investment activity for the year\nended December 31, 2018", undefined, ["2018-01-01", "2018-12-31"]],
+    ["deposits for three months following year end (Jan – Mar, 2019)", undefined, ["2019-01-01", "2019-03-31"]],
   ] as const)("%s", (text, fye, out) => {
     expect(findPeriod(text, fye)).toEqual({ from: out[0], to: out[1] });
   });
 
   it("does not read 'as of' a date as a period", () => {
     expect(findPeriod("Bank statements as of 12/31/2025")).toBeNull();
+  });
+});
+
+// Fixes from scoring the parser on publicly posted lists (public/samples/corpus/real, docs/real-lists.md).
+describe("public list shapes", () => {
+  it("reads 'a December 31, year-end' as the fiscal year end", () => {
+    expect(findFiscalYearEnd("a typical PBC list for a client with a December 31,\nyear-end:")).toEqual({ month: 12, day: 31 });
+  });
+
+  it("takes the document period from a stated year end, not an earlier stray FY", () => {
+    const text = "Total dollar amount of FY25 levy $44,479,500\n\n1. Schedule of encumbrances.\n2. Schedule of accrued payroll.\n\nThe contract starts with the fiscal year ending June 30, 2026.";
+    const parsed = parseWithRules(normalizeText(text));
+    expect(parsed.requests.map((r) => [r.period_from, r.period_to])).toEqual([
+      ["2025-07-01", "2026-06-30"],
+      ["2025-07-01", "2026-06-30"],
+    ]);
+  });
+
+  it("numbers lettered items under a numbered heading as 1.a, 1.b", () => {
+    const text = "1. Cash:\na) December 31, 2018 bank statements and reconciliations.\nb) Collateral statement, if applicable.\n3. Investments - (If The Tribe/TDHE Is Approved To Invest IHBG Funds):\na) Investment statements.\n7. Accounts Payable:\na) A listing of all accounts payable as of December 31, 2018.";
+    const parsed = parseWithRules(normalizeText(text));
+    expect(parsed.requests.map((r) => r.ref)).toEqual(["1.a", "1.b", "3.a", "7.a"]);
+    expect(parsed.requests[0].type).toBe("unsupported");
+  });
+
+  it("keeps a numbered request with its own text, and its lettered parts, as they are", () => {
+    const text = "3. Population:\nObtain a listing of all P-Card transactions containing the following information:\na) Transaction Number\nb) Vendor Name";
+    expect(parseWithRules(normalizeText(text)).requests.map((r) => r.ref)).toEqual(["PBC-03", "a", "b"]);
+  });
+
+  it.each([
+    ["A listing of all accounts payable as of December 31, 2018 (an aged A/P will suffice)", "unsupported"],
+    ["AP aging schedule reconciled to general ledger in excel", "unsupported"],
+    ["Schedule of checks written from 12/31/2018 to the date of the audit fieldwork", "bill_support"],
+    ["Check register for period 7/1/15 to first day of field work", "bill_support"],
+    ["List of outstanding checks by account, showing check number, date, and amount", "unsupported"],
+  ] as const)("classifies %s", (text, type) => {
+    expect(classify(text, false)).toBe(type);
   });
 });
