@@ -1,8 +1,39 @@
 # Tickmark on real request lists
 
-Until now the parser was scored only on lists we generated ourselves. This page scores it on five request lists that are posted publicly, with answers written by hand. Checked on October 29, 2026.
+Until now the parser was scored only on lists we generated ourselves. This page scores it on five request lists that are posted publicly, with answers written by hand. First checked on October 29, 2026, and checked again on October 30 after the fixes below.
 
-## The lists
+## Current results (October 30)
+
+What changed since the first check: long lists are read in parts in parallel (#34), the keyword rules read table rows with their own refs and plain lists under headings and go first (#35), and sub-points stay inside their step (#37).
+
+| | Rules (default) | Model (gpt-5.5, on request) |
+|---|---:|---:|
+| Found | 375 (100%) | 364 (97.1%) |
+| Type | 359 (95.7%) | 359 (95.7%) |
+| Period | 362 (96.5%) | 326 (86.9%) |
+| Threshold | 373 (99.5%) | 363 (96.8%) |
+| Extra rows | 37 | 41 |
+
+Same scorer as below (`npm run eval:parser -- --dir public/samples/corpus/real`, exact refs, position match when counts agree). The model was run locally through the same code the app uses.
+
+| List | Rules, live app | Model, live app |
+|---|---:|---:|
+| 1 UC Hastings (131) | 2 s, 131 found | 24 s, 131 found |
+| 2 Buncombe (171) | 2 s, 171 found | 33 s, 171 found |
+| 3 NAIHC (33) | 2 s, 33 found | 18 s |
+| 4 SC P-Card (9) | 2 s, 9 found | 14 s |
+| 5 Holly Springs (31) | 2 s, 31 found | 23 s |
+
+Live times include the network round trip. Rules use no model tokens; the app now calls the model only when the rules cannot split a list or when the user asks ("Read with AI instead").
+
+Notes:
+- 31 of the rules' 37 extra rows are Holly Springs, where every request is found but the refs come out as PBC-01 to PBC-31 instead of "General 1". The real extras are 6: three guidance paragraphs at the end of the NAIHC PDF, two "Note" lines in UC Hastings, and one row in Buncombe.
+- The model's reading changes from run to run. On an earlier run the same day it found 286 of 375, because it numbered the unnumbered Buncombe list differently. The rules give the same answer every time.
+- The rules fixes were made after looking at these lists, so these numbers are not a blind score. The October 29 numbers for main below are.
+
+## First check (October 29)
+
+### The lists
 
 | # | List | Who posted it | Source | Requests | Ramp can answer |
 |---|------|---------------|--------|---------:|----------------:|
@@ -19,14 +50,14 @@ Each case is in `public/samples/corpus/real/<NN-name>/`, with the file, an `expe
 
 We also looked at three more and left them out. The Foraker Group's nonprofit audit checklist says "ask permission before copying or distributing". The Ohio Auditor of State's community school checklist was not reachable from our network. A Kansas audit checklist is a list of the auditor's own steps, not requests to the client.
 
-## How we scored
+### How we scored
 
 - `expected.json` was written from the source text before either parser ran. After reading the model's output we changed two of our answers: NAIHC 1.c and UC FSF-07 both run "through" the fieldwork date, so they now have no end date, the same as NAIHC 7.b already did.
 - Rules parser: `npm run eval:parser -- --dir public/samples/corpus/real`, run locally.
 - Model: the live app (https://tickmark-eta.vercel.app, gpt-5.5) on October 29, 2026. Each PDF was posted to `/api/parse`, which is the same call the upload screen makes. That call only reads the list. Nothing was run.
 - Matching: a request counts as found when the parser returned the same ref, ignoring case, punctuation and zero padding (so `PBC-01` matches `1` and `General-1` matches `General 1`). If the refs don't match but the parser returned the same number of requests, we match by position, as `eval-parser.ts` does. Type, period and threshold scores are out of every expected request, so a request that wasn't found counts as wrong. A period is right only when both dates are right.
 
-## Scores
+### Scores
 
 | List | Parser | Returned | Found | Type | Period | Threshold | Ramp types right |
 |------|--------|---------:|------:|-----:|-------:|----------:|-----------------:|
@@ -71,14 +102,14 @@ extra refs                  64
 
 The generated and blind corpus is still at 100% (170/170) on every field.
 
-## What this says
+### What this said
 
-- **Ramp can answer 8 of the 375 requests (2%).** Real year-end lists are mostly about the ledger, bank, payroll, debt, grants and revenue. The Ramp-answerable items are subsequent disbursements, legal invoices over a threshold, a card population scan and a card sample.
-- **The live app cannot read a long list.** Lists 1 (131 items) and 2 (171 items) returned HTTP 504 `FUNCTION_INVOCATION_TIMEOUT` after 120 seconds, twice each, so the model has no score on them. A real year-end PBC list is often this long.
-- **The rules parser cannot read a PDF table or an unnumbered list.** In list 1, every row starts with other columns ("FS/C-YE 01-General Items Y_PBC") before the ID. List 2 is plain titles under headings, with no numbers or bullets. Both come out empty.
-- **On the lists both parsers read, they classify equally well (69/73 types).** The model is weaker on periods: it reads "as of December 31, 2018" as that one day, while the corpus convention is the fiscal year ending that day.
+- **Ramp can answer 8 of the 375 requests (2%).** Still true. Real year-end lists are mostly about the ledger, bank, payroll, debt, grants and revenue. The Ramp-answerable items are subsequent disbursements, legal invoices over a threshold, a card population scan and a card sample.
+- **The live app cannot read a long list.** Fixed in #34: lists 1 and 2 now take 24 s and 33 s with the model, and 2 s with the rules. Lists 1 (131 items) and 2 (171 items) returned HTTP 504 `FUNCTION_INVOCATION_TIMEOUT` after 120 seconds, twice each, so the model has no score on them. A real year-end PBC list is often this long.
+- **The rules parser cannot read a PDF table or an unnumbered list.** Fixed in #35: it reads rows that carry their own ref (list 1, 131 of 131) and plain lists under ALL CAPS headings (list 2, 171 of 171). In list 1, every row starts with other columns ("FS/C-YE 01-General Items Y_PBC") before the ID. List 2 is plain titles under headings, with no numbers or bullets. Both come out empty.
+- **On the lists both parsers read, they classify equally well (69/73 types).** The model was weaker on periods; #34 now widens a single balance date to the fiscal year, and the prompt says so: it reads "as of December 31, 2018" as that one day, while the corpus convention is the fiscal year ending that day.
 
-## Every miss
+### Every miss (October 29)
 
 **1 UC Hastings**
 - Rules, all 131: not found. This is a PDF table, and no line starts with a request marker; the parser returned 2 junk rows made of joined text.
@@ -115,7 +146,7 @@ The generated and blind corpus is still at 100% (170/170) on every field.
 - Model General 4, Cash and Investments 3, Receivables 1–3 and Long-Term Debt 1, period: "as of fiscal year end" and "as of the audit date" were read as the single day 2026-06-30.
 - Model, 3 extra rows: the three sentences before the list ("The general ledger will be fully balanced.").
 
-## What we fixed in the rules parser
+### What we fixed in the rules parser (October 29)
 
 Each fix is general and has a test in `tests/parse.test.ts`. There are 11 new tests: 9 fail on main, and the other 2 check that existing behavior is kept (outstanding checks stay unsupported, and a numbered request with text of its own keeps its parts).
 
@@ -129,10 +160,10 @@ Each fix is general and has a test in `tests/parse.test.ts`. There are 11 new te
 
 `real/` is left out of the corpus test (which requires every field to match) and out of the default `npm run eval:parser`, so it is scored only with `--dir`.
 
-## Not fixed
+## Still open
 
-These need more than a small rule:
-- Reading PDF tables (list 1) and unnumbered title lists (list 2).
 - Open-ended periods ("to the date of fieldwork") and thresholds that wrap onto the next line.
-- The model timeout on long lists. This is in `src/app/api/parse` and `src/lib/parse/claude.ts`, which were out of scope here; chunking the list or streaming would fix it.
+- Guidance text after a list (NAIHC page 3) is read as requests.
 - Tickmark has no type for "list every card transaction" or "list every active card with its limits" (SC steps 3 and 6), although Ramp holds both.
+
+Fixed since October 29: PDF tables and unnumbered lists (#35), the model timeout on long lists (#34), and sub-items split into their own rows (#37).
