@@ -59,7 +59,7 @@ the auditor does.** Ramp offers exports; Tickmark turns the request list itself 
 | Area | Stack |
 |------|-------|
 | **App** | Next.js 16 (App Router, Cache Components) · React 19 · TypeScript |
-| **Reading requests** | Claude (`claude-opus-5-5`) or OpenAI (`gpt-5.5`), structured output against a zod schema · keyword parser as cross-check and fallback |
+| **Reading requests** | Keyword parser first (spreadsheets, numbered items, rows with refs, plain lists) · Claude (`claude-opus-5-5`) or OpenAI (`gpt-5.5`) with structured output against a zod schema when the keywords can't split the list, or on request |
 | **Ramp data** | Ramp Developer API: transactions, receipts (OCR), bills, approvals, vendors, users, audit logs, comments |
 | **Auth** | OAuth client credentials (developer app) · user access token · Ramp CLI login |
 | **Audit engine** | Deterministic checks · monetary unit sampling · fuzzy selection matching |
@@ -140,10 +140,12 @@ sequenceDiagram
 
 ## How It Works
 
-1. **Read the list.** Excel (including a separate Selections sheet), CSV, a text PDF or a pasted email. Claude (or OpenAI) turns each request
-   into one of seven types with its period, dollar threshold and the items the auditor selected. A keyword parser runs
-   on the same input as a cross-check, and takes over if the model call fails. Requests Ramp can't answer (bank recs,
-   fixed assets) are marked for the team.
+1. **Read the list.** Excel (including a separate Selections sheet), CSV, a text PDF or a pasted email. Each request
+   becomes one of seven types with its period, dollar threshold and the items the auditor selected. A keyword parser
+   goes first and handles spreadsheets, numbered items, table rows with their own refs and plain lists under section
+   headings. When it can't split the list, Claude (or OpenAI) reads it, with long lists read in parts in parallel. The
+   plan screen can also ask the model to read any list. Requests Ramp can't answer (bank recs, fixed assets) are marked
+   for the team.
 2. **Review the plan.** Nothing runs until the controller checks it and starts the run. Any type can be changed.
 3. **Gather.** One snapshot of the period from Ramp, paged and cached for five minutes. Receipts are read 90 days past
    the period end, since they often arrive after the charge.
@@ -180,13 +182,14 @@ sequenceDiagram
 
 ## Why We Built It This Way
 
-**The model reads. Code decides.** A language model only turns the auditor's list into a typed plan, checked against a
-zod schema. Every pass or fail is plain code over Ramp records. An auditor has to be able to re-perform a test and get
+**Keywords first, a model when needed. Code decides.** Most request lists are spreadsheets or numbered lists, and the
+keyword parser reads all five public lists we scored (375 of 375 requests, 95.5% typed right) in milliseconds with no
+tokens. A language model reads the rest, and only turns the list into a typed plan checked against a zod schema. Every pass or fail is plain code over Ramp records. An auditor has to be able to re-perform a test and get
 the same answer, and a model verdict can't promise that. It also means no model sees Ramp data in the main flow.
 
 **A person checks the plan first.** A misread request is the most expensive mistake, because the binder then answers the
-wrong question with confidence. The plan screen shows the model's reason for each request, and a keyword parser counts
-the requests on its own and warns when the counts differ.
+wrong question with confidence. The plan screen shows the reason for each request, and when a model reads the list, the keyword
+parser counts the requests on its own and warns when the counts differ.
 
 **Nothing is written to Ramp without a click.** Comments and receipt uploads are drafted, then sent only after the
 controller approves each one. The MCP server is read-only for the same reason: an agent can run an audit request, but a

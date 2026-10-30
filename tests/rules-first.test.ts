@@ -44,3 +44,27 @@ describe("the document's year end", () => {
     expect(statedYearEnd("Comparatives for the year ended 12/31/2024 and the year ended 12/31/2025.")).toBe("2025-12-31");
   });
 });
+
+describe("review cases", () => {
+  it("does not read an email with capitalized lines as a line list", () => {
+    const email = ["RE: FY2025 PBC REQUEST", "ACME CPAS LLP", "Hi team,", "Please send the bank statements.", "Also the vendor list.", "And the user access report.", "Thanks so much", "Sam", "CONFIDENTIAL"].join("\n");
+    expect(splitLineList(email)).toEqual([]);
+  });
+
+  it("takes a row whose ref ends its line, with the request on the next line", () => {
+    const rows = Array.from({ length: 5 }, (_, i) => `FS/C-YE 01-General Y_PBC FSC-0${i + 1} ${i + 1} Item ${i + 1}`);
+    const out = splitEmbeddedRefs([...rows, "FS/C-YE 02-Cash Y_PBC FSC-06", "Bank reconciliations at year end"].join("\n"));
+    expect(out.at(-1)).toMatchObject({ ref: "FSC-06", text: "Bank reconciliations at year end" });
+  });
+
+  it("does not trust a single numbered line in prose", async () => {
+    const { splitInput } = await import("../src/lib/parse/rules");
+    const out = splitInput(normalizeText("Hi team, we need the bank statements and the vendor list.\n1. Also the card charges over $5,000.\nThanks"));
+    expect(out.how).toBe("none");
+  });
+
+  it("keeps the fiscal year end in step with the stated year end", async () => {
+    const { findFiscalYearEnd } = await import("../src/lib/parse/rules");
+    expect(findFiscalYearEnd("JEs for the year ended 6/30/14. Audit of the year ended December 31, 2015. Budget for the year ended December 31, 2015.")).toEqual({ month: 12, day: 31 });
+  });
+});

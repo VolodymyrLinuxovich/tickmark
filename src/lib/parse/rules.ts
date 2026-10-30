@@ -277,8 +277,8 @@ export function fiscalYearContaining(date: string, fye: FiscalYearEnd): Period {
 
 /** Fiscal year end stated anywhere in the document ("FYE June 30, 2025", "fiscal year ending 9/30/2025"). */
 export function findFiscalYearEnd(text: string): FiscalYearEnd | null {
-  const m = text.match(YEAR_END_DATE);
-  const d = m ? wordDate(m[1]) : null;
+  // Same choice as the document period, so the two never disagree.
+  const d = statedYearEnd(text);
   if (!d) {
     // "fiscal year end September 30", "a June 30 year end"
     const n =
@@ -462,7 +462,8 @@ const sameRef = (a: string, b: string) => a.toLowerCase().replace(/[^a-z0-9.]/g,
  */
 export function splitEmbeddedRefs(text: string): InputRow[] {
   const lines = text.replace(/\r\n?/g, "\n").split("\n");
-  const REF = /(?:^|\s)([A-Z]{2,6}-\d{1,3}[a-z]?)\s+(?:\d{1,3}(?:\.[a-z0-9]{1,4})?\.?\s+)?(\S.*)$/;
+  // The request may follow on the same line or, when the row wrapped, on the next one.
+  const REF = /(?:^|\s)([A-Z]{2,6}-\d{1,3}[a-z]?)(?:\s+(?:\d{1,3}(?:\.[a-z0-9]{1,4})?\.?\s+)?(\S.*))?$/;
   const prefixes = new Map<string, number>();
   for (const l of lines) {
     const m = l.match(REF);
@@ -481,18 +482,19 @@ export function splitEmbeddedRefs(text: string): InputRow[] {
     if (m && families.has(m[1].split("-")[0])) {
       const before = line.slice(0, line.indexOf(m[1])).trim();
       if (before) cellStarts.add(before.split(/\s+/)[0]);
-      cur = { ref: m[1], area: "", text: m[2].trim(), period_from: null, period_to: null };
+      cur = { ref: m[1], area: "", text: (m[2] ?? "").trim(), period_from: null, period_to: null };
       rows.push(cur);
       junk = false;
       continue;
     }
     // The next row's left cells can wrap onto lines of their own; skip them until its ref arrives.
     if (cellStarts.has(line.split(/\s+/)[0])) junk = true;
-    if (cur && !junk) cur.text += "\n" + line;
+    if (cur && !junk) cur.text = cur.text ? cur.text + "\n" + line : line;
   }
-  return rows;
+  return rows.filter((r) => r.text);
 }
 
+const LETTER_LINE = /^(hi|hello|hey|dear|good (morning|afternoon)|thanks|thank you|best|regards|kind regards|sincerely|cheers|re|fw|fwd|subject|from|to|cc)\b[\s,:!]|\?\s*$/i;
 const ALL_CAPS = (line: string) => /[A-Z]{2}/.test(line) && line === line.toUpperCase() && line.length <= 60 && !/^\d+$/.test(line);
 
 /**
@@ -506,8 +508,9 @@ export function splitLineList(text: string): InputRow[] {
   const headings = lines.filter(ALL_CAPS);
   if (headings.length < 2 || lines.length < 8) return [];
   const items = lines.filter((l) => !ALL_CAPS(l));
-  // Long prose lines mean this is not a one-line-per-item list.
+  // Long prose lines, a greeting, a sign-off or a question mean a letter, not a one-line-per-item list.
   if (items.filter((l) => l.length > 110).length > items.length * 0.2) return [];
+  if (lines.some((l) => LETTER_LINE.test(l))) return [];
   const rows: InputRow[] = [];
   let area: string | null = null;
   for (const line of lines) {
@@ -523,7 +526,10 @@ export function splitLineList(text: string): InputRow[] {
   return rows;
 }
 
-/** How the rules parser found the requests. "lines" and "none" are the shapes a model reads better. */
+/**
+ * How the rules parser found the requests. "none" means it found no list it trusts (nothing, or one stray
+ * numbered line), so a model reads it when one is set up.
+ */
 export type SplitHow = "table" | "markers" | "embedded_refs" | "lines" | "none";
 
 /** Splits normalized input into rows: the spreadsheet if there is one, else numbered items, rows with refs, or a plain line list. */
@@ -536,7 +542,7 @@ export function splitInput(input: NormalizedInput): { rows: InputRow[]; how: Spl
   if (marked.length >= 2) return { rows: marked, how: "markers" };
   const listed = splitLineList(input.text);
   if (listed.length) return { rows: listed, how: "lines" };
-  return { rows: marked, how: marked.length ? "markers" : "none" };
+  return { rows: marked, how: "none" };
 }
 
 export function parseWithRules(input: NormalizedInput): ParsedList & { split: SplitHow } {

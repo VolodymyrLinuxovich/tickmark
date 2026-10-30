@@ -78,10 +78,11 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
     }
   }
 
-  /** Reads the same list again with the model, for when the keyword reading looks off. */
+  /** Reads the same list again with the model, for when the keyword reading looks off. Asks first if the plan was edited. */
   function readWithModel() {
     const body = lastBody.current;
     if (!body) return;
+    if (parsed && JSON.stringify(requests) !== JSON.stringify(parsed.requests) && !window.confirm("Reading again replaces the changes you made to this plan. Continue?")) return;
     if (body instanceof FormData) {
       const again = new FormData();
       body.forEach((v, k) => again.append(k, v));
@@ -136,7 +137,7 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
             {stage === "run" || stage === "results" ? <b>Evidence</b> : <span>Evidence</span>}
           </div>
           {stage === "plan" && parsed && (
-            <Plan parsed={parsed} requests={requests} setRequests={setRequests} onRun={run} source={source} onReadWithModel={models.length && parsed.parser === "rules" ? readWithModel : undefined} reading={busy === "model"} />
+            <Plan parsed={parsed} requests={requests} setRequests={setRequests} onRun={run} source={source} onReadWithModel={models.length && parsed.parser === "rules" ? readWithModel : undefined} reading={busy === "model"} error={error} />
           )}
           {stage === "run" && <Running requests={requests} runs={runs} source={source} />}
           {stage === "results" && meta && (

@@ -212,7 +212,9 @@ function shortError(err: unknown): string {
 export function availableProviders(): string[] {
   const pick = process.env.TICKMARK_PARSER;
   if (pick === "rules") return [];
-  return PROVIDERS.filter((p) => p.ready() && (!pick || pick === p.name.toLowerCase())).map((p) => p.name);
+  // "model" means model first with any provider; "claude" or "openai" picks one.
+  const only = pick && pick !== "model" ? pick : null;
+  return PROVIDERS.filter((p) => p.ready() && (!only || only === p.name.toLowerCase())).map((p) => p.name);
 }
 
 // A model read takes 10 to 20 seconds. The same list (the sample, or a re-upload) reads the same,
@@ -225,19 +227,17 @@ const parseCache = new Map<string, { at: number; p: Promise<ParsedList> }>();
  * Reads a request list. The keyword rules go first: when they find the requests (a spreadsheet, numbered items,
  * rows with refs or a plain line list), that reading is used and no model is called, which costs nothing and
  * returns at once. The model reads lists the rules cannot split, or any list when `useModel` is set (the plan
- * screen's "Read with AI"). TICKMARK_PARSE=model makes the model go first, as before.
+ * screen's "Read with AI"). TICKMARK_PARSER=model makes the model go first, as before.
  * A model read is reused for identical input; fallback reads are never kept, so a provider outage is retried next time.
  */
 export function parseRequests(input: NormalizedInput, opts: { useModel?: boolean } = {}): Promise<ParsedList> {
-  const useModel = opts.useModel || process.env.TICKMARK_PARSE === "model";
-  if (!useModel || !availableProviders().length) {
-    const rules = parseWithRules(input);
-    if (rules.split !== "none" && rules.requests.length) return Promise.resolve(withoutSplit(rules));
-  }
+  const useModel = opts.useModel || process.env.TICKMARK_PARSER === "model";
+  const rules = parseWithRules(input);
+  if ((!useModel || !availableProviders().length) && rules.split !== "none" && rules.requests.length) return Promise.resolve(withoutSplit(rules));
   const key = createHash("sha256").update(JSON.stringify([availableProviders(), input])).digest("hex");
   const hit = parseCache.get(key);
   if (hit && Date.now() - hit.at < PARSE_TTL_MS) return hit.p;
-  const p = parseUncached(input);
+  const p = parseUncached(input, rules);
   parseCache.set(key, { at: Date.now(), p });
   // Map keeps insertion order, so the first key is the oldest.
   if (parseCache.size > PARSE_CACHE_MAX) parseCache.delete(parseCache.keys().next().value!);
@@ -245,12 +245,11 @@ export function parseRequests(input: NormalizedInput, opts: { useModel?: boolean
   return p;
 }
 
-/** Parses with the first model that works; the rules parser is the cross-check and last fallback. */
 /** Drops the rules parser's internal split label before the list leaves the parser. */
 const withoutSplit = ({ split: _split, ...rest }: ParsedList & { split?: string }): ParsedList => rest;
 
-async function parseUncached(input: NormalizedInput): Promise<ParsedList> {
-  const rules = parseWithRules(input);
+/** Parses with the first model that works; the rules reading is the cross-check and last fallback. */
+async function parseUncached(input: NormalizedInput, rules: ParsedList): Promise<ParsedList> {
   const failures: string[] = [];
   for (const p of PROVIDERS.filter((x) => availableProviders().includes(x.name))) {
     try {

@@ -17,7 +17,7 @@ export const parserName = (p: string) => (p === "rules" ? "keyword rules" : /cla
  * selections, and lets the user correct the type before anything runs. Evidence is pulled only
  * when the user presses the run button.
  */
-export function Plan({ parsed, requests, setRequests, onRun, source, onReadWithModel, reading }: { parsed: Parsed; requests: AuditRequest[]; setRequests: (r: AuditRequest[]) => void; onRun: () => void; source: SourceInfo; onReadWithModel?: () => void; reading?: boolean }) {
+export function Plan({ parsed, requests, setRequests, onRun, source, onReadWithModel, reading, error }: { parsed: Parsed; requests: AuditRequest[]; setRequests: (r: AuditRequest[]) => void; onRun: () => void; source: SourceInfo; onReadWithModel?: () => void; reading?: boolean; error?: string | null }) {
   const auto = requests.filter((r) => r.type !== "unsupported").length;
   // A manual override replaces the parser's reason, so the plan shows the type came from the user.
   const setType = (i: number, type: RequestType) => setRequests(requests.map((r, k) => (k === i ? { ...r, type, reason: "Changed by you" } : r)));
@@ -40,6 +40,7 @@ export function Plan({ parsed, requests, setRequests, onRun, source, onReadWithM
           Pull evidence from {source.kind === "fixture" ? "sample data" : "Ramp"}
         </button>
       </div>
+      {error && <div className="note">{error}</div>}
       {parsed.warnings.map((w) => (
         <div className="note" key={w}>{w}</div>
       ))}
