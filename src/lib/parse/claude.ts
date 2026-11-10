@@ -10,9 +10,9 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import OpenAI from "openai";
 import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
-import { AuditRequestSchema, ParsedListSchema, REQUEST_TYPE_INFO, REQUEST_TYPES, type ParsedList } from "./schema";
+import { AuditRequestSchema, ParsedListSchema, REQUEST_TYPE_INFO, REQUEST_TYPES, type AuditRequest, type ParsedList } from "./schema";
 import type { NormalizedInput } from "./input";
-import { findFiscalYearEnd, fiscalYearContaining, interpret, isEmail, parseWithRules } from "./rules";
+import { findFiscalYearEnd, fiscalYearContaining, interpret, isEmail, NO_MATCH, parseWithRules } from "./rules";
 
 /** Model ids, also shown to the user as the parser that produced the plan. */
 export const MODEL = "claude-opus-5-5";
@@ -237,7 +237,8 @@ export function parseRequests(input: NormalizedInput, opts: { useModel?: boolean
   const useModel = opts.useModel || process.env.TICKMARK_PARSER === "model";
   const rules = parseWithRules(input);
   // With no model set up, the keyword reading is the answer either way.
-  if (!availableProviders().length || (!useModel && rulesConfident(rules, input.text))) return Promise.resolve(withoutSplit(rules));
+  if (!availableProviders().length) return Promise.resolve(withoutSplit(rules));
+  if (!useModel && rulesConfident(rules, input.text)) return rereadUnmatched(withoutSplit(rules));
   const key = createHash("sha256").update(JSON.stringify([availableProviders(), input])).digest("hex");
   const hit = parseCache.get(key);
   if (hit && Date.now() - hit.at < PARSE_TTL_MS) return hit.p;
@@ -247,6 +248,58 @@ export function parseRequests(input: NormalizedInput, opts: { useModel?: boolean
   if (parseCache.size > PARSE_CACHE_MAX) parseCache.delete(parseCache.keys().next().value!);
   p.then((r) => { if (!MODELS.has(r.parser)) parseCache.delete(key); }, () => parseCache.delete(key));
   return p;
+}
+
+// Requests no keyword rule matched ("charges posted on weekends above $500") are read again by a model, a few lines
+// in one call, so free wording is not marked "outside Ramp" just because the rules lack the phrase. The model only
+// picks the type; period, threshold and selections stay as the rules read them. Requests the rules marked outside
+// Ramp on purpose (payroll, bank recs) are not sent. A long list with many unmatched lines is left to the
+// "Read with AI" button, since that is where a model is slow.
+const REREAD_MAX = 15;
+const REREAD_TTL_MS = 60 * 60_000;
+// The plan should still open quickly if a provider is slow; the rules reading stands in that case.
+const REREAD_TIMEOUT_MS = 20_000;
+const rereadCache = new Map<string, { at: number; type: AuditRequest["type"]; reason: string }>();
+
+async function rereadUnmatched(rules: ParsedList): Promise<ParsedList> {
+  const unmatched = rules.requests.filter((r) => r.type === "unsupported" && r.reason === NO_MATCH);
+  if (!unmatched.length || unmatched.length > REREAD_MAX) return rules;
+  const fresh = (text: string) => {
+    const hit = rereadCache.get(text);
+    return hit && Date.now() - hit.at < REREAD_TTL_MS ? hit : null;
+  };
+  const todo = unmatched.filter((r) => !fresh(r.text));
+  if (todo.length) {
+    // Refs are numbered here so the answer maps back even when the auditor's refs repeat or are missing.
+    const text = todo.map((r, i) => `R${i + 1}. ${r.text.replace(/\s+/g, " ")}`).join("\n");
+    const deadline = Date.now() + REREAD_TIMEOUT_MS;
+    for (const p of PROVIDERS.filter((x) => availableProviders().includes(x.name))) {
+      const left = deadline - Date.now();
+      if (left <= 0) break;
+      try {
+        const read = await Promise.race([
+          p.parse({ rows: [], selections: [], text }),
+          new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timed out")), left).unref?.()),
+        ]);
+        if (!read) continue;
+        todo.forEach((r, i) => {
+          const got = read.requests.find((x) => x.ref.replace(/\.$/, "") === `R${i + 1}`);
+          if (got) rereadCache.set(r.text, { at: Date.now(), type: got.type, reason: `${p.name} read it: ${got.reason}` });
+        });
+        break;
+      } catch (err) {
+        console.warn(`[parse] reread with ${p.name} failed: ${shortError(err)}`);
+      }
+    }
+    if (rereadCache.size > 500) rereadCache.delete(rereadCache.keys().next().value!);
+  }
+  const requests = rules.requests.map((r) => {
+    const hit = r.type === "unsupported" && r.reason === NO_MATCH ? fresh(r.text) : null;
+    if (!hit) return r;
+    if (hit.type === "unsupported") return { ...r, reason: hit.reason };
+    return { ...r, type: hit.type, reason: hit.reason, interpretation: interpret(hit.type, r.min_amount, r.selections.length) };
+  });
+  return { ...rules, requests };
 }
 
 // An email is short and phrased freely ("support for card charges in the last 12 months"), which a model reads

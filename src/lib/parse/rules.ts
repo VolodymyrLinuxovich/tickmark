@@ -20,6 +20,9 @@ const SHORTHAND: [RegExp, string][] = [
 /** Lowercases and expands shorthand so the keyword rules below only need full words. */
 export const expandShorthand = (t: string) => SHORTHAND.reduce((s, [re, to]) => s.replace(re, to), t.toLowerCase());
 
+/** Reason given when no rule matched. The model parser rereads requests with this reason (see claude.ts). */
+export const NO_MATCH = "No wording that matches a Ramp check";
+
 /** Request type only. See classifyWithReason for the rule order. */
 export function classify(text: string, hasSelections: boolean, area = ""): RequestType {
   return classifyWithReason(text, hasSelections, area).type;
@@ -37,11 +40,11 @@ export function classifyWithReason(text: string, hasSelections: boolean, area = 
   if ((m = t.match(/duplicate/))) return { type: "duplicate_payments", reason: `Mentions ${quote(m)}` };
   const missing = t.match(/(without|missing|no receipt|lack|not attached|n[o']t have|absent|unsupported by)/);
   if (/receipt/.test(t) && missing) return { type: "receipt_completeness", reason: `Mentions receipts and ${quote(missing)}` };
-  m = t.match(/(split|their own|own (spend|purchases|transactions)|self[- ]?approv|segregation of duties|restricted|prohibited|merchant categor|\bmcc|circumvent|out[- ]of[- ]policy|policy violation|approved after|after (they were |it was )?paid|also the approver|approved by the (same (person|individual)|cardholder(?!'s))|approver is the same|approv\w*[^.]{0,40}(after|later than) the payment)/);
+  m = t.match(/(split|their own|own (spend|purchases|transactions)|self[- ]?approv|segregation of duties|restricted|prohibited|merchant categor|\bmcc|circumvent|out[- ]of[- ]policy|policy violation|approved after|after (they were |it was )?paid|also the approver|approved by the (same (person|individual)|cardholder(?!'s))|approver is the same|approved by (someone|a person|an individual) other than|independent(ly)? approv|approv\w*[^.]{0,40}(after|later than) the payment)/);
   if (m) return { type: "control_testing", reason: `Control test wording: ${quote(m)}` };
   m = t.match(/(vendor master|vendor list|list(ing)? of vendors|new vendors|vendors (created|added|onboarded|set up)|vendor additions)/);
   if (m) return { type: "vendor_listing", reason: `Mentions ${quote(m)}` };
-  m = t.match(/(user access|administrator|admin (access|rights|roles?|permissions|privileges)|access (listing|rights|review)|users with|users and their roles|user listing|system access|list of users|users (in|of) the)/);
+  m = t.match(/(user access|administrator|admin (access|rights|roles?|permissions|privileges)|access (listing|rights|review)|users with|users and their roles|user listing|system access|list of users|users (in|of) the|terminated (employees|users)|card access|ability to approve|who (has|can) (access|approve))/);
   if (m) return { type: "user_access", reason: `Mentions ${quote(m)}` };
   // A sample of vendor bills or disbursements with no card wording is bill support.
   m = t.match(/(\bbills?\b|vendor invoice|disbursement|accounts payable|\bap\b|checks? (?:written|issued)|check register)/);
@@ -56,7 +59,13 @@ export function classifyWithReason(text: string, hasSelections: boolean, area = 
   m = t.match(/(\bbills?\b|invoice|vendor payment|accounts payable|disbursement|payments? to vendors)/);
   if (m) return { type: "bill_support", reason: `Mentions ${quote(m)}` };
   if (hasSelections && card) return { type: "transaction_support", reason: "Lists selected card items under the request" };
-  return { type: "unsupported", reason: "No wording that matches a Ramp check" };
+  // Free wording about card spend ("corporate card charges above $10,000 and evidence of approval",
+  // "receipts for meals over $250"): evidence for card spend, sampled by the engine.
+  m = t.match(/\b((corporate |credit |company |purchasing |p-?)?cards? (transactions?|charges?|purchases?|expenses?|spend(ing)?|activity)|(amex|visa|mastercard) (transactions?|charges?|purchases?)|charges? (posted |made )?(over|above|greater than|more than|exceeding|in excess of|on weekends|on holidays)|corporate cards?|credit cards?|expense reports?|employee (expenses|spend(ing)?|purchases)|receipts? (for|to support|supporting)|meals|travel and entertainment|entertainment)\b/);
+  if (m) return { type: "transaction_support", reason: `Mentions ${quote(m)}` };
+  m = t.match(/\b(purchases?|spend(ing)?) (over|above|exceeding|greater than|more than|in excess of)\s*\$/);
+  if (m) return { type: "transaction_support", reason: `Asks about ${quote(m)} a dollar amount` };
+  return { type: "unsupported", reason: NO_MATCH };
 }
 
 // ---------- thresholds ----------
