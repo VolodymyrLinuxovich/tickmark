@@ -279,7 +279,6 @@ td.nw { white-space: nowrap; }
 .hide-sm {}
 @media (max-width: 720px) { .hide-sm { display: none; } .top .pill { display: none; } }
 .btn.lg { padding: 11px 18px; font-size: 14.5px; border-radius: 9px; }
-.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--tick); margin: 0 0 12px; }
 .lp-hero { display: grid; grid-template-columns: 1.05fr .95fr; gap: 48px; align-items: center; padding-top: 64px; padding-bottom: 56px; min-height: min(680px, calc(100vh - 56px)); }
 .lp-hero h1 { font-family: var(--font-serif), Georgia, serif; font-weight: 500; font-size: clamp(38px, 5.2vw, 62px); line-height: 1.04; letter-spacing: -0.022em; margin: 0 0 18px; text-wrap: balance; }
 .lp-hero h1 em { font-style: italic; color: var(--tick); }
@@ -344,12 +343,12 @@ td.nw { white-space: nowrap; }
 }
 
 /* scroll reveal */
-.reveal .stagger, .reveal > h2, .reveal > .eyebrow { opacity: 0; transform: translateY(14px); transition: opacity .45s ease, transform .45s ease; }
-.reveal.in .stagger, .reveal.in > h2, .reveal.in > .eyebrow { opacity: 1; transform: none; }
+.reveal .stagger, .reveal > h2 { opacity: 0; transform: translateY(14px); transition: opacity .45s ease, transform .45s ease; }
+.reveal.in .stagger, .reveal.in > h2 { opacity: 1; transform: none; }
 .reveal > h2 { transition-delay: 40ms; }
 
 @media (prefers-reduced-motion: reduce) {
-  .reveal .stagger, .reveal > h2, .reveal > .eyebrow { opacity: 1; transform: none; }
+  .reveal .stagger, .reveal > h2 { opacity: 1; transform: none; }
 }
 
 /* not found */
@@ -585,7 +584,6 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 }
 
 /* ---------- landing v5: minimal ---------- */
-.lp .eyebrow { color: var(--ink-3); }
 .lp-section { padding-top: 120px; }
 .lp-section h2, .lp-cta h2 { margin-bottom: 40px; }
 .lp-grid3 { gap: 40px; }
@@ -614,7 +612,6 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 .lp-stack { gap: 24px; }
 .lp-stack .mini { padding: 20px 22px; }
 .lp-section { padding-top: 168px; }
-.lp .eyebrow { margin-bottom: 18px; }
 .lp-section h2, .lp-cta h2 { margin-bottom: 64px; line-height: 1.15; }
 .lp-grid3 { gap: 64px; }
 .lp-card h3 { margin: 22px 0 8px; }
@@ -677,7 +674,6 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 .fine { margin-top: 18px; }
 .lp-stack { gap: 18px; }
 .lp-section { padding-top: 128px; }
-.lp .eyebrow { margin-bottom: 14px; }
 .lp-section h2, .lp-cta h2 { margin-bottom: 48px; }
 .lp-grid3 { gap: 48px; }
 .lp-card h3 { margin: 18px 0 6px; }
