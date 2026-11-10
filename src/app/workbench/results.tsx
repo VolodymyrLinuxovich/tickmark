@@ -95,7 +95,7 @@ export function Results({ requests, runs, meta, auditor, source, openRecord }: {
         {missingReceipts.length > 0 && (
           <button type="button" className={`tool ${tool === "receipts" ? "on" : ""}`} aria-expanded={tool === "receipts"} onClick={() => setTool(tool === "receipts" ? null : "receipts")}>
             <b>Find missing receipts</b>
-            <span>{missingReceipts.length} charges have none</span>
+            <span>{missingReceipts.length === 1 ? "1 charge has none" : `${missingReceipts.length} charges have none`}</span>
           </button>
         )}
         <button type="button" className={`tool ${tool === "share" ? "on" : ""}`} aria-expanded={tool === "share"} onClick={() => setTool(tool === "share" ? null : "share")}>
