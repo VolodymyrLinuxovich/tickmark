@@ -140,9 +140,11 @@ select { font: inherit; font-size: 13px; border: 1px solid var(--line-2); border
 @media (max-width: 760px) { .stats { grid-auto-flow: row; grid-template-columns: 1fr 1fr; } .stat:nth-child(3) { border-left: none; } .stat:nth-child(n+3) { border-top: 1px solid var(--line); } }
 
 /* results */
-.results { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+/* Two panes of the same height, each scrolling on its own, so the request list and the detail always line up. */
+.results { display: grid; grid-template-columns: 300px 1fr; grid-template-rows: minmax(0, 1fr); gap: 16px; align-items: stretch; height: calc(100vh - 104px); min-height: 520px; }
+.results > .card { overflow-y: auto; overscroll-behavior: contain; }
 @media (max-width: 900px) { .results { grid-template-columns: 1fr; } }
-.req-list { overflow: hidden; position: sticky; top: 72px; }
+.req-list { min-height: 0; }
 .req-item { display: flex; gap: 10px; align-items: flex-start; width: 100%; text-align: left; background: none; border: none; border-top: 1px solid var(--line); padding: 11px 14px; cursor: pointer; }
 .req-item:first-child { border-top: none; }
 .req-item:hover { background: var(--surface-2); }
@@ -773,7 +775,7 @@ html { scroll-behavior: smooth; } @media (prefers-reduced-motion: reduce) { html
 .ex-filter .ex-more { padding: 0; }
 .ex-page { width: 100%; justify-content: center; margin-top: 4px; }
 /* Stacked on narrow screens: the request list must scroll away, not cover the results. */
-@media (max-width: 900px) { .req-list { position: static; } }
+@media (max-width: 900px) { .results { height: auto; min-height: 0; grid-template-rows: none; } .results > .card { overflow-y: visible; } }
 
 /* loading progress while a list is read */
 .load { margin-top: 14px; border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; background: var(--surface-2); animation: rise .2s ease both; }
