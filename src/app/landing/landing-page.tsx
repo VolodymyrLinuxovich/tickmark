@@ -68,7 +68,6 @@ export function LandingPage({ lang }: { lang: Locale }) {
 
         {/* Problem */}
         <Reveal className="lp-section wrap" id="problem">
-          <p className="eyebrow">{t.problem.eyebrow}</p>
           <h2>{t.problem.h2}</h2>
           <div className="lp-grid3">
             {t.problem.items.map((p, i) => (
@@ -101,7 +100,6 @@ export function LandingPage({ lang }: { lang: Locale }) {
 
         {/* Solution */}
         <Reveal className="lp-section wrap" id="solution">
-          <p className="eyebrow">{t.solution.eyebrow}</p>
           <h2>{t.solution.h2}</h2>
           <ol className="lp-steps">
             {t.solution.steps.map((s, i) => (
@@ -118,7 +116,6 @@ export function LandingPage({ lang }: { lang: Locale }) {
         </Reveal>
 
         <Reveal className="lp-section wrap">
-          <p className="eyebrow">{t.checks.eyebrow}</p>
           <h2>{t.checks.h2}</h2>
           <CoverageChart lang={lang} />
         </Reveal>

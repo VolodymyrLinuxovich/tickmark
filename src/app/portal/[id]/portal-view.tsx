@@ -104,7 +104,6 @@ export function PortalView({ id }: { id: string }) {
     <PortalShell business={view.business ?? view.portal.business}>
       <div className="portal-head">
         <div>
-          <p className="eyebrow">Shared audit</p>
           <h1>{view.business ?? view.portal.business}</h1>
           <p className="muted">
             {view.portal.auditor ? `Prepared for ${view.portal.auditor}. ` : ""}Read only. Results are recomputed from Ramp each time you open this page. Link expires {date(view.portal.expires_at)}.

@@ -22,11 +22,10 @@ export interface Dict {
   nav: { problem: string; solution: string; accuracy: string; open: string; language: string };
   hero: { h1a: string; h1b: string; lede: string; try: string; upload: string; sample: string; connected: string };
   flow: { aria: string; k1: string; t1: string; from: string; ask: string; c2: string; k2: string; t2: string; d2: string; k3: string; t3: string; d3: string; chip: string };
-  problem: { eyebrow: string; h2: string; items: { t: string; d: string }[] };
+  problem: { h2: string; items: { t: string; d: string }[] };
   quote: { text: string; note: string; source: string; translated: string };
-  solution: { eyebrow: string; h2: string; steps: { t: string; d: string }[] };
+  solution: { h2: string; steps: { t: string; d: string }[] };
   checks: {
-    eyebrow: string;
     h2: string;
     names: Record<string, string>;
     populations: Record<string, string>;
@@ -53,21 +52,20 @@ const en: Dict = {
   },
   flow: {
     aria: "What Tickmark does with one request",
-    k1: "1 · The auditor asks",
+    k1: "The auditor asks",
     t1: "PBC-03 · Bills over $10,000",
     from: "Request from Hartwell & Co.",
     ask: "Invoice, approval and proof of payment for every bill over $10,000.",
-    k2: "2 · Tickmark tests it in Ramp",
+    k2: "Tickmark tests it in Ramp",
     t2: "31 bills tested",
     d2: "Invoices attached, approvals traced, payments matched.",
     c2: "Every bill checked, none sampled",
-    k3: "3 · It flags what’s wrong",
+    k3: "It flags what’s wrong",
     t3: "Paid Jun 2, approved Jun 9",
     d3: "Crestline Contract Manufacturing, $22,300.00",
     chip: "Follow-up drafted for the bill owner",
   },
   problem: {
-    eyebrow: "The problem",
     h2: "Audit season still runs on email and screenshots.",
     items: [
       { t: "A spreadsheet of requests", d: "Dozens of asks: receipts, approvals, access lists." },
@@ -82,7 +80,6 @@ const en: Dict = {
     translated: "",
   },
   solution: {
-    eyebrow: "Our solution",
     h2: "Tickmark answers the list from data Ramp already has.",
     steps: [
       { t: "Upload", d: "The auditor's list, as a file or an email." },
@@ -92,7 +89,6 @@ const en: Dict = {
     ],
   },
   checks: {
-    eyebrow: "What it checks",
     h2: "The tests auditors run, on every record.",
     names: {},
     populations: {},
@@ -119,21 +115,20 @@ const es: Dict = {
   },
   flow: {
     aria: "Qué hace Tickmark con una solicitud",
-    k1: "1 · El auditor pide",
+    k1: "El auditor pide",
     t1: "PBC-03 · Facturas de más de 10.000 $",
     from: "Solicitud de Hartwell & Co.",
     ask: "Factura, aprobación y comprobante de pago de cada factura superior a 10.000 $.",
-    k2: "2 · Tickmark lo comprueba en Ramp",
+    k2: "Tickmark lo comprueba en Ramp",
     t2: "31 facturas revisadas",
     d2: "Facturas adjuntas, aprobaciones rastreadas, pagos conciliados.",
     c2: "Cada factura revisada, sin muestreo",
-    k3: "3 · Señala lo que falla",
+    k3: "Señala lo que falla",
     t3: "Pagada el 2 jun, aprobada el 9 jun",
     d3: "Crestline Contract Manufacturing, 22.300,00 $",
     chip: "Seguimiento redactado para el responsable",
   },
   problem: {
-    eyebrow: "El problema",
     h2: "La temporada de auditoría sigue funcionando con correos y capturas.",
     items: [
       { t: "Una hoja de cálculo de solicitudes", d: "Decenas de peticiones: recibos, aprobaciones, accesos." },
@@ -148,7 +143,6 @@ const es: Dict = {
     translated: "Traducción",
   },
   solution: {
-    eyebrow: "Nuestra solución",
     h2: "Tickmark responde la lista con datos que Ramp ya tiene.",
     steps: [
       { t: "Subir", d: "La lista del auditor, como archivo o correo." },
@@ -158,7 +152,6 @@ const es: Dict = {
     ],
   },
   checks: {
-    eyebrow: "Qué comprueba",
     h2: "Las pruebas del auditor, en cada registro.",
     names: {
       "Missing receipts": "Recibos faltantes",
@@ -202,21 +195,20 @@ const de: Dict = {
   },
   flow: {
     aria: "Was Tickmark mit einer Anforderung macht",
-    k1: "1 · Der Prüfer fragt",
+    k1: "Der Prüfer fragt",
     t1: "PBC-03 · Rechnungen über 10.000 $",
     from: "Anforderung von Hartwell & Co.",
     ask: "Rechnung, Freigabe und Zahlungsnachweis für jede Rechnung über 10.000 $.",
-    k2: "2 · Tickmark prüft es in Ramp",
+    k2: "Tickmark prüft es in Ramp",
     t2: "31 Rechnungen geprüft",
     d2: "Rechnungen angehängt, Freigaben nachverfolgt, Zahlungen abgeglichen.",
     c2: "Jede Rechnung geprüft, keine Stichprobe",
-    k3: "3 · Es meldet, was nicht stimmt",
+    k3: "Es meldet, was nicht stimmt",
     t3: "Bezahlt am 2. Juni, freigegeben am 9. Juni",
     d3: "Crestline Contract Manufacturing, 22.300,00 $",
     chip: "Nachfrage an den Verantwortlichen entworfen",
   },
   problem: {
-    eyebrow: "Das Problem",
     h2: "Die Prüfungssaison läuft noch über E-Mails und Screenshots.",
     items: [
       { t: "Eine Tabelle voller Anforderungen", d: "Dutzende Anfragen: Belege, Freigaben, Zugriffslisten." },
@@ -231,7 +223,6 @@ const de: Dict = {
     translated: "Übersetzung",
   },
   solution: {
-    eyebrow: "Unsere Lösung",
     h2: "Tickmark beantwortet die Liste mit Daten, die Ramp schon hat.",
     steps: [
       { t: "Hochladen", d: "Die Liste des Prüfers, als Datei oder E-Mail." },
@@ -241,7 +232,6 @@ const de: Dict = {
     ],
   },
   checks: {
-    eyebrow: "Was es prüft",
     h2: "Die Tests des Prüfers, für jeden Datensatz.",
     names: {
       "Missing receipts": "Fehlende Belege",
@@ -285,21 +275,20 @@ const fr: Dict = {
   },
   flow: {
     aria: "Ce que fait Tickmark d’une demande",
-    k1: "1 · L’auditeur demande",
+    k1: "L’auditeur demande",
     t1: "PBC-03 · Factures de plus de 10 000 $",
     from: "Demande de Hartwell & Co.",
     ask: "Facture, approbation et preuve de paiement pour chaque facture de plus de 10 000 $.",
-    k2: "2 · Tickmark le vérifie dans Ramp",
+    k2: "Tickmark le vérifie dans Ramp",
     t2: "31 factures vérifiées",
     d2: "Factures jointes, approbations retracées, paiements rapprochés.",
     c2: "Chaque facture vérifiée, sans échantillon",
-    k3: "3 · Il signale ce qui cloche",
+    k3: "Il signale ce qui cloche",
     t3: "Payée le 2 juin, approuvée le 9 juin",
     d3: "Crestline Contract Manufacturing, 22 300,00 $",
     chip: "Relance rédigée pour le responsable",
   },
   problem: {
-    eyebrow: "Le problème",
     h2: "La saison d’audit se fait encore par e-mails et captures d’écran.",
     items: [
       { t: "Un tableur de demandes", d: "Des dizaines de requêtes : reçus, approbations, accès." },
@@ -314,7 +303,6 @@ const fr: Dict = {
     translated: "Traduction",
   },
   solution: {
-    eyebrow: "Notre solution",
     h2: "Tickmark répond à la liste avec les données que Ramp possède déjà.",
     steps: [
       { t: "Importer", d: "La liste de l’auditeur, en fichier ou e-mail." },
@@ -324,7 +312,6 @@ const fr: Dict = {
     ],
   },
   checks: {
-    eyebrow: "Ce qu’il vérifie",
     h2: "Les contrôles de l’auditeur, sur chaque ligne.",
     names: {
       "Missing receipts": "Reçus manquants",
@@ -368,21 +355,20 @@ const uk: Dict = {
   },
   flow: {
     aria: "Що Tickmark робить з одним запитом",
-    k1: "1 · Аудитор запитує",
+    k1: "Аудитор запитує",
     t1: "PBC-03 · Рахунки понад $10 000",
     from: "Запит від Hartwell & Co.",
     ask: "Рахунок, погодження і підтвердження оплати для кожного рахунку понад $10 000.",
-    k2: "2 · Tickmark перевіряє це в Ramp",
+    k2: "Tickmark перевіряє це в Ramp",
     t2: "Перевірено 31 рахунок",
     d2: "Рахунки додані, погодження відстежені, оплати звірені.",
     c2: "Перевірено кожен рахунок, без вибірки",
-    k3: "3 · Позначає, що не так",
+    k3: "Позначає, що не так",
     t3: "Оплачено 2 червня, погоджено 9 червня",
     d3: "Crestline Contract Manufacturing, $22 300,00",
     chip: "Запит власнику рахунку підготовлено",
   },
   problem: {
-    eyebrow: "Проблема",
     h2: "Аудит досі тримається на листах і скриншотах.",
     items: [
       { t: "Таблиця запитів", d: "Десятки прохань: чеки, погодження, списки доступу." },
@@ -397,7 +383,6 @@ const uk: Dict = {
     translated: "Переклад",
   },
   solution: {
-    eyebrow: "Наше рішення",
     h2: "Tickmark відповідає на список даними, які вже є в Ramp.",
     steps: [
       { t: "Завантажити", d: "Список аудитора, файлом або листом." },
@@ -407,7 +392,6 @@ const uk: Dict = {
     ],
   },
   checks: {
-    eyebrow: "Що перевіряє",
     h2: "Перевірки аудитора, для кожного запису.",
     names: {
       "Missing receipts": "Відсутні чеки",
