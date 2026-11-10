@@ -144,7 +144,9 @@ sequenceDiagram
    becomes one of seven types with its period, dollar threshold and the items the auditor selected. A keyword parser
    goes first and handles spreadsheets, numbered items, table rows with their own refs and plain lists under section
    headings. When it can't split the list, Claude (or OpenAI) reads it, with long lists read in parts in parallel. The
-   plan screen can also ask the model to read any list. Requests Ramp can't answer (bank recs, fixed assets) are marked
+   plan screen can also ask the model to read any list. A request no keyword matches ("charges posted on weekends
+   above $500") goes to the model on its own, which only picks the type, so free wording is not left for the team by
+   mistake. Requests Ramp can't answer (bank recs, fixed assets) are marked
    for the team.
 2. **Review the plan.** Nothing runs until the controller checks it and starts the run. Any type can be changed.
 3. **Gather.** One snapshot of the period from Ramp, paged and cached for five minutes. Receipts are read 90 days past
