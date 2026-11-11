@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="src/app/icon.svg" alt="Tickmark logo" width="72" height="72">
+
 # Tickmark
 
 **Your auditor's request list, answered from Ramp.** Tickmark reads the year-end **PBC request list**, pulls the
@@ -139,6 +141,8 @@ sequenceDiagram
 ---
 
 ## How It Works
+
+![An auditor sends a request list, Tickmark answers it from Ramp, a cardholder fixes a missing receipt, and the auditor gets the binder](docs/how-it-works.gif)
 
 1. **Read the list.** Excel (including a separate Selections sheet), CSV, a text PDF or a pasted email. Each request
    becomes one of seven types with its period, dollar threshold and the items the auditor selected. A keyword parser
