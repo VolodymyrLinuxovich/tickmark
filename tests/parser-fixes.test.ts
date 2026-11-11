@@ -56,7 +56,7 @@ describe("a period ending on a day the start month lacks (#46)", () => {
 
 const sel = (request_ref: string | null, ref: string): RawSelection => ({ request_ref, ref, date: "2025-03-01", description: "ACME", amount: 100 });
 const table = (rows: [string, string][], selections: RawSelection[]): NormalizedInput => ({
-  rows: rows.map(([ref, text]) => ({ ref, text, period_from: "2025-01-01", period_to: "2025-12-31" })),
+  rows: rows.map(([ref, text]) => ({ ref, area: "", text, period_from: "2025-01-01", period_to: "2025-12-31" })),
   selections,
   text: rows.map((r) => r.join(" ")).join("\n"),
 });
