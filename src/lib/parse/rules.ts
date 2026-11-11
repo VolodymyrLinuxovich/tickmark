@@ -73,8 +73,9 @@ export function classifyWithReason(text: string, hasSelections: boolean, area = 
 const AMOUNT = String.raw`(?:\$|usd\s?)\s?(\d[\d,]*(?:\.\d+)?)\s?(k|m|mm|thousand|million)?\b`;
 const BEFORE = new RegExp(String.raw`(?:over|above|exceed(?:ing|s)?|in excess of|greater than|more than|larger than|at least|at or above|equal to or greater than|>=?|≥)\s*` + AMOUNT, "i");
 const AFTER = new RegExp(AMOUNT + String.raw`\)?\s?(?:\+|or more|and above|and over|or greater|and greater|or higher|plus)`, "i");
-// "Card txns 100+": a bare number with a plus sign
-const BARE_PLUS = /(?:^|\s)(\d{2,3}(?:,\d{3})*(?:\.\d+)?)\s?(k|m)?\+(?=\s|$)/i;
+// "Card txns 100+": a bare number with a plus sign. "A sample of 25+ transactions" is a count, not dollars.
+const COUNTED = String.raw`(?:card |credit |vendor |company |sample )?(?:transactions?|txns?|items?|charges?|selections?|samples?|invoices?|bills?|vendors?|users?|employees?|days?|months?|years?|records?|entries|receipts?|payments?|purchases?|expenses?|accounts?|people|persons?)\b`;
+const BARE_PLUS = new RegExp(String.raw`(?<!\b(?:sample of|sample|top|first|last|least))(?:^|\s)(\d{2,3}(?:,\d{3})*(?:\.\d+)?)\s?(k|m)?\+(?=\s|$)(?!\s*` + COUNTED + ")", "i");
 
 const scaled = (n: string, unit: string | undefined) => {
   const v = money(n);
@@ -127,7 +128,11 @@ const dateOf = (y: number, m: number, d: number) => `${y}-${pad(m)}-${pad(d)}`;
 function monthsBack(end: string, n: number): string {
   const [y, m, d] = end.split("-").map(Number);
   if (d !== lastDay(y, m)) {
-    const s = new Date(Date.UTC(y, m - 1 - n, d + 1));
+    // The period starts the day after the same day N months back. A day the shorter month lacks (Feb 30)
+    // means its last day, so "six months ended August 30" starts March 1, not March 3.
+    const back = new Date(Date.UTC(y, m - 1 - n, 1));
+    const by = back.getUTCFullYear(), bm = back.getUTCMonth() + 1;
+    const s = new Date(Date.UTC(by, bm - 1, Math.min(d, lastDay(by, bm)) + 1));
     return s.toISOString().slice(0, 10);
   }
   const s = new Date(Date.UTC(y, m - n, 1));
@@ -523,6 +528,19 @@ export function splitFreeText(text: string): InputRow[] {
 const sameRef = (a: string, b: string) => a.toLowerCase().replace(/[^a-z0-9.]/g, "") === b.toLowerCase().replace(/[^a-z0-9.]/g, "");
 
 /**
+ * Sheet selections that belong to the request `ref`. A selection naming one of the list's refs goes to that
+ * request only. A selection with no ref goes to every card request. A selection naming a ref the list lacks
+ * is dropped, unless no selection matches any ref, which usually means the sheet numbers requests its own way.
+ */
+export function sheetSelectionsFor(ref: string, refs: string[], selections: NormalizedInput["selections"]): Selection[] {
+  const known = (s: NormalizedInput["selections"][number]) => !!s.request_ref && refs.some((r) => sameRef(r, s.request_ref!));
+  const anyLinked = selections.some(known);
+  return selections
+    .filter((s) => (known(s) ? sameRef(s.request_ref!, ref) : !s.request_ref || !anyLinked))
+    .map(({ ref, date, description, amount }) => ({ ref, date, description, amount }));
+}
+
+/**
  * Keyword parser. Runs on every list: it is the fallback when no model is available, and the model's
  * request count is checked against it. Period precedence: period columns, then the request text, then the
  * period stated for the whole document. Selections typed under a request stay with it; selections from a
@@ -627,13 +645,10 @@ export function parseWithRules(input: NormalizedInput): ParsedList & { split: Sp
   // A stated year end ("for the fiscal year ending June 30, 2026") is the document's period, ahead of a stray "FY25" earlier on.
   const statedTo = statedYearEnd(input.text);
   const globalPeriod = statedTo ? { from: monthsBack(statedTo, 12), to: statedTo } : findPeriod(input.text, fye);
-  const linked = new Set(input.selections.filter((s) => s.request_ref && rows.some((r) => sameRef(r.ref, s.request_ref!))));
   const requests: AuditRequest[] = rows.map((row) => {
     const inline = selectionsFromText(row.text);
     const text = row.text.split("\n").filter((l) => !selectionFromLine(l)).join("\n").trim();
-    const attached = input.selections
-      .filter((s) => (linked.has(s) ? sameRef(s.request_ref!, row.ref) : true))
-      .map(({ ref, date, description, amount }) => ({ ref, date, description, amount }));
+    const attached = sheetSelectionsFor(row.ref, rows.map((r) => r.ref), input.selections);
     let { type, reason } = classifyWithReason(text, inline.length > 0, row.area);
     const ownSelections = inline.length ? inline : attached;
     // Dated amounts listed under a request are card selections, unless the topic is outside Ramp.
