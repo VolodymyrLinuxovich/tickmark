@@ -12,7 +12,7 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { AuditRequestSchema, ParsedListSchema, REQUEST_TYPE_INFO, REQUEST_TYPES, type AuditRequest, type ParsedList } from "./schema";
 import type { NormalizedInput } from "./input";
-import { findFiscalYearEnd, fiscalYearContaining, interpret, isEmail, NO_MATCH, parseWithRules } from "./rules";
+import { findFiscalYearEnd, fiscalYearContaining, interpret, isEmail, NO_MATCH, parseWithRules, sheetSelectionsFor } from "./rules";
 
 /** Model ids, also shown to the user as the parser that produced the plan. */
 export const MODEL = "claude-opus-5-5";
@@ -59,7 +59,7 @@ interface Provider {
   name: string; // shown to the user
   model: string;
   ready: () => boolean;
-  parse: (input: NormalizedInput) => Promise<ModelList | null>;
+  parse: (input: NormalizedInput, signal?: AbortSignal) => Promise<ModelList | null>;
 }
 
 // Structured output: the response is validated against ModelListSchema by the SDK, so no JSON is parsed by hand.
@@ -67,7 +67,7 @@ const claude: Provider = {
   name: "Claude",
   model: MODEL,
   ready: () => !!process.env.ANTHROPIC_API_KEY,
-  async parse(input) {
+  async parse(input, signal) {
     const response = await new Anthropic().messages.parse(
       {
         model: MODEL,
@@ -77,7 +77,7 @@ const claude: Provider = {
         system: SYSTEM,
         messages: [{ role: "user", content: userMessage(input) }],
       },
-      { timeout: 90_000 },
+      { timeout: 90_000, signal },
     );
     return response.stop_reason === "refusal" ? null : (response.parsed_output ?? null);
   },
@@ -87,7 +87,7 @@ const openai: Provider = {
   name: "OpenAI",
   model: OPENAI_MODEL,
   ready: () => !!process.env.OPENAI_API_KEY,
-  async parse(input) {
+  async parse(input, signal) {
     const response = await new OpenAI({ timeout: 90_000, maxRetries: 1 }).responses.parse({
       model: OPENAI_MODEL,
       instructions: SYSTEM,
@@ -95,7 +95,7 @@ const openai: Provider = {
       // Reading a list needs little thought. Only reasoning models accept the setting.
       ...(/^(gpt-5|o\d)/i.test(OPENAI_MODEL) && { reasoning: { effort: "low" as const } }),
       text: { format: zodTextFormat(ModelListSchema, "request_list") },
-    });
+    }, { signal });
     if (process.env.TICKMARK_LOG_USAGE) console.info(`[parse] ${OPENAI_MODEL} tokens in ${response.usage?.input_tokens} out ${response.usage?.output_tokens}`);
     return response.output_parsed ?? null;
   },
@@ -238,7 +238,7 @@ export function parseRequests(input: NormalizedInput, opts: { useModel?: boolean
   const rules = parseWithRules(input);
   // With no model set up, the keyword reading is the answer either way.
   if (!availableProviders().length) return Promise.resolve(withoutSplit(rules));
-  if (!useModel && rulesConfident(rules, input.text)) return rereadUnmatched(withoutSplit(rules));
+  if (!useModel && rulesConfident(rules, input.text)) return rereadUnmatched(withoutSplit(rules), input);
   const key = createHash("sha256").update(JSON.stringify([availableProviders(), input])).digest("hex");
   const hit = parseCache.get(key);
   if (hit && Date.now() - hit.at < PARSE_TTL_MS) return hit.p;
@@ -252,16 +252,28 @@ export function parseRequests(input: NormalizedInput, opts: { useModel?: boolean
 
 // Requests no keyword rule matched ("charges posted on weekends above $500") are read again by a model, a few lines
 // in one call, so free wording is not marked "outside Ramp" just because the rules lack the phrase. The model only
-// picks the type; period, threshold and selections stay as the rules read them. Requests the rules marked outside
-// Ramp on purpose (payroll, bank recs) are not sent. A long list with many unmatched lines is left to the
-// "Read with AI" button, since that is where a model is slow.
+// picks the type; period and threshold stay as the rules read them, and a request that becomes a card request gets
+// its sheet selections back. Requests the rules marked outside Ramp on purpose (payroll, bank recs) are not sent.
+// A long list with many unmatched lines is left to the "Read with AI" button, since that is where a model is slow.
 const REREAD_MAX = 15;
 const REREAD_TTL_MS = 60 * 60_000;
-// The plan should still open quickly if a provider is slow; the rules reading stands in that case.
-const REREAD_TIMEOUT_MS = 20_000;
+const REREAD_CACHE_MAX = 500;
+// The plan should still open quickly if a provider is slow; the rules reading stands in that case. The first
+// provider gets most of the time and the next one still gets a turn.
+const REREAD_TIMEOUT_MS = 22_000;
+const REREAD_FIRST_MS = 14_000;
 const rereadCache = new Map<string, { at: number; type: AuditRequest["type"]; reason: string }>();
 
-async function rereadUnmatched(rules: ParsedList): Promise<ParsedList> {
+function cacheReread(text: string, type: AuditRequest["type"], reason: string) {
+  const now = Date.now();
+  for (const [k, v] of rereadCache) if (now - v.at >= REREAD_TTL_MS) rereadCache.delete(k);
+  rereadCache.delete(text);
+  rereadCache.set(text, { at: now, type, reason });
+  // Oldest entries go first, since a Map keeps insertion order.
+  while (rereadCache.size > REREAD_CACHE_MAX) rereadCache.delete(rereadCache.keys().next().value!);
+}
+
+async function rereadUnmatched(rules: ParsedList, input: NormalizedInput): Promise<ParsedList> {
   const unmatched = rules.requests.filter((r) => r.type === "unsupported" && r.reason === NO_MATCH);
   if (!unmatched.length || unmatched.length > REREAD_MAX) return rules;
   const fresh = (text: string) => {
@@ -273,31 +285,38 @@ async function rereadUnmatched(rules: ParsedList): Promise<ParsedList> {
     // Refs are numbered here so the answer maps back even when the auditor's refs repeat or are missing.
     const text = todo.map((r, i) => `R${i + 1}. ${r.text.replace(/\s+/g, " ")}`).join("\n");
     const deadline = Date.now() + REREAD_TIMEOUT_MS;
-    for (const p of PROVIDERS.filter((x) => availableProviders().includes(x.name))) {
+    const providers = PROVIDERS.filter((x) => availableProviders().includes(x.name));
+    for (const [n, p] of providers.entries()) {
       const left = deadline - Date.now();
       if (left <= 0) break;
+      const budget = n === providers.length - 1 ? left : Math.min(left, REREAD_FIRST_MS);
+      // The call is cancelled when its time is up, so a slow provider is not left running and billed.
+      const abort = new AbortController();
+      const timer = setTimeout(() => abort.abort(new Error("timed out")), budget);
       try {
-        const read = await Promise.race([
-          p.parse({ rows: [], selections: [], text }),
-          new Promise<null>((_, reject) => setTimeout(() => reject(new Error("timed out")), left).unref?.()),
-        ]);
+        const read = await p.parse({ rows: [], selections: [], text }, abort.signal);
         if (!read) continue;
         todo.forEach((r, i) => {
-          const got = read.requests.find((x) => x.ref.replace(/\.$/, "") === `R${i + 1}`);
-          if (got) rereadCache.set(r.text, { at: Date.now(), type: got.type, reason: `${p.name} read it: ${got.reason}` });
+          const got = read.requests.find((x) => x.ref.trim().replace(/\.$/, "").toUpperCase() === `R${i + 1}`);
+          // A line the model left out is cached as still unmatched, so it is not sent again on every parse.
+          if (got) cacheReread(r.text, got.type, `${p.name} read it: ${got.reason}`);
+          else cacheReread(r.text, "unsupported", NO_MATCH);
         });
         break;
       } catch (err) {
-        console.warn(`[parse] reread with ${p.name} failed: ${shortError(err)}`);
+        console.warn(`[parse] reread with ${p.name} failed: ${abort.signal.aborted ? "timed out" : shortError(err)}`);
+      } finally {
+        clearTimeout(timer);
       }
     }
-    if (rereadCache.size > 500) rereadCache.delete(rereadCache.keys().next().value!);
   }
+  const refs = rules.requests.map((r) => r.ref);
   const requests = rules.requests.map((r) => {
     const hit = r.type === "unsupported" && r.reason === NO_MATCH ? fresh(r.text) : null;
     if (!hit) return r;
     if (hit.type === "unsupported") return { ...r, reason: hit.reason };
-    return { ...r, type: hit.type, reason: hit.reason, interpretation: interpret(hit.type, r.min_amount, r.selections.length) };
+    const selections = hit.type === "transaction_support" ? sheetSelectionsFor(r.ref, refs, input.selections) : r.selections;
+    return { ...r, type: hit.type, reason: hit.reason, selections, interpretation: interpret(hit.type, r.min_amount, selections.length) };
   });
   return { ...rules, requests };
 }
