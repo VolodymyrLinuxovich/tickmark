@@ -9,6 +9,8 @@ receipts, approvals, bills and payments behind every request **straight from Ram
 run**, and hands back an **evidence binder** where every line traces to a Ramp record. Problems come with a drafted
 Ramp comment to the right person, sent only after you approve it.
 
+<img src="docs/results.png" alt="Tickmark results screen">
+
 <br/>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)
