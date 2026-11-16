@@ -178,7 +178,11 @@ export class ApiSource implements RampSource {
       const link =
         objectType === "bills"
           ? await within(
-              this.record("bill", objectId).then((r) => (r as { deep_link_url?: string | null } | null)?.deep_link_url ?? null),
+              this.record("bill", objectId).then((r) => {
+                // From a cached snapshot the record is { bill, approval }; straight from Ramp it is the bill itself.
+                const rec = r as { bill?: { deep_link_url?: string | null }; deep_link_url?: string | null } | null;
+                return rec?.bill?.deep_link_url ?? rec?.deep_link_url ?? null;
+              }),
               ApiSource.recordLinkTimeoutMs,
               null,
             )

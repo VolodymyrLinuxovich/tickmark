@@ -26,6 +26,8 @@ export interface MockRamp {
   noThread: Set<string>;
   /** Ramp removed /developer/v1/agent-tools/*, so bill history 404s. Set false to serve the old endpoint. */
   billHistoryGone: boolean;
+  /** Bill ids whose history lookup answers 404 "does not exist", while the endpoint itself still works. */
+  billHistoryMissing: Set<string>;
   /** Paths the mock accepts but never answers, to test timeouts. */
   hangPaths: Set<string>;
   maxEntityIds: number;
@@ -43,6 +45,7 @@ export async function startMockRamp(): Promise<MockRamp> {
     comments: [],
     noThread: new Set(),
     billHistoryGone: true,
+    billHistoryMissing: new Set(),
     hangPaths: new Set(),
     maxEntityIds: 0,
     failNextWith429: true,
@@ -144,6 +147,7 @@ export async function startMockRamp(): Promise<MockRamp> {
         // What Ramp's sandbox answers as of Nov 2026 (checked live).
         if (state.billHistoryGone) return send(res, 404, { error_v2: { message: `Unknown agent tool client: ${APP.clientId}`, error_code: "DEVELOPER_7127" } });
         const { bill_id } = JSON.parse(await body(req)) as { bill_id: string };
+        if (state.billHistoryMissing.has(bill_id)) return send(res, 404, { error_v2: { message: `The requested Bill (${bill_id}) does not exist.`, error_code: "DEVELOPER_7002" } });
         const a = snap.approvals.find((x) => x.entity_id === bill_id);
         return send(res, 200, {
           bill_id,
@@ -177,6 +181,9 @@ export async function startMockRamp(): Promise<MockRamp> {
     const cm = p.match(/^\/developer\/v1\/comments\/(bills|transactions)\/([^/]+)$/);
     if (cm && req.method === "POST") {
       // Like Ramp: the API only adds to a thread that already exists on the record.
+      // Ramp's sandbox answers these two 404s differently (checked live, Nov 2026).
+      const exists = (cm[1] === "bills" ? snap.bills : snap.transactions).some((x) => x.id === cm[2]);
+      if (!exists && !state.noThread.has(cm[2])) return send(res, 404, { error_v2: { message: `The requested record (${cm[2]}) does not exist.`, error_code: "DEVELOPER_7002" } });
       if (state.noThread.has(cm[2])) return send(res, 404, { error_v2: { message: "The transaction does not have an associated comment thread", error_code: "DEVELOPER_7084" } });
       state.comments.push({ type: cm[1], id: cm[2], body: JSON.parse(await body(req)) });
       return send(res, 201, { id: "comment-1" });

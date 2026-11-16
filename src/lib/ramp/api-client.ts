@@ -42,7 +42,7 @@ export type RampAuth =
 
 /** Non-2xx response from Ramp. Keeps the status and Ramp's x-trace-id so failures can be reported to Ramp support. */
 export class RampHttpError extends Error {
-  constructor(public status: number, public url: string, public trace: string | null, body: string) {
+  constructor(public status: number, public url: string, public trace: string | null, public body: string) {
     super(`Ramp API ${status} on ${new URL(url).pathname}${trace ? ` (trace ${trace})` : ""}: ${body.slice(0, 200)}`);
   }
 }
@@ -264,7 +264,9 @@ export class RampApiClient {
       try {
         first = await history(bills[0]);
       } catch (e) {
-        if (e instanceof RampHttpError && e.status === 404) {
+        // Only Ramp's "unknown agent tool" 404 means the endpoint is gone. Any other error on this bill
+        // (for example the bill itself not found) leaves first unset, so the pool retries it and counts it if it fails again.
+        if (e instanceof RampHttpError && e.status === 404 && /DEVELOPER_7127|unknown agent tool/i.test(e.body)) {
           notes.warnings.push("Ramp no longer serves bill history (agent-tools/get-bill-history returns 404), so bill approvals could not be read with this token. Use a developer app with approvals:read to test bill approvals.");
           return null;
         }
@@ -379,7 +381,8 @@ export class RampApiClient {
       await this.request("POST", `/developer/v1/comments/${objectType}/${objectId}`, { message, message_format: "PLAIN_TEXT", mention_user_ids: mentionUserIds }, scope);
     } catch (e) {
       // Ramp only adds to a thread that already exists, and the API cannot start one.
-      if (e instanceof RampHttpError && e.status === 404) throw new NoCommentThreadError(objectType, objectId);
+      // Other 404s (a deleted record, a wrong id or type) stay errors, so nobody emails about a record that is not there.
+      if (e instanceof RampHttpError && e.status === 404 && /DEVELOPER_7084|comment thread/i.test(e.body)) throw new NoCommentThreadError(objectType, objectId);
       throw e;
     }
   }

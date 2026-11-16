@@ -2,11 +2,19 @@
 
 // Exceptions: grouped list, one card per finding with its drafted Ramp comment, and open/resolved/waived statuses.
 
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { ExceptionStatus, ExceptionStatuses } from "@/lib/binder/build";
 import type { Finding, FindingCode, RecordRef } from "@/lib/engine/types";
 import { LiveThread, useWatch } from "../loop";
 import type { SourceInfo } from "@/lib/ramp/types";
+
+/**
+ * Follow-ups the user approved, by finding id. A comment went into Ramp; an email was only handed to
+ * the mail app, so the card keeps a link to open it again and does not claim it was sent.
+ */
+export type Sent = { kind: "comment"; destination: string } | { kind: "email"; to: string; href: string };
+export type SentMap = Record<string, Sent>;
+export type SetSent = Dispatch<SetStateAction<SentMap>>;
 
 /** Plural names for exception types, used in the summary and filters. */
 export const GROUP_LABEL: Record<FindingCode, string> = {
@@ -53,7 +61,7 @@ export const TOP_PEOPLE = 5;
  * the count per exception type, and the cards themselves ten at a time. Clicking a person or
  * a type filters the cards. Short lists skip the summary.
  */
-export function ExceptionList({ items, openRecord, sent, setSent, source }: { items: { f: Finding; refs?: string[] }[]; openRecord: (x: RecordRef) => void; sent: Record<string, string>; setSent: (s: Record<string, string>) => void; source: SourceInfo }) {
+export function ExceptionList({ items, openRecord, sent, setSent, source }: { items: { f: Finding; refs?: string[] }[]; openRecord: (x: RecordRef) => void; sent: SentMap; setSent: SetSent; source: SourceInfo }) {
   const [person, setPerson] = useState<string | null>(null);
   const [code, setCode] = useState<FindingCode | null>(null);
   const [shown, setShown] = useState(PAGE);
@@ -153,7 +161,8 @@ export function ExceptionList({ items, openRecord, sent, setSent, source }: { it
 
 /** A mailto link for a follow-up Ramp could not take as a comment. */
 function mailto(e: { to: string | null; subject: string; body: string }) {
-  return `mailto:${encodeURIComponent(e.to ?? "")}?subject=${encodeURIComponent(e.subject)}&body=${encodeURIComponent(e.body)}`;
+  // RFC 6068 wants CRLF line breaks in a mailto body; some mail apps run bare LF lines together.
+  return `mailto:${encodeURIComponent(e.to ?? "")}?subject=${encodeURIComponent(e.subject)}&body=${encodeURIComponent(e.body.replace(/\r?\n/g, "\r\n"))}`;
 }
 
 /**
@@ -161,7 +170,7 @@ function mailto(e: { to: string | null; subject: string; body: string }) {
  * The draft is editable and is posted only when the user presses "Approve and send". On sample
  * data the server writes it to a demo outbox instead of Ramp.
  */
-export function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f: Finding; refs?: string[]; openRecord: (x: RecordRef) => void; sent: Record<string, string>; setSent: (s: Record<string, string>) => void; source: SourceInfo }) {
+export function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f: Finding; refs?: string[]; openRecord: (x: RecordRef) => void; sent: SentMap; setSent: SetSent; source: SourceInfo }) {
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState(f.comment?.message ?? "");
   const [posting, setPosting] = useState(false);
@@ -177,8 +186,10 @@ export function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f:
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
       // No Ramp thread on this record yet: hand the follow-up to the user's mail app instead.
-      if (json.email) window.location.href = mailto(json.email);
-      setSent({ ...sent, [f.id]: json.destination });
+      const entry: Sent = json.email ? { kind: "email", to: json.email.name, href: mailto(json.email) } : { kind: "comment", destination: json.destination };
+      if (entry.kind === "email") window.location.href = entry.href;
+      // Updater form: two cards sent close together must not overwrite each other.
+      setSent((prev) => ({ ...prev, [f.id]: entry }));
       setOpen(false);
       watch({ finding_id: f.id, code: f.code, object_type: f.comment.object_type, object_id: f.comment.object_id, posted_message: msg, since: new Date().toISOString(), owner: f.owner?.name });
     } catch (e) {
@@ -205,7 +216,7 @@ export function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f:
       {f.comment && (
         <div className="row" style={{ marginTop: 10 }}>
           {sent[f.id] ? (
-            <span className="sent">{sent[f.id].startsWith("email to") ? `Sent by ${sent[f.id]}` : `Sent as a comment on the Ramp ${f.comment.object_type === "bills" ? "bill" : "transaction"} (${sent[f.id]})`}</span>
+            <SentNote s={sent[f.id]} what={f.comment.object_type === "bills" ? "bill" : "transaction"} />
           ) : (
             <button className="btn small" onClick={() => setOpen(!open)}>{open ? "Hide draft" : `Draft comment to ${f.owner?.name ?? "owner"}`}</button>
           )}
@@ -226,6 +237,17 @@ export function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f:
         </div>
       )}
     </div>
+  );
+}
+
+/** Where an approved follow-up went. An email is only opened in the mail app, so the note says to send it there. */
+function SentNote({ s, what }: { s: Sent; what: string }) {
+  if (s.kind === "comment") return <span className="sent">Sent as a comment on the Ramp {what} ({s.destination})</span>;
+  return (
+    <span className="sent">
+      Ramp has no thread on this {what}, so an email to {s.to} opened in your mail app. Send it from there.{" "}
+      <a href={s.href}>Open it again</a>
+    </span>
   );
 }
 

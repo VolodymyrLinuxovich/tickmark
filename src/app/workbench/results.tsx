@@ -12,7 +12,7 @@ import { ReceiptHunter } from "../receipt-hunter";
 import { AskBooks, type BinderExtra } from "../ask-books";
 import { PortalShare } from "../portal-share";
 import type { SourceInfo } from "@/lib/ramp/types";
-import { GROUP_LABEL, ONE_LABEL, ExceptionList, StatusContext, useStatuses } from "./exceptions";
+import { GROUP_LABEL, ONE_LABEL, ExceptionList, StatusContext, useStatuses, type SentMap, type SetSent } from "./exceptions";
 import { type RunState, StatusIcon, iconFor } from "./shared";
 
 // ---------------------------------------------------------------- results
@@ -32,7 +32,7 @@ export function Results({ requests, runs, meta, auditor, source, openRecord }: {
   }, [results]);
   const [sel, setSel] = useState<number | "all">("all");
   const [downloading, setDownloading] = useState(false);
-  const [sent, setSent] = useState<Record<string, string>>({});
+  const [sent, setSent] = useState<SentMap>({});
   const statusApi = useStatuses();
   const [extras, setExtras] = useState<BinderExtra[]>([]);
   const [tool, setTool] = useState<null | "receipts" | "share" | "ask">(null);
@@ -184,7 +184,7 @@ export function LoopStat({ sent, ready, live }: { sent: number; ready: number; l
  * tickmarks per row, and its exceptions. Opens on the exceptions tab when there are any.
  * Manual requests show only the procedure, since Ramp holds no evidence for them.
  */
-export function RequestDetail({ r, openRecord, sent, setSent, source }: { r: RequestResult; openRecord: (x: RecordRef) => void; sent: Record<string, string>; setSent: (s: Record<string, string>) => void; source: SourceInfo }) {
+export function RequestDetail({ r, openRecord, sent, setSent, source }: { r: RequestResult; openRecord: (x: RecordRef) => void; sent: SentMap; setSent: SetSent; source: SourceInfo }) {
   const [tab, setTab] = useState<"evidence" | "exceptions">(r.findings.length ? "exceptions" : "evidence");
   const flagged = new Set(r.findings.map((f) => f.id));
   return (
