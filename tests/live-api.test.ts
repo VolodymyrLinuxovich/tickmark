@@ -129,6 +129,39 @@ describe("live Ramp client against a spec-shaped mock", () => {
     }
   });
 
+  it("sends the email quickly without a link when the record lookup never answers", async () => {
+    const src = new ApiSource("sandbox", { kind: "client_credentials", ...APP }, ramp.url);
+    const bill = ramp.snap.bills[3];
+    bill.deep_link_url = `https://example.ramp.test/bills/${bill.id}`;
+    ramp.noThread.add(bill.id);
+    const path = `/developer/v1/bills/${bill.id}`;
+    ramp.hangPaths.add(path);
+    const saved = ApiSource.recordLinkTimeoutMs;
+    ApiSource.recordLinkTimeoutMs = 200;
+    try {
+      const t0 = Date.now();
+      const out = await src.postComment("bills", bill.id, "Please attach the invoice.", [], bill.bill_owner.id);
+      expect(Date.now() - t0).toBeLessThan(2000);
+      expect(ramp.log.some((l) => l.path === path)).toBe(true);
+      expect(out.email?.body).not.toContain("Open in Ramp");
+      expect(out.email?.body).toContain(`Ramp bill ID: ${bill.id}`);
+    } finally {
+      ApiSource.recordLinkTimeoutMs = saved;
+      ramp.hangPaths.delete(path);
+      delete bill.deep_link_url;
+    }
+  });
+
+  it("sends the email without a link when the record lookup fails", async () => {
+    const src = new ApiSource("sandbox", { kind: "client_credentials", ...APP }, ramp.url);
+    // No thread, and the bill lookup itself fails (Ramp has no such bill), so there is no link to add.
+    ramp.noThread.add("no-such-bill");
+    const out = await src.postComment("bills", "no-such-bill", "Please attach the invoice.", []);
+    expect(ramp.log.some((l) => l.path === "/developer/v1/bills/no-such-bill")).toBe(true);
+    expect(out.email?.body).not.toContain("Open in Ramp");
+    expect(out.email?.body).toContain("Ramp bill ID: no-such-bill");
+  });
+
   it("leaves the link out when Ramp gives none", async () => {
     const src = new ApiSource("sandbox", { kind: "client_credentials", ...APP }, ramp.url);
     const t = ramp.snap.transactions[3];

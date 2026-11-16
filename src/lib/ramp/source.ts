@@ -118,7 +118,16 @@ class FixtureSource implements RampSource {
 const SNAPSHOT_TTL_MS = 5 * 60_000;
 
 /** Live Ramp source. Sandbox uses demo-api.ramp.com and production uses api.ramp.com unless RAMP_API_BASE_URL overrides it. */
+/** Resolves to the promise's value, or to `fallback` if it fails or takes longer than `ms`. Never rejects. */
+function within<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<T>((resolve) => (timer = setTimeout(() => resolve(fallback), ms)));
+  return Promise.race([p.catch(() => fallback), late]).finally(() => clearTimeout(timer));
+}
+
 export class ApiSource implements RampSource {
+  /** How long the fallback email waits for the record link before going out without it. */
+  static recordLinkTimeoutMs = 3000;
   info: SourceInfo;
   private client: RampApiClient;
   private cache = new Map<string, { at: number; p: Promise<RampSnapshot & { notes: SnapshotNotes }> }>();
@@ -165,7 +174,15 @@ export class ApiSource implements RampSource {
       const name = owner ? `${owner.first_name ?? ""} ${owner.last_name ?? ""}`.trim() || "the owner" : "the owner";
       const what = objectType === "bills" ? "bill" : "transaction";
       // A direct link to the record when Ramp gives one. Bills carry deep_link_url; the API has no link for transactions.
-      const link = objectType === "bills" ? ((await this.record("bill", objectId)) as { deep_link_url?: string | null } | null)?.deep_link_url : null;
+      // The link is a nice-to-have: if the lookup is slow or fails, the email goes out without it.
+      const link =
+        objectType === "bills"
+          ? await within(
+              this.record("bill", objectId).then((r) => (r as { deep_link_url?: string | null } | null)?.deep_link_url ?? null),
+              ApiSource.recordLinkTimeoutMs,
+              null,
+            )
+          : null;
       const body = `${message}\n\n${link ? `Open in Ramp: ${link}\n` : ""}Ramp ${what} ID: ${objectId}`;
       return {
         ...base,
