@@ -27,8 +27,12 @@ export async function POST(req: Request) {
     if (type.includes("multipart/form-data")) {
       const form = await req.formData();
       const file = form.get("file");
-      if (!(file instanceof File)) return Response.json({ error: "No file uploaded" }, { status: 400 });
-      if (file.size > 5_000_000) return Response.json({ error: "File is larger than 5 MB" }, { status: 413 });
+      if (!(file instanceof File)) {
+        return Response.json({ error: "No file uploaded" }, { status: 400 });
+      }
+      if (file.size > 5_000_000) {
+        return Response.json({ error: "File is larger than 5 MB" }, { status: 413 });
+      }
       const input = await normalizeFile(file.name, new Uint8Array(await file.arrayBuffer()));
       return Response.json({ ...(await parseRequests(input, { useModel: form.get("use_model") === "1" })), input_name: file.name });
     }
@@ -40,13 +44,17 @@ export async function POST(req: Request) {
       const input = await normalizeFile(name, bytes);
       const conn = getConnection();
       // Start the Ramp read now so it runs while the model reads the list, not after it.
-      if (conn.connected) conn.source.snapshot(trailingYear()).catch(() => {});
+      if (conn.connected) {
+        conn.source.snapshot(trailingYear()).catch(() => {});
+      }
       const parsed = await parseRequests(input, opts);
       // On a real Ramp business, the FY2025 sample would find nothing; fit it to the live data.
       const fitted = conn.connected ? await fitSampleToLiveData(parsed, conn.source) : parsed;
       return Response.json({ ...fitted, input_name: name });
     }
-    if (body.text?.trim()) return Response.json({ ...(await parseRequests(normalizeText(body.text), opts)), input_name: "Pasted text" });
+    if (body.text?.trim()) {
+      return Response.json({ ...(await parseRequests(normalizeText(body.text), opts)), input_name: "Pasted text" });
+    }
     return Response.json({ error: "Paste a request list or upload a file" }, { status: 400 });
   } catch (err) {
     return Response.json({ error: `Could not read the request list: ${String(err).slice(0, 200)}` }, { status: 400 });

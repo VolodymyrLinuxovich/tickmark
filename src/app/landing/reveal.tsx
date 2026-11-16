@@ -9,7 +9,9 @@ export function Reveal({ children, className = "", as: Tag = "section", id }: { 
   const ref = useRef<HTMLElement>(null);
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     if (!("IntersectionObserver" in window)) {
       el.classList.add("in");
       return;

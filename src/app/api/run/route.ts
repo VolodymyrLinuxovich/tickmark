@@ -23,7 +23,9 @@ function periodOf(reqs: z.infer<typeof Body>["requests"]) {
 
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json());
-  if (!parsed.success) return Response.json({ error: "Invalid requests" }, { status: 400 });
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid requests" }, { status: 400 });
+  }
   const source = getSource();
   try {
     const t0 = Date.now();

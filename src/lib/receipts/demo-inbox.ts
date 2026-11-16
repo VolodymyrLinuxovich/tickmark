@@ -42,7 +42,9 @@ export function demoInbox(targets: ReceiptTarget[]): DemoFile[] {
   const files: DemoFile[] = [];
   const sorted = [...targets].sort((a, b) => hash(a.transaction_id) - hash(b.transaction_id));
   sorted.forEach((t, i) => {
-    if (i % 4 === 3) return; // about a quarter stay missing, so the hunter also shows what it could not find
+    if (i % 4 === 3) {
+      return; // about a quarter stay missing, so the hunter also shows what it could not find
+    }
     const m = title(t.merchant);
     const domain = `${slug(t.merchant)}.com`;
     const to = `${t.owner.toLowerCase().replace(/[^a-z]+/g, ".")}@savetime.example`;

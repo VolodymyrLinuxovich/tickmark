@@ -51,9 +51,13 @@ export function ProductDemo() {
   const { ref, inView } = useInView<HTMLDivElement>();
   const [t, setT] = useState(LOOP - 1); // final frame until it is on screen
   useEffect(() => {
-    if (!inView) return;
+    if (!inView) {
+      return;
+    }
     // Reduced motion: keep the initial final frame.
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
     let raf = 0;
     const t0 = performance.now();
     const tick = (now: number) => {

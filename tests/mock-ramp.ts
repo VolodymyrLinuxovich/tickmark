@@ -88,7 +88,9 @@ export async function startMockRamp(): Promise<MockRamp> {
     const auth = req.headers.authorization ?? "";
     state.log.push({ method: req.method!, path: u.pathname, query: q, auth });
     const p = u.pathname;
-    if (state.hangPaths.has(p)) return;
+    if (state.hangPaths.has(p)) {
+      return;
+    }
 
     if (p.startsWith("/files/")) {
       res.writeHead(200, { "Content-Type": "image/png" });
@@ -98,11 +100,15 @@ export async function startMockRamp(): Promise<MockRamp> {
       const raw = await body(req);
       const form = new URLSearchParams(raw);
       const expected = `Basic ${Buffer.from(`${APP.clientId}:${APP.clientSecret}`).toString("base64")}`;
-      if (auth !== expected || form.get("grant_type") !== "client_credentials") return send(res, 401, { error: "invalid_client" });
+      if (auth !== expected || form.get("grant_type") !== "client_credentials") {
+        return send(res, 401, { error: "invalid_client" });
+      }
       return send(res, 200, { access_token: APP_TOKEN, token_type: "Bearer", expires_in: 864000, scope: form.get("scope") ?? "" });
     }
     const token = auth.replace(/^Bearer /, "");
-    if (token !== APP_TOKEN && token !== CLI_TOKEN) return send(res, 401, { error: "unauthorized" });
+    if (token !== APP_TOKEN && token !== CLI_TOKEN) {
+      return send(res, 401, { error: "unauthorized" });
+    }
 
     if (state.failNextWith429 && p === "/developer/v1/users") {
       state.failNextWith429 = false;
@@ -137,7 +143,9 @@ export async function startMockRamp(): Promise<MockRamp> {
             .map((b) => ({ ...b, attachments: b.attachments.map((a) => ({ ...a, url: signed("bills", b.id) })) })),
         );
       case "/developer/v1/approvals": {
-        if (token === CLI_TOKEN) return send(res, 403, { error: "missing scope approvals:read" });
+        if (token === CLI_TOKEN) {
+          return send(res, 403, { error: "missing scope approvals:read" });
+        }
         const ids = q.getAll("entity_ids");
         state.maxEntityIds = Math.max(state.maxEntityIds, ids.length);
         const type = (q.get("entity_type") ?? "").toLowerCase();
@@ -145,9 +153,13 @@ export async function startMockRamp(): Promise<MockRamp> {
       }
       case "/developer/v1/agent-tools/get-bill-history": {
         // What Ramp's sandbox answers as of Nov 2026 (checked live).
-        if (state.billHistoryGone) return send(res, 404, { error_v2: { message: `Unknown agent tool client: ${APP.clientId}`, error_code: "DEVELOPER_7127" } });
+        if (state.billHistoryGone) {
+          return send(res, 404, { error_v2: { message: `Unknown agent tool client: ${APP.clientId}`, error_code: "DEVELOPER_7127" } });
+        }
         const { bill_id } = JSON.parse(await body(req)) as { bill_id: string };
-        if (state.billHistoryMissing.has(bill_id)) return send(res, 404, { error_v2: { message: `The requested Bill (${bill_id}) does not exist.`, error_code: "DEVELOPER_7002" } });
+        if (state.billHistoryMissing.has(bill_id)) {
+          return send(res, 404, { error_v2: { message: `The requested Bill (${bill_id}) does not exist.`, error_code: "DEVELOPER_7002" } });
+        }
         const a = snap.approvals.find((x) => x.entity_id === bill_id);
         return send(res, 200, {
           bill_id,
@@ -183,8 +195,12 @@ export async function startMockRamp(): Promise<MockRamp> {
       // Like Ramp: the API only adds to a thread that already exists on the record.
       // Ramp's sandbox answers these two 404s differently (checked live, Nov 2026).
       const exists = (cm[1] === "bills" ? snap.bills : snap.transactions).some((x) => x.id === cm[2]);
-      if (!exists && !state.noThread.has(cm[2])) return send(res, 404, { error_v2: { message: `The requested record (${cm[2]}) does not exist.`, error_code: "DEVELOPER_7002" } });
-      if (state.noThread.has(cm[2])) return send(res, 404, { error_v2: { message: "The transaction does not have an associated comment thread", error_code: "DEVELOPER_7084" } });
+      if (!exists && !state.noThread.has(cm[2])) {
+        return send(res, 404, { error_v2: { message: `The requested record (${cm[2]}) does not exist.`, error_code: "DEVELOPER_7002" } });
+      }
+      if (state.noThread.has(cm[2])) {
+        return send(res, 404, { error_v2: { message: "The transaction does not have an associated comment thread", error_code: "DEVELOPER_7084" } });
+      }
       state.comments.push({ type: cm[1], id: cm[2], body: JSON.parse(await body(req)) });
       return send(res, 201, { id: "comment-1" });
     }

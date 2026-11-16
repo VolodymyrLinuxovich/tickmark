@@ -12,7 +12,9 @@ vi.mock("openai", () => ({
       parse: async ({ input }: { input: string }) => {
         calls.push({ who: "openai", input });
         const out = openaiAnswer(input);
-        if (out instanceof Error) throw out;
+        if (out instanceof Error) {
+          throw out;
+        }
         return { output_parsed: out, usage: {} };
       },
     };
@@ -24,7 +26,9 @@ vi.mock("@anthropic-ai/sdk", () => ({
       parse: (body: { messages: { content: string }[] }, opts: { signal?: AbortSignal }) => {
         const call: { who: string; input: string; aborted?: boolean } = { who: "claude", input: body.messages[0].content };
         calls.push(call);
-        if (!claudeHangs) return Promise.reject(new Error("503 overloaded"));
+        if (!claudeHangs) {
+          return Promise.reject(new Error("503 overloaded"));
+        }
         return new Promise((_, reject) => opts.signal?.addEventListener("abort", () => ((call.aborted = true), reject(opts.signal!.reason))));
       },
     };

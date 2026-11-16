@@ -50,26 +50,34 @@ class StaleWrite extends Error {}
 /** Saves a portal. With `ifMatch`, only if nobody saved it since it was loaded with that version. */
 async function save(p: Portal, ifMatch?: string) {
   if (!blobEnabled()) {
-    if (ifMatch !== undefined && memory.get(p.id)?.etag !== ifMatch) throw new StaleWrite();
+    if (ifMatch !== undefined && memory.get(p.id)?.etag !== ifMatch) {
+      throw new StaleWrite();
+    }
     memory.set(p.id, { portal: structuredClone(p), etag: randomBytes(8).toString("hex") });
     return;
   }
   try {
     await put(path(p.id), JSON.stringify(p), { access: "private", contentType: "application/json", addRandomSuffix: false, allowOverwrite: true, cacheControlMaxAge: 60, ...(ifMatch ? { ifMatch } : {}) });
   } catch (err) {
-    if (err instanceof BlobPreconditionFailedError) throw new StaleWrite();
+    if (err instanceof BlobPreconditionFailedError) {
+      throw new StaleWrite();
+    }
     throw err;
   }
 }
 
 async function load(id: string): Promise<{ portal: Portal; etag: string } | null> {
-  if (!isPortalId(id)) return null;
+  if (!isPortalId(id)) {
+    return null;
+  }
   if (!blobEnabled()) {
     const m = memory.get(id);
     return m ? { portal: structuredClone(m.portal), etag: m.etag } : null;
   }
   const res = await get(path(id), { access: "private", useCache: false }).catch(() => null);
-  if (!res || res.statusCode !== 200) return null;
+  if (!res || res.statusCode !== 200) {
+    return null;
+  }
   return { portal: JSON.parse(await new Response(res.stream).text()) as Portal, etag: res.blob.etag };
 }
 
@@ -81,14 +89,20 @@ async function load(id: string): Promise<{ portal: Portal; etag: string } | null
 async function update<T>(id: string, now: Date, change: (p: Portal) => T | null): Promise<T | null> {
   for (let attempt = 0; attempt < 5; attempt++) {
     const loaded = await load(id);
-    if (!loaded || new Date(loaded.portal.expires_at) < now) return null;
+    if (!loaded || new Date(loaded.portal.expires_at) < now) {
+      return null;
+    }
     const out = change(loaded.portal);
-    if (out === null) return null;
+    if (out === null) {
+      return null;
+    }
     try {
       await save(loaded.portal, loaded.etag);
       return out;
     } catch (err) {
-      if (!(err instanceof StaleWrite)) throw err;
+      if (!(err instanceof StaleWrite)) {
+        throw err;
+      }
     }
   }
   throw new Error("The portal is busy. Try again.");
@@ -116,12 +130,16 @@ export async function createPortal(input: { business: string; auditor: string | 
 /** Loads a live portal; expired or unknown ids return null. */
 export async function getPortal(id: string, now = new Date()): Promise<Portal | null> {
   const loaded = await load(id);
-  if (!loaded || new Date(loaded.portal.expires_at) < now) return null;
+  if (!loaded || new Date(loaded.portal.expires_at) < now) {
+    return null;
+  }
   return loaded.portal;
 }
 
 export function ownsPortal(p: Portal, key: string | null | undefined): boolean {
-  if (!key) return false;
+  if (!key) {
+    return false;
+  }
   const a = Buffer.from(sha(key), "hex");
   const b = Buffer.from(p.owner_key_hash, "hex");
   return a.length === b.length && timingSafeEqual(a, b);
@@ -130,7 +148,9 @@ export function ownsPortal(p: Portal, key: string | null | undefined): boolean {
 export async function addQuestion(id: string, q: { ref: string; text: string; name: string | null }, now = new Date()): Promise<PortalQuestion | null> {
   const question: PortalQuestion = { id: randomBytes(8).toString("hex"), ref: q.ref, text: q.text, name: q.name, asked_at: now.toISOString(), answer: null };
   return update(id, now, (p) => {
-    if (!p.requests.some((r) => r.ref === q.ref) || p.questions.length >= 200) return null;
+    if (!p.requests.some((r) => r.ref === q.ref) || p.questions.length >= 200) {
+      return null;
+    }
     p.questions.push(question);
     return question;
   });
@@ -138,9 +158,13 @@ export async function addQuestion(id: string, q: { ref: string; text: string; na
 
 export async function answerQuestion(id: string, key: string, questionId: string, text: string, now = new Date()): Promise<PortalQuestion | null> {
   return update(id, now, (p) => {
-    if (!ownsPortal(p, key)) return null;
+    if (!ownsPortal(p, key)) {
+      return null;
+    }
     const q = p.questions.find((x) => x.id === questionId);
-    if (!q) return null;
+    if (!q) {
+      return null;
+    }
     q.answer = { text, at: now.toISOString() };
     return q;
   });
@@ -149,10 +173,18 @@ export async function answerQuestion(id: string, key: string, questionId: string
 /** The controller keeps the portal in step with their app: request list, exception statuses, Ask questions. */
 export async function updateShared(id: string, key: string, patch: { requests?: AuditRequest[]; statuses?: ExceptionStatuses; extras?: BinderExtraInput[] }, now = new Date()): Promise<Portal | null> {
   return update(id, now, (p) => {
-    if (!ownsPortal(p, key)) return null;
-    if (patch.requests) p.requests = patch.requests;
-    if (patch.statuses) p.statuses = patch.statuses;
-    if (patch.extras) p.extras = patch.extras;
+    if (!ownsPortal(p, key)) {
+      return null;
+    }
+    if (patch.requests) {
+      p.requests = patch.requests;
+    }
+    if (patch.statuses) {
+      p.statuses = patch.statuses;
+    }
+    if (patch.extras) {
+      p.extras = patch.extras;
+    }
     return p;
   });
 }

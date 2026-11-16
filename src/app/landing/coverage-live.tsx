@@ -34,7 +34,9 @@ export function CoverageLive({ data, manualSample, labels = DEFAULT_LABELS }: { 
   const [live, setLive] = useState(false);
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let raf = 0;
     const run = () => {
@@ -47,8 +49,11 @@ export function CoverageLive({ data, manualSample, labels = DEFAULT_LABELS }: { 
       const step = (now: number) => {
         const x = Math.min(1, (now - t0) / 2200);
         setP(1 - Math.pow(1 - x, 3));
-        if (x < 1) raf = requestAnimationFrame(step);
-        else setLive(true);
+        if (x < 1) {
+          raf = requestAnimationFrame(step);
+        } else {
+          setLive(true);
+        }
       };
       cancelAnimationFrame(raf);
       setLive(false);

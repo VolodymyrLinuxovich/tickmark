@@ -18,7 +18,9 @@ const Body = z.object({
 /** Ask your books: question in, matching Ramp records out. Read only. */
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return Response.json({ error: "Ask a question of at least a few words." }, { status: 400 });
+  if (!parsed.success) {
+    return Response.json({ error: "Ask a question of at least a few words." }, { status: 400 });
+  }
   const { question, allow_model } = parsed.data;
   const source = getSource();
   // No period on the requests: sample data uses its own fiscal year, live Ramp data the last 365 days.

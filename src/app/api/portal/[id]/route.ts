@@ -12,7 +12,9 @@ export const maxDuration = 120;
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const portal = await getPortal(id);
-  if (!portal) return Response.json({ error: "This portal link is invalid or has expired." }, { status: 404 });
+  if (!portal) {
+    return Response.json({ error: "This portal link is invalid or has expired." }, { status: 404 });
+  }
   const owner = ownsPortal(portal, req.headers.get("x-portal-owner"));
   const from = portal.requests.map((r) => r.period_from).filter(Boolean).sort()[0] ?? "2025-01-01";
   const to = portal.requests.map((r) => r.period_to).filter(Boolean).sort().at(-1) ?? "2025-12-31";
@@ -36,11 +38,15 @@ const Patch = z.object({
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const parsed = Patch.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return Response.json({ error: "Invalid portal update" }, { status: 400 });
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid portal update" }, { status: 400 });
+  }
   const { owner_key, ...patch } = parsed.data;
   try {
     const p = await updateShared((await params).id, owner_key, patch);
-    if (!p) return Response.json({ error: "This link has expired or was shared from another browser." }, { status: 404 });
+    if (!p) {
+      return Response.json({ error: "This link has expired or was shared from another browser." }, { status: 404 });
+    }
     return Response.json({ ok: true });
   } catch (err) {
     return Response.json({ error: `Could not update the portal: ${String(err).slice(0, 160)}` }, { status: 500 });

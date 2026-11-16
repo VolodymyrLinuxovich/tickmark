@@ -59,7 +59,9 @@ export function ReceiptHunter({ findings, source }: { findings: Finding[]; sourc
           : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ demo: true, targets }) };
       const res = await fetch("/api/receipts/match", init);
       const json = (await res.json()) as MatchResponse;
-      if (!res.ok) throw new Error(json.error ?? "Could not read the files");
+      if (!res.ok) {
+        throw new Error(json.error ?? "Could not read the files");
+      }
       setData(json);
       setPhase("ready");
     } catch (e) {
@@ -70,20 +72,28 @@ export function ReceiptHunter({ findings, source }: { findings: Finding[]; sourc
 
   function pick(list: FileList | null) {
     const arr = [...(list ?? [])].slice(0, 200);
-    if (!arr.length) return;
+    if (!arr.length) {
+      return;
+    }
     setFiles(arr);
     const fd = new FormData();
-    for (const f of arr) fd.append("files", f);
+    for (const f of arr) {
+      fd.append("files", f);
+    }
     match(fd, arr.length);
   }
 
   /** Attaches one match. Returns false when Ramp refused permission, so "Attach all" stops instead of failing every row. */
   async function attach(m: ReceiptMatch): Promise<boolean> {
-    if (!data) return true;
+    if (!data) {
+      return true;
+    }
     const t = data.targets.find((x) => x.transaction_id === m.transaction_id);
     const doc = data.docs[m.doc];
     const file = data.demo ? new File([doc.content ?? ""], doc.name, { type: "message/rfc822" }) : files[m.doc];
-    if (!t || !file) return true;
+    if (!t || !file) {
+      return true;
+    }
     setError(null);
     setAtt((a) => ({ ...a, [m.finding_id]: "busy" }));
     const fd = new FormData();
@@ -98,7 +108,9 @@ export function ReceiptHunter({ findings, source }: { findings: Finding[]; sourc
         setAtt((a) => ({ ...a, [m.finding_id]: "" }));
         return false;
       }
-      if (!res.ok) throw new Error(json.error ?? "Upload failed");
+      if (!res.ok) {
+        throw new Error(json.error ?? "Upload failed");
+      }
       setAtt((a) => ({ ...a, [m.finding_id]: "done" }));
       watch({ finding_id: m.finding_id, code: "MISSING_RECEIPT", object_type: "transactions", object_id: t.transaction_id, since: new Date().toISOString(), owner: t.owner, attached: true });
     } catch (e) {
@@ -109,7 +121,11 @@ export function ReceiptHunter({ findings, source }: { findings: Finding[]; sourc
 
   async function attachAll() {
     setError(null);
-    for (const m of data?.matches ?? []) if (att[m.finding_id] !== "busy" && att[m.finding_id] !== "done" && !(await attach(m))) break;
+    for (const m of data?.matches ?? []) {
+      if (att[m.finding_id] !== "busy" && att[m.finding_id] !== "done" && !(await attach(m))) {
+        break;
+      }
+    }
   }
 
   const matched = data?.matches.length ?? 0;
@@ -127,16 +143,31 @@ export function ReceiptHunter({ findings, source }: { findings: Finding[]; sourc
           </p>
         </div>
         {phase === "ready" && (
-          <button className="ex-more" onClick={() => { setPhase("idle"); setData(null); }}>Start over</button>
+          <button
+            className="ex-more"
+            onClick={() => {
+              setPhase("idle");
+              setData(null);
+            }}
+          >
+            Start over
+          </button>
         )}
       </div>
 
       {phase !== "ready" && (
         <label
           className={`hunt-drop ${over ? "over" : ""} ${phase === "reading" ? "busy" : ""}`}
-          onDragOver={(e) => { e.preventDefault(); setOver(true); }}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setOver(true);
+          }}
           onDragLeave={() => setOver(false)}
-          onDrop={(e) => { e.preventDefault(); setOver(false); pick(e.dataTransfer.files); }}
+          onDrop={(e) => {
+            e.preventDefault();
+            setOver(false);
+            pick(e.dataTransfer.files);
+          }}
         >
           <input type="file" multiple accept=".eml,.pdf,.png,.jpg,.jpeg,.webp,.txt,message/rfc822,application/pdf,image/*" onChange={(e) => pick(e.target.files)} disabled={phase === "reading"} />
           {phase === "reading" ? (

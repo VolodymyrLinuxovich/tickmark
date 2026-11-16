@@ -46,23 +46,39 @@ export function WatchProvider({ children, onResolved }: { children: React.ReactN
   // Polling runs while anything is unresolved; each tick skips items watched for too long.
   const pending = Object.values(map).filter((w) => !w.result?.resolved).length;
   useEffect(() => {
-    if (!pending) return;
+    if (!pending) {
+      return;
+    }
     const tick = async () => {
-      if (busy.current || document.hidden) return;
+      if (busy.current || document.hidden) {
+        return;
+      }
       const due = Object.values(mapRef.current).filter((w) => !w.result?.resolved && Date.now() - w.started < WATCH_FOR_MS).slice(0, 60);
-      if (!due.length) return;
+      if (!due.length) {
+        return;
+      }
       busy.current = true;
       try {
         const res = await fetch("/api/recheck", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: due.map((w) => w.item) }) });
         const json = (await res.json()) as { results?: RecheckResult[] };
-        if (!res.ok || !json.results) throw new Error();
+        if (!res.ok || !json.results) {
+          throw new Error();
+        }
         const fresh = json.results;
         setMap((m) => {
           const next = { ...m };
-          for (const r of fresh) if (next[r.finding_id]) next[r.finding_id] = { ...next[r.finding_id], result: r, error: false };
+          for (const r of fresh) {
+            if (next[r.finding_id]) {
+              next[r.finding_id] = { ...next[r.finding_id], result: r, error: false };
+            }
+          }
           return next;
         });
-        for (const r of fresh) if (r.resolved && !mapRef.current[r.finding_id]?.result?.resolved) resolvedRef.current(r.finding_id, r.how ?? "Fixed in Ramp");
+        for (const r of fresh) {
+          if (r.resolved && !mapRef.current[r.finding_id]?.result?.resolved) {
+            resolvedRef.current(r.finding_id, r.how ?? "Fixed in Ramp");
+          }
+        }
       } catch {
         setMap((m) => Object.fromEntries(Object.entries(m).map(([k, w]) => [k, due.some((d) => d.item.finding_id === k) ? { ...w, error: true } : w])));
       } finally {
@@ -102,7 +118,9 @@ function useAgo(iso: string | undefined) {
 export function LiveThread({ id }: { id: string }) {
   const w = useWatch().get(id);
   const ago = useAgo(w?.result?.checked_at);
-  if (!w) return null;
+  if (!w) {
+    return null;
+  }
   const r = w.result;
   const where = r?.simulated ? "the sample company" : "Ramp";
   // Missing receipts and approvals resolve on their own. Other problems need the auditor's judgement on the reply.

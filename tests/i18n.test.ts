@@ -7,7 +7,9 @@ const LOOKUP_MAPS = ["checks.names", "checks.populations"];
 
 /** Every leaf path in a dictionary, e.g. "hero.h1a" or "problem.items.0.t". */
 function leaves(value: unknown, prefix = ""): string[] {
-  if (value === null || typeof value !== "object") return [prefix];
+  if (value === null || typeof value !== "object") {
+    return [prefix];
+  }
   return Object.entries(value).flatMap(([k, v]) => leaves(v, prefix ? `${prefix}.${k}` : k));
 }
 
@@ -18,7 +20,9 @@ const ALLOWED_EMPTY: Record<string, string[]> = { en: ["quote.translated"] };
 
 /** Leaf paths with their string values. */
 function entries(value: unknown, prefix = ""): [string, unknown][] {
-  if (value === null || typeof value !== "object") return [[prefix, value]];
+  if (value === null || typeof value !== "object") {
+    return [[prefix, value]];
+  }
   return Object.entries(value).flatMap(([k, v]) => entries(v, prefix ? `${prefix}.${k}` : k));
 }
 
@@ -44,7 +48,9 @@ describe("landing page translations", () => {
       const others = LOCALES.filter((l) => l !== "en");
       const keysOf = (l: (typeof LOCALES)[number]) => leaves(DICTS[l]).filter((p) => p.startsWith(`${map}.`)).sort();
       const all = [...new Set(others.flatMap(keysOf))].sort();
-      for (const l of others) expect(keysOf(l), l).toEqual(all);
+      for (const l of others) {
+        expect(keysOf(l), l).toEqual(all);
+      }
     });
   }
 });

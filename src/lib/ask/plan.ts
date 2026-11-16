@@ -71,46 +71,76 @@ export function planWithRules(question: string, vocab: Vocab, today = new Date()
     filters.push({ field: "amount", op: "gte", value: String(money(between[1])) }, { field: "amount", op: "lte", value: String(money(between[2])) });
   } else {
     const over = q.match(/(?:over|above|more than|greater than|>=?|at least)\s*\$?\s?([\d,.]+k?)/);
-    if (over) filters.push({ field: "amount", op: /at least|>=/.test(over[0]) ? "gte" : "gt", value: String(money(over[1])) });
+    if (over) {
+      filters.push({ field: "amount", op: /at least|>=/.test(over[0]) ? "gte" : "gt", value: String(money(over[1])) });
+    }
     const under = q.match(/(?:under|below|less than|<)\s*\$?\s?([\d,.]+k?)/);
-    if (under) filters.push({ field: "amount", op: "lt", value: String(money(under[1])) });
+    if (under) {
+      filters.push({ field: "amount", op: "lt", value: String(money(under[1])) });
+    }
   }
 
   if (entity === "transactions") {
-    if (/(no|without|missing) (a )?memo|no business purpose/.test(q)) filters.push({ field: "has_memo", op: "is_false", value: null });
-    if (/(no|without|missing) (a )?receipts?/.test(q)) filters.push({ field: "has_receipt", op: "is_false", value: null });
-    if (/(not approved|unapproved|without approval|pending approval|no approval)/.test(q) || NOBODY_APPROVED.test(q)) filters.push({ field: "approved", op: "is_false", value: null });
-    if (/weekend|saturday|sunday/.test(q)) filters.push({ field: "is_weekend", op: "is_true", value: null });
-    if (/round(-| )?(dollar|number|amount)/.test(q)) filters.push({ field: "is_round", op: "is_true", value: null });
+    if (/(no|without|missing) (a )?memo|no business purpose/.test(q)) {
+      filters.push({ field: "has_memo", op: "is_false", value: null });
+    }
+    if (/(no|without|missing) (a )?receipts?/.test(q)) {
+      filters.push({ field: "has_receipt", op: "is_false", value: null });
+    }
+    if (/(not approved|unapproved|without approval|pending approval|no approval)/.test(q) || NOBODY_APPROVED.test(q)) {
+      filters.push({ field: "approved", op: "is_false", value: null });
+    }
+    if (/weekend|saturday|sunday/.test(q)) {
+      filters.push({ field: "is_weekend", op: "is_true", value: null });
+    }
+    if (/round(-| )?(dollar|number|amount)/.test(q)) {
+      filters.push({ field: "is_round", op: "is_true", value: null });
+    }
   }
   if (entity === "bills") {
-    if (/\bunpaid|\bopen\b|not paid/.test(q)) filters.push({ field: "paid", op: "is_false", value: null });
-    else if (/\bpaid\b/.test(q)) filters.push({ field: "paid", op: "is_true", value: null });
-    if (/(not approved|unapproved|without approval|no approval)/.test(q) || NOBODY_APPROVED.test(q)) filters.push({ field: "approved", op: "is_false", value: null });
+    if (/\bunpaid|\bopen\b|not paid/.test(q)) {
+      filters.push({ field: "paid", op: "is_false", value: null });
+    } else if (/\bpaid\b/.test(q)) {
+      filters.push({ field: "paid", op: "is_true", value: null });
+    }
+    if (/(not approved|unapproved|without approval|no approval)/.test(q) || NOBODY_APPROVED.test(q)) {
+      filters.push({ field: "approved", op: "is_false", value: null });
+    }
   }
   if (entity === "users") {
-    if (/admin|elevated|owner|bookkeeper/.test(q)) filters.push({ field: "role", op: "contains", value: /bookkeeper/.test(q) ? "bookkeeper" : /owner/.test(q) ? "owner" : "admin" });
-    if (/inactive|deactivated|former/.test(q)) filters.push({ field: "status", op: "contains", value: "inactive" });
+    if (/admin|elevated|owner|bookkeeper/.test(q)) {
+      filters.push({ field: "role", op: "contains", value: /bookkeeper/.test(q) ? "bookkeeper" : /owner/.test(q) ? "owner" : "admin" });
+    }
+    if (/inactive|deactivated|former/.test(q)) {
+      filters.push({ field: "status", op: "contains", value: "inactive" });
+    }
   }
 
   // Names that appear in the data: merchants and categories ("at Asana", "on airlines"), people ("by Michael").
   const hit = (list: string[]) => list.filter((x) => x.length > 2 && q.includes(x.toLowerCase())).sort((a, b) => b.length - a.length)[0];
   if (entity === "transactions") {
     const m = hit(vocab.merchants);
-    if (m) filters.push({ field: "merchant", op: "contains", value: m });
-    else {
+    if (m) {
+      filters.push({ field: "merchant", op: "contains", value: m });
+    } else {
       const c = hit(vocab.categories) ?? hit(vocab.categories.map((x) => x.replace(/s$/, "")));
-      if (c) filters.push({ field: "category", op: "contains", value: c });
+      if (c) {
+        filters.push({ field: "category", op: "contains", value: c });
+      }
     }
     // Names come from Ramp, so they are escaped before going into a pattern. The filter uses the
     // full name: "by Ortega" should not also return every other Luis.
     const word = (part: string) => new RegExp(`(^|[^a-z0-9])${part.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}($|[^a-z0-9])`);
     const person = vocab.people.find((p) => p.split(" ").some((part) => part.length > 2 && word(part).test(q)));
-    if (person && /\bby\b|\bfrom\b|'s\b/.test(q)) filters.push({ field: "cardholder", op: "contains", value: person });
+    if (person && /\bby\b|\bfrom\b|'s\b/.test(q)) {
+      filters.push({ field: "cardholder", op: "contains", value: person });
+    }
   }
   if (entity === "bills") {
     const v = hit(vocab.vendors);
-    if (v) filters.push({ field: "vendor", op: "contains", value: v });
+    if (v) {
+      filters.push({ field: "vendor", op: "contains", value: v });
+    }
   }
 
   // Dates: "last 30 days", "this month", "in March", "since 2026-01-01". Bills go by issue date unless
@@ -118,12 +148,16 @@ export function planWithRules(question: string, vocab: Vocab, today = new Date()
   // goes to the model instead of silently dropping the date.
   const iso = (d: Date) => d.toISOString().slice(0, 10);
   const dated = /last \d+ days|this month|last month/.test(q) || MONTHS.some((m) => new RegExp(`\\bin ${m}\\b`).test(q));
-  if (entity === "users" && dated) return null;
+  if (entity === "users" && dated) {
+    return null;
+  }
   const dateField = entity === "bills" ? (/\bpaid (in|on|during|since|this|last)\b/.test(q) ? "paid_date" : "date") : entity === "transactions" ? "date" : "created";
   const lastN = q.match(/last (\d+) days/);
-  if (lastN) filters.push({ field: dateField, op: "on_or_after", value: iso(new Date(today.getTime() - Number(lastN[1]) * 864e5)) });
-  else if (/this month/.test(q)) filters.push({ field: dateField, op: "on_or_after", value: iso(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1))) });
-  else if (/last month/.test(q)) {
+  if (lastN) {
+    filters.push({ field: dateField, op: "on_or_after", value: iso(new Date(today.getTime() - Number(lastN[1]) * 864e5)) });
+  } else if (/this month/.test(q)) {
+    filters.push({ field: dateField, op: "on_or_after", value: iso(new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1))) });
+  } else if (/last month/.test(q)) {
     const s = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
     const e = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 0));
     filters.push({ field: dateField, op: "on_or_after", value: iso(s) }, { field: dateField, op: "on_or_before", value: iso(e) });
@@ -136,10 +170,14 @@ export function planWithRules(question: string, vocab: Vocab, today = new Date()
   }
 
   // Vendors and users have no amount, so an amount there is something the rules misread.
-  if ((entity === "vendors" || entity === "users") && filters.some((f) => f.field === "amount")) return null;
+  if ((entity === "vendors" || entity === "users") && filters.some((f) => f.field === "amount")) {
+    return null;
+  }
   // A question with no filter is still answerable when it asks for a ranking ("top 10 largest charges")
   // or for everything ("list all vendors"). Anything else goes to the model.
-  if (!filters.length && !/\b(top|largest|biggest|all|every|list)\b/.test(q)) return null;
+  if (!filters.length && !/\b(top|largest|biggest|all|every|list)\b/.test(q)) {
+    return null;
+  }
   const top = q.match(/\btop (\d+)\b|\blargest (\d+)\b|\bbiggest (\d+)\b/);
   return {
     entity,
@@ -167,7 +205,9 @@ export async function planWithModel(question: string, today = new Date()): Promi
         { model: "claude-opus-5-5", max_tokens: 4000, output_config: { effort: "low", format: zodOutputFormat(PlanSchema) }, system, messages: [{ role: "user", content }] },
         { timeout: 30_000 },
       );
-      if (r.stop_reason !== "refusal" && r.parsed_output) return { plan: r.parsed_output, by: "claude-opus-5-5" };
+      if (r.stop_reason !== "refusal" && r.parsed_output) {
+        return { plan: r.parsed_output, by: "claude-opus-5-5" };
+      }
     } catch {
       // try the next provider
     }
@@ -176,7 +216,9 @@ export async function planWithModel(question: string, today = new Date()): Promi
     const model = process.env.OPENAI_MODEL || "gpt-5.5";
     try {
       const r = await new OpenAI({ timeout: 30_000, maxRetries: 1 }).responses.parse({ model, instructions: system, input: content, text: { format: zodTextFormat(PlanSchema, "plan") } });
-      if (r.output_parsed) return { plan: r.output_parsed, by: model };
+      if (r.output_parsed) {
+        return { plan: r.output_parsed, by: model };
+      }
     } catch {
       // fall through
     }
@@ -187,7 +229,11 @@ export async function planWithModel(question: string, today = new Date()): Promi
 /** Rules first (free); the model only when the rules found nothing to filter on. */
 export async function planQuestion(question: string, vocab: Vocab, opts: { allowModel: boolean }): Promise<PlannedQuestion | null> {
   const rules = planWithRules(question, vocab);
-  if (rules) return { plan: rules, by: "keyword rules" };
-  if (!opts.allowModel) return null;
+  if (rules) {
+    return { plan: rules, by: "keyword rules" };
+  }
+  if (!opts.allowModel) {
+    return null;
+  }
   return planWithModel(question);
 }

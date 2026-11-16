@@ -27,7 +27,11 @@ export function Results({ requests, runs, meta, auditor, source, openRecord }: {
   // Dedupe by finding id and remember every request ref that raised it.
   const allFindings = useMemo(() => {
     const m = new Map<string, { f: Finding; refs: string[] }>();
-    for (const r of results) for (const f of r.findings) m.set(f.id, { f, refs: [...(m.get(f.id)?.refs ?? []), r.request.ref] });
+    for (const r of results) {
+      for (const f of r.findings) {
+        m.set(f.id, { f, refs: [...(m.get(f.id)?.refs ?? []), r.request.ref] });
+      }
+    }
     return [...m.values()].sort((a, b) => compareFindings(a.f, b.f));
   }, [results]);
   const [sel, setSel] = useState<number | "all">("all");
@@ -50,7 +54,9 @@ export function Results({ requests, runs, meta, auditor, source, openRecord }: {
     setDownloading(true);
     try {
       const res = await fetch("/api/binder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests, auditor, statuses: statusApi.statuses, extras: extras.map((x) => ({ question: x.question, plan: x.plan, period: x.period })) }) });
-      if (!res.ok) throw new Error("Binder failed");
+      if (!res.ok) {
+        throw new Error("Binder failed");
+      }
       const blob = await res.blob();
       const name = res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ?? "audit-binder.zip";
       const a = document.createElement("a");
@@ -157,9 +163,13 @@ export function Results({ requests, runs, meta, auditor, source, openRecord }: {
 /** One plain sentence for the top of the results: what was answered and what needs a look. */
 export function summaryLine(answered: number, total: number, codes: FindingCode[]): string {
   const head = `Tickmark answered ${answered} of ${total} requests from Ramp.`;
-  if (!codes.length) return `${head} Nothing needs a follow-up.`;
+  if (!codes.length) {
+    return `${head} Nothing needs a follow-up.`;
+  }
   const counts = new Map<FindingCode, number>();
-  for (const c of codes) counts.set(c, (counts.get(c) ?? 0) + 1);
+  for (const c of codes) {
+    counts.set(c, (counts.get(c) ?? 0) + 1);
+  }
   const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2);
   const words = top.map(([c, n]) => `${n.toLocaleString("en-US")} ${(n === 1 ? ONE_LABEL[c] : GROUP_LABEL[c]).toLowerCase()}`);
   return `${head} ${codes.length.toLocaleString("en-US")} items need a look, mostly ${words.join(" and ")}.`;
@@ -169,7 +179,9 @@ export function summaryLine(answered: number, total: number, codes: FindingCode[
 export function LoopStat({ sent, ready, live }: { sent: number; ready: number; live: boolean }) {
   const { resolved, watching } = useWatch();
   // Before any follow-up goes out, "0 resolved" is noise, so the stat appears only once there is progress.
-  if (!sent && !resolved && !watching) return null;
+  if (!sent && !resolved && !watching) {
+    return null;
+  }
   return (
     <div className="stat">
       <div className="k">{live ? "Resolved in Ramp" : "Resolved"}</div>

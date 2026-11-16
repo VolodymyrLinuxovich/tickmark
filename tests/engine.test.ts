@@ -11,7 +11,9 @@ import type { AuditRequest } from "../src/lib/parse/schema";
 const EXPECTED_TYPES = ["unsupported", "transaction_support", "bill_support", "receipt_completeness", "control_testing", "duplicate_payments", "vendor_listing", "user_access", "unsupported"];
 
 async function parsedSample(kind: "xlsx" | "csv" | "email") {
-  if (kind === "email") return parseWithRules(normalizeText(readFileSync("public/samples/hartwell-request-email.txt", "utf8")));
+  if (kind === "email") {
+    return parseWithRules(normalizeText(readFileSync("public/samples/hartwell-request-email.txt", "utf8")));
+  }
   const file = kind === "xlsx" ? "hartwell-pbc-fy2025.xlsx" : "hartwell-pbc-fy2025.csv";
   return parseWithRules(await normalizeFile(file, new Uint8Array(readFileSync(`public/samples/${file}`))));
 }
@@ -103,8 +105,11 @@ describe("monetary unit sampling", () => {
     const pop = [...Array.from({ length: 100 }, (_, i) => ({ id: `s${i}`, amount: 10 })), ...Array.from({ length: 100 }, (_, i) => ({ id: `l${i}`, amount: 90 }))];
     for (let seed = 1; seed <= 50; seed++) {
       for (const id of monetaryUnitSample(pop, 20, seed).selected) {
-        if (id.startsWith("s")) small++;
-        else large++;
+        if (id.startsWith("s")) {
+          small++;
+        } else {
+          large++;
+        }
       }
     }
     expect(large / (small + large)).toBeGreaterThan(0.8);

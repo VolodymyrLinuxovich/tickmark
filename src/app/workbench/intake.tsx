@@ -31,7 +31,9 @@ export function Intake({ busy, error, onParse, models, source, scopes }: { busy:
     onParse(fd, "file");
   };
   useEffect(() => {
-    if (paste) pasteBox.current?.focus();
+    if (paste) {
+      pasteBox.current?.focus();
+    }
   }, [paste]);
   const status = busy === "file" ? "Reading your request list..." : busy === "text" ? "Reading the pasted requests..." : busy ? "Reading the sample list..." : "";
   return (
@@ -59,13 +61,17 @@ export function Intake({ busy, error, onParse, models, source, scopes }: { busy:
           }}
           onDragLeave={(e) => {
             // Ignore leave events fired when the pointer moves onto a child element.
-            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOver(false);
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+              setOver(false);
+            }
           }}
           onDrop={(e) => {
             e.preventDefault();
             setOver(false);
             const f = e.dataTransfer.files[0];
-            if (f) send(f);
+            if (f) {
+              send(f);
+            }
           }}
           disabled={!!busy}
           aria-describedby="drop-hint"

@@ -47,7 +47,9 @@ export function scorePair(doc: ReceiptDoc, t: ReceiptTarget): { score: number; r
     reasons.push(`Shows ${usd(t.amount)}`);
   } else {
     const near = [doc.total, ...doc.amounts].filter((a): a is number => a != null).find((a) => Math.abs(a - t.amount) <= tol);
-    if (near == null) return null;
+    if (near == null) {
+      return null;
+    }
     score += 0.3;
     reasons.push(`Shows ${usd(near)}, within ${usd(Math.abs(near - t.amount))} of the charge`);
   }
@@ -70,7 +72,9 @@ export function scorePair(doc: ReceiptDoc, t: ReceiptTarget): { score: number; r
     } else if (d <= 10) {
       score += 0.1;
       reasons.push(`${d} days apart`);
-    } else if (d > 45) score -= 0.2;
+    } else if (d > 45) {
+      score -= 0.2;
+    }
   }
 
   return { score: Math.max(0, Math.min(1, score)), reasons };
@@ -85,7 +89,9 @@ export function matchReceipts(docs: ReceiptDoc[], targets: ReceiptTarget[], minS
   docs.forEach((doc, i) => {
     for (const t of targets) {
       const s = scorePair(doc, t);
-      if (s && s.score >= minScore) pairs.push({ doc: i, t, ...s });
+      if (s && s.score >= minScore) {
+        pairs.push({ doc: i, t, ...s });
+      }
     }
   });
   pairs.sort((a, b) => b.score - a.score || a.doc - b.doc);
@@ -93,7 +99,9 @@ export function matchReceipts(docs: ReceiptDoc[], targets: ReceiptTarget[], minS
   const usedTxns = new Set<string>();
   const out: ReceiptMatch[] = [];
   for (const p of pairs) {
-    if (usedDocs.has(p.doc) || usedTxns.has(p.t.transaction_id)) continue;
+    if (usedDocs.has(p.doc) || usedTxns.has(p.t.transaction_id)) {
+      continue;
+    }
     usedDocs.add(p.doc);
     usedTxns.add(p.t.transaction_id);
     out.push({ doc: p.doc, finding_id: p.t.finding_id, transaction_id: p.t.transaction_id, score: Math.round(p.score * 100) / 100, confidence: p.score >= 0.8 ? "strong" : "likely", reasons: p.reasons });

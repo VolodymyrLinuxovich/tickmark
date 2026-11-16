@@ -22,7 +22,9 @@ const Body = z.object({ items: z.array(Item).min(1).max(60) });
 
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return Response.json({ error: "Invalid items" }, { status: 400 });
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid items" }, { status: 400 });
+  }
   try {
     return Response.json({ results: await getSource().recheck(parsed.data.items) });
   } catch (err) {

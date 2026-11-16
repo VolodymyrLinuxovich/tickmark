@@ -29,18 +29,32 @@ const shortDate = (iso: string) => new Date(iso).toLocaleDateString("en-US", { m
 
 function test(get: Getter, f: Filter): boolean {
   const v = get(f.field);
-  if (f.op === "is_true") return v === true;
-  if (f.op === "is_false") return v === false;
-  if (v === null || v === undefined || f.value === null) return false;
+  if (f.op === "is_true") {
+    return v === true;
+  }
+  if (f.op === "is_false") {
+    return v === false;
+  }
+  if (v === null || v === undefined || f.value === null) {
+    return false;
+  }
   if (f.field === "amount") {
     const a = Number(v) / 100;
     const b = Number(String(f.value).replace(/[$,]/g, ""));
     return f.op === "gt" ? a > b : f.op === "gte" ? a >= b : f.op === "lt" ? a < b : f.op === "lte" ? a <= b : f.op === "eq" ? Math.abs(a - b) < 0.005 : false;
   }
-  if (f.op === "on_or_after") return String(v) >= f.value;
-  if (f.op === "on_or_before") return String(v) <= f.value;
-  if (f.op === "contains") return String(v).toLowerCase().includes(f.value.toLowerCase());
-  if (f.op === "eq") return String(v).toLowerCase() === f.value.toLowerCase();
+  if (f.op === "on_or_after") {
+    return String(v) >= f.value;
+  }
+  if (f.op === "on_or_before") {
+    return String(v) <= f.value;
+  }
+  if (f.op === "contains") {
+    return String(v).toLowerCase().includes(f.value.toLowerCase());
+  }
+  if (f.op === "eq") {
+    return String(v).toLowerCase() === f.value.toLowerCase();
+  }
   const n = Number(v);
   const m = Number(f.value);
   return f.op === "gt" ? n > m : f.op === "gte" ? n >= m : f.op === "lt" ? n < m : f.op === "lte" ? n <= m : false;
@@ -50,8 +64,12 @@ const OP_WORDS: Record<Filter["op"], string> = { gt: "over", gte: "at least", lt
 const FIELD_WORDS: Partial<Record<Filter["field"], string>> = { has_memo: "has a memo", has_receipt: "has a receipt", approved: "approved", is_weekend: "on a weekend", is_round: "a round amount", paid: "paid" };
 
 export function describeFilter(f: Filter): string {
-  if (f.op === "is_true") return FIELD_WORDS[f.field] ?? f.field;
-  if (f.op === "is_false") return `not ${FIELD_WORDS[f.field] ?? f.field}`.replace("not has", "no").replace(" a memo", " memo").replace(" a receipt", " receipt");
+  if (f.op === "is_true") {
+    return FIELD_WORDS[f.field] ?? f.field;
+  }
+  if (f.op === "is_false") {
+    return `not ${FIELD_WORDS[f.field] ?? f.field}`.replace("not has", "no").replace(" a memo", " memo").replace(" a receipt", " receipt");
+  }
   const val = f.field === "amount" ? `$${Number(f.value).toLocaleString("en-US")}` : f.value;
   return `${f.field.replace("_", " ")} ${OP_WORDS[f.op]} ${val}`;
 }
@@ -77,8 +95,12 @@ export function runPlan(plan: Plan, snap: RampSnapshot, ix: Index = buildIndex(s
 
   if (plan.entity === "transactions") {
     for (const t of snap.transactions) {
-      if (t.state !== "CLEARED" && t.state !== "COMPLETION") continue;
-      if (!inPeriod(t.user_transaction_time)) continue;
+      if (t.state !== "CLEARED" && t.state !== "COMPLETION") {
+        continue;
+      }
+      if (!inPeriod(t.user_transaction_time)) {
+        continue;
+      }
       const cents = t.entity_amount?.value ?? 0;
       const when = new Date(t.user_transaction_time);
       const approved = !!lastApproval(ix, t.id).last;
@@ -98,7 +120,9 @@ export function runPlan(plan: Plan, snap: RampSnapshot, ix: Index = buildIndex(s
           is_weekend: when.getUTCDay() === 0 || when.getUTCDay() === 6,
           is_round: cents >= 10000 && cents % 10000 === 0,
         })[f as string] ?? null;
-      if (!plan.filters.every((f) => test(get, f))) continue;
+      if (!plan.filters.every((f) => test(get, f))) {
+        continue;
+      }
       rows.push({
         sortAmount: cents,
         sortDate: t.user_transaction_time,
@@ -111,7 +135,9 @@ export function runPlan(plan: Plan, snap: RampSnapshot, ix: Index = buildIndex(s
     }
   } else if (plan.entity === "bills") {
     for (const b of snap.bills) {
-      if (p && !inPeriod(b.issued_at) && !inPeriod(b.paid_at)) continue;
+      if (p && !inPeriod(b.issued_at) && !inPeriod(b.paid_at)) {
+        continue;
+      }
       const cents = b.amount.amount;
       const approved = !!lastApproval(ix, b.id).last;
       const get: Getter = (f) =>
@@ -125,7 +151,9 @@ export function runPlan(plan: Plan, snap: RampSnapshot, ix: Index = buildIndex(s
           approved,
           owner: `${b.bill_owner.first_name ?? ""} ${b.bill_owner.last_name ?? ""}`.trim(),
         })[f as string] ?? null;
-      if (!plan.filters.every((f) => test(get, f))) continue;
+      if (!plan.filters.every((f) => test(get, f))) {
+        continue;
+      }
       rows.push({
         sortAmount: cents,
         sortDate: b.issued_at,
@@ -139,23 +167,32 @@ export function runPlan(plan: Plan, snap: RampSnapshot, ix: Index = buildIndex(s
   } else if (plan.entity === "vendors") {
     for (const v of snap.vendors) {
       const get: Getter = (f) => ({ name: v.name, created: day(v.created_at), category: v.sk_category_name ?? null })[f as string] ?? null;
-      if (!plan.filters.every((f) => test(get, f))) continue;
+      if (!plan.filters.every((f) => test(get, f))) {
+        continue;
+      }
       rows.push({ sortAmount: 0, sortDate: v.created_at, cents: null, row: { record: { type: "vendor", id: v.id, label: v.name }, cells: [v.name, v.sk_category_name ?? "", shortDate(v.created_at)] } });
     }
   } else {
     for (const u of snap.users) {
       const nm = `${u.first_name} ${u.last_name}`.trim();
       const get: Getter = (f) => ({ name: nm, role: u.role.toLowerCase(), status: u.status.toLowerCase(), department: dept(u.department_id) })[f as string] ?? null;
-      if (!plan.filters.every((f) => test(get, f))) continue;
+      if (!plan.filters.every((f) => test(get, f))) {
+        continue;
+      }
       rows.push({ sortAmount: 0, sortDate: "", cents: null, row: { record: { type: "user", id: u.id, label: nm }, cells: [nm, u.email, u.role.replaceAll("_", " ").toLowerCase(), u.status.replace("USER_", "").toLowerCase(), dept(u.department_id) ?? ""] } });
     }
   }
 
   const s = plan.sort;
-  if (s === "amount_desc") rows.sort((a, b) => b.sortAmount - a.sortAmount);
-  else if (s === "amount_asc") rows.sort((a, b) => a.sortAmount - b.sortAmount);
-  else if (s === "date_asc") rows.sort((a, b) => a.sortDate.localeCompare(b.sortDate));
-  else if (s === "date_desc") rows.sort((a, b) => b.sortDate.localeCompare(a.sortDate));
+  if (s === "amount_desc") {
+    rows.sort((a, b) => b.sortAmount - a.sortAmount);
+  } else if (s === "amount_asc") {
+    rows.sort((a, b) => a.sortAmount - b.sortAmount);
+  } else if (s === "date_asc") {
+    rows.sort((a, b) => a.sortDate.localeCompare(b.sortDate));
+  } else if (s === "date_desc") {
+    rows.sort((a, b) => b.sortDate.localeCompare(a.sortDate));
+  }
   const total = rows.length;
   const sum = plan.entity === "transactions" || plan.entity === "bills" ? rows.reduce((a, r) => a + (r.cents ?? 0), 0) : null;
   const cap = opts.cap ?? 200;

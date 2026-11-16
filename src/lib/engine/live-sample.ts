@@ -46,6 +46,8 @@ export async function fitSampleToLiveData(parsed: ParsedList, source: RampSource
     ...parsed.warnings,
     `Sample list fitted to ${snap.business_name}: ${from} to ${to}, with ${selections.length} selections drawn from its ${txns.length} card transactions.`,
   ];
-  if (!txns.length) warnings.push("This Ramp business has no cleared card transactions in the last 12 months, so transaction requests will be empty.");
+  if (!txns.length) {
+    warnings.push("This Ramp business has no cleared card transactions in the last 12 months, so transaction requests will be empty.");
+  }
   return { ...parsed, auditor: parsed.auditor ?? "Sample auditor", requests, warnings };
 }

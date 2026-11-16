@@ -17,16 +17,26 @@ export type RunState = { status: "wait" | "spin" | "done" | "error"; result?: Re
 // ---------------------------------------------------------------- running
 /** Status dot used in the run list and the results sidebar: waiting, spinning, clean, exceptions or manual. */
 export function StatusIcon({ s }: { s: "wait" | "spin" | "ok" | "ex" | "manual" | "error" }) {
-  if (s === "ok") return <span className="status ok" aria-label="No exceptions"><Tick /></span>;
-  if (s === "ex" || s === "error") return <span className="status ex" aria-label="Exceptions">!</span>;
-  if (s === "manual") return <span className="status manual" aria-label="Manual">&ndash;</span>;
+  if (s === "ok") {
+    return <span className="status ok" aria-label="No exceptions"><Tick /></span>;
+  }
+  if (s === "ex" || s === "error") {
+    return <span className="status ex" aria-label="Exceptions">!</span>;
+  }
+  if (s === "manual") {
+    return <span className="status manual" aria-label="Manual">&ndash;</span>;
+  }
   return <span className={`status ${s}`} />;
 }
 
 /** Maps a run state and its result status to a StatusIcon. "manual" means Ramp cannot answer the request. */
 export const iconFor = (st: RunState): "wait" | "spin" | "ok" | "ex" | "manual" | "error" => {
-  if (st.status !== "done") return st.status;
-  if (!st.result) return "error";
+  if (st.status !== "done") {
+    return st.status;
+  }
+  if (!st.result) {
+    return "error";
+  }
   return st.result.status === "complete" ? "ok" : st.result.status === "manual" ? "manual" : "ex";
 };
 

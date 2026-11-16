@@ -5,7 +5,9 @@
 import { existsSync } from "node:fs";
 import { getConnection } from "../src/lib/ramp/source";
 
-if (existsSync(".env.local")) process.loadEnvFile?.(".env.local");
+if (existsSync(".env.local")) {
+  process.loadEnvFile?.(".env.local");
+}
 
 const conn = getConnection();
 if (!conn.connected) {
@@ -31,7 +33,9 @@ conn.source
     console.log(`Business: ${s.business_name} (${((Date.now() - t0) / 1000).toFixed(1)} s)`);
     console.log(`  users ${s.users.length}, transactions ${s.transactions.length}, receipts ${s.receipts.length}, bills ${s.bills.length}, vendors ${s.vendors.length}, approvals ${s.approvals.length}`);
     console.log(`  approvals read via: ${notes?.approvals ?? "n/a"}`);
-    for (const w of notes?.warnings ?? []) console.log(`  note: ${w}`);
+    for (const w of notes?.warnings ?? []) {
+      console.log(`  note: ${w}`);
+    }
   })
   .catch((e) => {
     console.error(`Failed: ${e instanceof Error ? e.message : e}`);

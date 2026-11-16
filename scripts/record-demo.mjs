@@ -23,7 +23,14 @@ await context.addInitScript(() => {
     const c = document.createElement("div");
     c.style.cssText = "position:fixed;z-index:99999;left:0;top:0;width:18px;height:18px;margin:-9px 0 0 -9px;border-radius:50%;background:rgba(23,113,74,.35);border:2px solid #17714a;pointer-events:none;transition:transform .12s";
     document.body.appendChild(c);
-    addEventListener("mousemove", (e) => { c.style.left = e.clientX + "px"; c.style.top = e.clientY + "px"; }, true);
+    addEventListener(
+      "mousemove",
+      (e) => {
+        c.style.left = e.clientX + "px";
+        c.style.top = e.clientY + "px";
+      },
+      true,
+    );
     addEventListener("mousedown", () => (c.style.transform = "scale(.7)"), true);
     addEventListener("mouseup", () => (c.style.transform = "scale(1)"), true);
   });

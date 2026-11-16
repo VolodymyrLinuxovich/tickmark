@@ -16,7 +16,9 @@ const Body = z.object({
 
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return Response.json({ error: "Invalid portal request" }, { status: 400 });
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid portal request" }, { status: 400 });
+  }
   try {
     const { portal, ownerKey } = await createPortal({ ...parsed.data, auditor: parsed.data.auditor ?? null });
     return Response.json({ id: portal.id, path: `/portal/${portal.id}`, owner_key: ownerKey, expires_at: portal.expires_at });

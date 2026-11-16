@@ -65,7 +65,9 @@ export interface Index {
 export function buildIndex(snap: RampSnapshot): Index {
   const receiptsByTxn = new Map<string, RampReceipt[]>();
   for (const r of snap.receipts) {
-    if (!r.transaction_id) continue;
+    if (!r.transaction_id) {
+      continue;
+    }
     receiptsByTxn.set(r.transaction_id, [...(receiptsByTxn.get(r.transaction_id) ?? []), r]);
   }
   return {
@@ -88,7 +90,9 @@ const billRef = (b: RampBill): RecordRef => ({ type: "bill", id: b.id, label: `$
 
 /** True when a date falls inside the request's audit period. Compares YYYY-MM-DD strings, so time zones never shift a record across a boundary. */
 function inPeriod(iso: string | null | undefined, req: AuditRequest) {
-  if (!iso) return false;
+  if (!iso) {
+    return false;
+  }
   const d = iso.slice(0, 10);
   return (!req.period_from || d >= req.period_from) && (!req.period_to || d <= req.period_to);
 }
@@ -120,14 +124,18 @@ const approverName = (ix: Index, step: { user_id: string | null; user_email: str
  * $12,000 software charge is not listed next to an $8 coffee.
  */
 function pendingSeverity(cents: number, opened: boolean): Finding["severity"] {
-  if (!opened || cents > POLICY.cardApprovalLimit) return "high";
+  if (!opened || cents > POLICY.cardApprovalLimit) {
+    return "high";
+  }
   return cents >= POLICY.receiptThreshold ? "medium" : "low";
 }
 
 /** Receipt total in cents from OCR line items plus tax, or null when OCR found no line items (an image with no readable total cannot be agreed). */
 function receiptTotal(r: RampReceipt): number | null {
   const items = r.ocr?.line_items ?? [];
-  if (!items.length) return null;
+  if (!items.length) {
+    return null;
+  }
   const sum = items.reduce((s, i) => s + (i.item_total_price ?? 0), 0) + (r.ocr?.taxes ?? []).reduce((s, t) => s + (t.tax_amount ?? 0), 0);
   return Math.round(sum * 100);
 }
@@ -197,7 +205,9 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
           mention_user_ids: [t.card_holder.user_id],
         },
       });
-    } else if (ocr.length) ticks.push("R");
+    } else if (ocr.length) {
+      ticks.push("R");
+    }
   }
 
   if (opts.approvals) {
@@ -244,9 +254,13 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
         records: [txnRef(t)],
         owner,
       });
-    } else ticks.push("A");
+    } else {
+      ticks.push("A");
+    }
   }
-  if (t.memo && t.memo.trim()) ticks.push("M");
+  if (t.memo && t.memo.trim()) {
+    ticks.push("M");
+  }
 
   const mcc = t.merchant_category_code ?? "";
   if (POLICY.restrictedMcc[mcc]) {
@@ -280,8 +294,9 @@ function checkBill(ix: Index, b: RampBill): { findings: Finding[]; ticks: Tickma
   const files = b.attachments.filter((a) => a.attachment_type === "INVOICE" || a.attachment_type === "FILE").map((a) => a.url);
   const ownerName = name(b.bill_owner);
   const owner = { user_id: b.bill_owner.id, name: ownerName };
-  if (files.length) ticks.push("I");
-  else
+  if (files.length) {
+    ticks.push("I");
+  } else {
     findings.push({
       id: findingId("MISSING_INVOICE", [b.id]),
       code: "MISSING_INVOICE",
@@ -291,6 +306,7 @@ function checkBill(ix: Index, b: RampBill): { findings: Finding[]; ticks: Tickma
       records: [billRef(b)],
       owner,
     });
+  }
 
   const { last } = lastApproval(ix, b.id);
   if (ix.snap.bill_approvals_unavailable) {
@@ -323,7 +339,9 @@ function checkBill(ix: Index, b: RampBill): { findings: Finding[]; ticks: Tickma
           mention_user_ids: [],
         },
       });
-    } else ticks.push("A");
+    } else {
+      ticks.push("A");
+    }
         // Approval after payment means the control did not operate: money left before
         // anyone reviewed it, and a later sign-off cannot prevent a bad payment.
     if (b.paid_at && new Date(last.action_at) > new Date(b.paid_at)) {
@@ -344,7 +362,9 @@ function checkBill(ix: Index, b: RampBill): { findings: Finding[]; ticks: Tickma
       });
     }
   }
-  if (b.paid_at) ticks.push("P");
+  if (b.paid_at) {
+    ticks.push("P");
+  }
   return { findings, ticks: findings.length ? [...ticks, "X"] : ticks, files };
 }
 
@@ -360,26 +380,36 @@ export function splitPurchases(ix: Index, txns: RampTransaction[]): Finding[] {
   const groups = new Map<string, RampTransaction[]>();
   for (const t of txns) {
         // Refunds and charges already above the limit cannot be part of a split; the latter already needed approval.
-    if (t.entity_amount.value <= 0 || t.entity_amount.value > POLICY.cardApprovalLimit) continue;
+    if (t.entity_amount.value <= 0 || t.entity_amount.value > POLICY.cardApprovalLimit) {
+      continue;
+    }
     const k = `${t.card_holder.user_id}|${t.merchant_name.toLowerCase()}`;
     groups.set(k, [...(groups.get(k) ?? []), t]);
   }
   const seen = new Set<string>();
   for (const g of groups.values()) {
-    if (g.length < 2) continue;
+    if (g.length < 2) {
+      continue;
+    }
     g.sort((a, b) => a.user_transaction_time.localeCompare(b.user_transaction_time));
     for (let i = 0; i < g.length; i++) {
       const cluster = [g[i]];
       for (let j = i + 1; j < g.length; j++) {
         const hours = (new Date(g[j].user_transaction_time).getTime() - new Date(g[i].user_transaction_time).getTime()) / 3.6e6;
-        if (hours <= POLICY.splitWindowHours) cluster.push(g[j]);
+        if (hours <= POLICY.splitWindowHours) {
+          cluster.push(g[j]);
+        }
       }
       const total = cluster.reduce((s, t) => s + t.entity_amount.value, 0);
-      if (cluster.length < 2 || total <= POLICY.cardApprovalLimit) continue;
+      if (cluster.length < 2 || total <= POLICY.cardApprovalLimit) {
+        continue;
+      }
       const ids = cluster.map((t) => t.id);
       const id = findingId("SPLIT_PURCHASE", ids);
             // Skip clusters that overlap one already reported, so a run of three charges is one finding, not three.
-      if (seen.has(id) || ids.some((x) => [...seen].some((s) => s.includes(x)))) continue;
+      if (seen.has(id) || ids.some((x) => [...seen].some((s) => s.includes(x)))) {
+        continue;
+      }
       seen.add(id);
       const t0 = cluster[0];
       out.push({
@@ -411,18 +441,26 @@ export function duplicateBills(all: RampBill[]): Finding[] {
   const out: Finding[] = [];
   const seen = new Set<string>();
   const byVendor = new Map<string, RampBill[]>();
-  for (const b of all) if (!b.archived_at) byVendor.set(b.vendor.id, [...(byVendor.get(b.vendor.id) ?? []), b]);
-  for (const bills of byVendor.values())
-  for (let i = 0; i < bills.length; i++) {
+  for (const b of all) {
+    if (!b.archived_at) {
+      byVendor.set(b.vendor.id, [...(byVendor.get(b.vendor.id) ?? []), b]);
+    }
+  }
+  for (const bills of byVendor.values()) {
+    for (let i = 0; i < bills.length; i++) {
     for (let j = i + 1; j < bills.length; j++) {
       const a = bills[i];
       const b = bills[j];
       const sameInvoice = !!a.invoice_number && a.invoice_number === b.invoice_number;
       const days = Math.abs(new Date(a.issued_at).getTime() - new Date(b.issued_at).getTime()) / 864e5;
       const sameAmountNear = a.amount.amount === b.amount.amount && days <= POLICY.duplicateWindowDays;
-      if (!sameInvoice && !sameAmountNear) continue;
+      if (!sameInvoice && !sameAmountNear) {
+        continue;
+      }
       const id = findingId("DUPLICATE_INVOICE", [a.id, b.id]);
-      if (seen.has(id)) continue;
+      if (seen.has(id)) {
+        continue;
+      }
       seen.add(id);
       const paid = [a, b].filter((x) => x.paid_at);
       out.push({
@@ -442,6 +480,7 @@ export function duplicateBills(all: RampBill[]): Finding[] {
       });
     }
   }
+  }
   return out;
 }
 
@@ -452,11 +491,17 @@ export function duplicateBills(all: RampBill[]): Finding[] {
 export function fastPaidNewVendors(ix: Index, bills: RampBill[], req: AuditRequest): Finding[] {
   const out: Finding[] = [];
   for (const v of ix.snap.vendors) {
-    if (!inPeriod(v.created_at, req)) continue;
+    if (!inPeriod(v.created_at, req)) {
+      continue;
+    }
     const paid = bills.filter((b) => b.vendor.id === v.id && b.paid_at).sort((a, b) => a.paid_at!.localeCompare(b.paid_at!));
-    if (!paid.length) continue;
+    if (!paid.length) {
+      continue;
+    }
     const days = (new Date(paid[0].paid_at!).getTime() - new Date(v.created_at).getTime()) / 864e5;
-    if (days > POLICY.fastPaymentDays) continue;
+    if (days > POLICY.fastPaymentDays) {
+      continue;
+    }
     const b = paid[0];
     out.push({
       id: findingId("NEW_VENDOR_FAST_PAYMENT", [b.id]),
@@ -494,14 +539,20 @@ export function matchSelection(ix: Index, sel: { date: string; description: stri
   const want = tokens(sel.description);
   let best: { txn: RampTransaction; score: number } | null = null;
   for (const t of ix.snap.transactions) {
-    if (t.entity_amount.value !== cents) continue;
+    if (t.entity_amount.value !== cents) {
+      continue;
+    }
     const dates = [t.user_transaction_time, t.accounting_date].filter(Boolean).map((x) => x!.slice(0, 10));
     const dayGap = d ? Math.min(...dates.map((x) => Math.abs(new Date(x).getTime() - new Date(d).getTime()) / 864e5)) : 0;
-    if (dayGap > 5) continue;
+    if (dayGap > 5) {
+      continue;
+    }
     const have = new Set(tokens(`${t.merchant_name} ${t.card_holder.first_name} ${t.card_holder.last_name}`));
     const overlap = want.filter((w) => [...have].some((h) => h.startsWith(w) || w.startsWith(h))).length;
     const score = 10 - dayGap + overlap * 3;
-    if (!best || score > best.score) best = { txn: t, score };
+    if (!best || score > best.score) {
+      best = { txn: t, score };
+    }
   }
   return best;
 }
@@ -517,14 +568,20 @@ export function matchBill(ix: Index, sel: { date: string; description: string; a
   const want = tokens(sel.description);
   let best: { bill: RampBill; score: number } | null = null;
   for (const b of ix.snap.bills) {
-    if (b.amount.amount !== cents) continue;
+    if (b.amount.amount !== cents) {
+      continue;
+    }
     const dates = [b.issued_at, b.paid_at].filter(Boolean).map((x) => x!.slice(0, 10));
     const dayGap = d ? Math.min(...dates.map((x) => Math.abs(new Date(x).getTime() - new Date(d).getTime()) / 864e5)) : 0;
-    if (dayGap > 5) continue;
+    if (dayGap > 5) {
+      continue;
+    }
     const have = new Set(tokens(`${b.vendor.name} ${b.invoice_number ?? ""}`));
     const overlap = want.filter((w) => [...have].some((h) => h.startsWith(w) || w.startsWith(h))).length;
     const score = 10 - dayGap + overlap * 3;
-    if (!best || score > best.score) best = { bill: b, score };
+    if (!best || score > best.score) {
+      best = { bill: b, score };
+    }
   }
   return best;
 }
@@ -711,7 +768,9 @@ function answer(req: AuditRequest, ix: Index): RequestResult {
       const inPeriodBills = req.selections.length ? [] : bills.filter((b) => (b.paid_at ? inPeriod(b.paid_at, req) : true));
       if (!req.selections.length) {
         // Bills are tested in full (no sampling) because a request like "every bill over $10,000" asks for all of them.
-        for (const b of inPeriodBills.filter((b) => minCents == null || b.amount.amount >= minCents)) test(b);
+        for (const b of inPeriodBills.filter((b) => minCents == null || b.amount.amount >= minCents)) {
+          test(b);
+        }
       }
       const noneOver = !req.selections.length && minCents != null && rows.length === 0;
       return result(req, {

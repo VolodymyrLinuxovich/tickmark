@@ -11,8 +11,15 @@ const ROOT = "public/samples/corpus";
 function listCases(root: string): string[] {
   const out: string[] = [];
   for (const d of readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && e.name !== "real")) {
-    if (existsSync(`${root}/${d.name}/expected.json`)) out.push(d.name);
-    else for (const sub of readdirSync(`${root}/${d.name}`, { withFileTypes: true })) if (sub.isDirectory()) out.push(`${d.name}/${sub.name}`);
+    if (existsSync(`${root}/${d.name}/expected.json`)) {
+      out.push(d.name);
+    } else {
+      for (const sub of readdirSync(`${root}/${d.name}`, { withFileTypes: true })) {
+        if (sub.isDirectory()) {
+          out.push(`${d.name}/${sub.name}`);
+        }
+      }
+    }
   }
   return out.sort();
 }
@@ -216,13 +223,17 @@ describe("long lists are read in parts", () => {
     const parts = splitIntoParts(lines.join("\n"));
     expect(parts.length).toBeGreaterThan(1);
     expect(parts.join("\n")).toBe(lines.join("\n"));
-    for (const p of parts) expect(p.split("\n")[0]).toMatch(/^\d+\. Provide/);
+    for (const p of parts) {
+      expect(p.split("\n")[0]).toMatch(/^\d+\. Provide/);
+    }
   });
 
   it("does not cut at a wrapped line that starts like a ref", async () => {
     const { splitIntoParts } = await import("../src/lib/parse/claude");
     const lines = Array.from({ length: 120 }, (_, i) => [`${i + 1}. Bank statements for`, `Q4 2025 for all accounts.`]).flat();
-    for (const p of splitIntoParts(lines.join("\n"))) expect(p.split("\n")[0]).toMatch(/^\d+\. Bank/);
+    for (const p of splitIntoParts(lines.join("\n"))) {
+      expect(p.split("\n")[0]).toMatch(/^\d+\. Bank/);
+    }
   });
 });
 

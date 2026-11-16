@@ -24,7 +24,9 @@ const Body = z.object({
 
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json());
-  if (!parsed.success) return Response.json({ error: "Invalid requests" }, { status: 400 });
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid requests" }, { status: 400 });
+  }
   const source = getSource();
   const reqs = parsed.data.requests;
   // One snapshot covers the widest period across all requests; defaults to FY2025.

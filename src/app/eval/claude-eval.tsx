@@ -31,13 +31,14 @@ export default function ClaudeEval() {
       setBusy(false);
     }
   }
-  if (!out)
+  if (!out) {
     return (
       <div className="row">
         <button className="btn" onClick={go} disabled={busy}>{busy ? "Reading with the model..." : "Run the same list through the model parser"}</button>
         <span className="muted">One model call. Compares each request type with the expected answer, then reruns the checks.</span>
       </div>
     );
+  }
   const right = out.request_types.filter((r) => EXPECTED[r.ref] === r.type).length;
   return (
     <div className="card" style={{ padding: 16 }}>

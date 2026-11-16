@@ -11,7 +11,9 @@ export const maxDuration = 60;
 
 export async function POST() {
   const conn = getConnection();
-  if (!conn.connected) return Response.json({ warming: false });
+  if (!conn.connected) {
+    return Response.json({ warming: false });
+  }
   const read = conn.source.snapshot(trailingYear());
   // after() keeps the function alive until the read is cached, without holding the response.
   after(() => read.then(() => undefined, () => undefined));

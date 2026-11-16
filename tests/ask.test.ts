@@ -9,7 +9,9 @@ const vocab = vocabulary(snap);
 const ix = buildIndex(snap);
 const ask = (q: string) => {
   const plan = planWithRules(q, vocab, new Date("2026-01-15T00:00:00Z"));
-  if (!plan) throw new Error(`rules found nothing in: ${q}`);
+  if (!plan) {
+    throw new Error(`rules found nothing in: ${q}`);
+  }
   return runPlan(plan, snap, ix);
 };
 const plan = (q: string) => planWithRules(q, vocab, new Date("2026-01-15T00:00:00Z"))?.filters;

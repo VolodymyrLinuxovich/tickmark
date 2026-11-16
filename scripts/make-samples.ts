@@ -40,7 +40,9 @@ async function main() {
     { header: "Due", width: 12 },
     { header: "Status", width: 12 },
   ];
-  for (const [ref, area, text] of SAMPLE_REQUESTS) ws.addRow([ref, area, text, "01/01/2025", "12/31/2025", "02/06/2026", "Open"]);
+  for (const [ref, area, text] of SAMPLE_REQUESTS) {
+    ws.addRow([ref, area, text, "01/01/2025", "12/31/2025", "02/06/2026", "Open"]);
+  }
   ws.getRow(1).font = { bold: true };
   const sel = wb.addWorksheet("Selections");
   sel.columns = [
@@ -50,7 +52,9 @@ async function main() {
     { header: "Description", width: 34 },
     { header: "Amount", width: 12 },
   ];
-  for (const s of selections) sel.addRow(["PBC-02", s.ref, s.date, s.description, s.amount]);
+  for (const s of selections) {
+    sel.addRow(["PBC-02", s.ref, s.date, s.description, s.amount]);
+  }
   sel.getRow(1).font = { bold: true };
   sel.getColumn(5).numFmt = "#,##0.00";
   await wb.xlsx.writeFile("public/samples/hartwell-pbc-fy2025.xlsx");
@@ -69,7 +73,9 @@ async function main() {
     "",
     ...SAMPLE_REQUESTS.map(([ref, , text]) => {
       const line = `${ref}: ${text.replace("selected on the Selections tab", "selected below")}`;
-      if (ref !== "PBC-02") return line;
+      if (ref !== "PBC-02") {
+        return line;
+      }
       return [line, ...selections.map((s) => `  ${s.ref} | ${s.date} | ${s.description} | $${s.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`)].join("\n");
     }),
     "",

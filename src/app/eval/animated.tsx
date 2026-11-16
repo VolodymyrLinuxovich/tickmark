@@ -10,9 +10,13 @@ function useStartOnView<T extends Element>(onStart: () => void) {
   const started = useRef(false);
   useEffect(() => {
     const el = ref.current;
-    if (!el) return;
+    if (!el) {
+      return;
+    }
     const go = () => {
-      if (started.current) return;
+      if (started.current) {
+        return;
+      }
       started.current = true;
       onStart();
     };
@@ -33,12 +37,16 @@ const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefe
 export function CountUp({ to, ms = 1400, format = (v: number) => Math.round(v).toLocaleString("en-US") }: { to: number; ms?: number; format?: (v: number) => string }) {
   const [v, setV] = useState(to);
   const start = useCallback(() => {
-    if (reduced()) return;
+    if (reduced()) {
+      return;
+    }
     const t0 = performance.now();
     const step = (now: number) => {
       const x = Math.min(1, (now - t0) / ms);
       setV(to * (1 - Math.pow(1 - x, 3)));
-      if (x < 1) requestAnimationFrame(step);
+      if (x < 1) {
+        requestAnimationFrame(step);
+      }
     };
     setV(0);
     requestAnimationFrame(step);

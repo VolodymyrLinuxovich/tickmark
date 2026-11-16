@@ -44,8 +44,12 @@ export function mulberry(seed: number) {
  */
 export function monetaryUnitSample(items: SampleItem[], n: number, seed = 1): MusResult {
   const pop = items.filter((i) => i.amount > 0);
-  if (n <= 0 || !pop.length) return { interval: 0, start: 0, selected: [], topStratum: [] };
-  if (n >= pop.length) return { interval: 0, start: 0, selected: pop.map((i) => i.id), topStratum: [] };
+  if (n <= 0 || !pop.length) {
+    return { interval: 0, start: 0, selected: [], topStratum: [] };
+  }
+  if (n >= pop.length) {
+    return { interval: 0, start: 0, selected: pop.map((i) => i.id), topStratum: [] };
+  }
 
   // Peel off items larger than the interval until the interval is stable.
   let top: SampleItem[] = [];
@@ -56,7 +60,9 @@ export function monetaryUnitSample(items: SampleItem[], n: number, seed = 1): Mu
     const total = rest.reduce((s, i) => s + i.amount, 0);
     interval = remaining > 0 ? total / remaining : Infinity;
     const big = rest.filter((i) => i.amount >= interval);
-    if (!big.length || remaining <= 0) break;
+    if (!big.length || remaining <= 0) {
+      break;
+    }
     top = [...top, ...big];
     rest = rest.filter((i) => i.amount < interval);
   }
