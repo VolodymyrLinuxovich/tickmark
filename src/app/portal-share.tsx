@@ -21,7 +21,9 @@ interface Shared {
 const fingerprint = (requests: AuditRequest[]) => {
   const s = JSON.stringify(requests);
   let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+  }
   return `${s.length}:${(h >>> 0).toString(36)}`;
 };
 
@@ -58,12 +60,18 @@ export function PortalShare({ requests, business, auditor, statuses, extras }: {
   }, [business]);
 
   const refresh = useCallback(async () => {
-    if (!shared) return;
+    if (!shared) {
+      return;
+    }
     const r = await fetch(`/api/portal/${shared.id}/questions`).catch(() => null);
-    if (r?.ok) setQuestions((await r.json()).questions);
+    if (r?.ok) {
+      setQuestions((await r.json()).questions);
+    }
   }, [shared]);
   useEffect(() => {
-    if (!shared) return;
+    if (!shared) {
+      return;
+    }
     const first = setTimeout(refresh, 0);
     const t = setInterval(refresh, 10000);
     return () => {
@@ -78,13 +86,17 @@ export function PortalShare({ requests, business, auditor, statuses, extras }: {
   const syncKey = JSON.stringify([statuses, extras]);
   const synced = useRef<string | null>(null);
   useEffect(() => {
-    if (!shared) return;
+    if (!shared) {
+      return;
+    }
     const key = `${shared.id}|${syncKey}`;
     if (synced.current === null || !synced.current.startsWith(`${shared.id}|`)) {
       synced.current = key; // first look at this link: nothing changed yet
       return;
     }
-    if (synced.current === key) return;
+    if (synced.current === key) {
+      return;
+    }
     synced.current = key;
     const t = setTimeout(() => {
       void fetch(`/api/portal/${shared.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner_key: shared.owner_key, statuses, extras }) }).catch(() => null);
@@ -96,14 +108,20 @@ export function PortalShare({ requests, business, auditor, statuses, extras }: {
 
   /** The request list changed: put the new list on the same link. */
   async function updateLink() {
-    if (!shared) return;
+    if (!shared) {
+      return;
+    }
     setBusy(true);
     setErr(null);
     try {
       const r = await fetch(`/api/portal/${shared.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ owner_key: shared.owner_key, requests }) });
-      if (r.status === 404) return void (await share()); // expired: make a new one
+      if (r.status === 404) {
+        return void (await share()); // expired: make a new one
+      }
       const j = await r.json();
-      if (!r.ok) throw new Error(j.error);
+      if (!r.ok) {
+        throw new Error(j.error);
+      }
       const s = { ...shared, sig };
       saveShared(loadShared().map((x) => (x.id === s.id ? s : x)));
       setShared(s);
@@ -120,7 +138,9 @@ export function PortalShare({ requests, business, auditor, statuses, extras }: {
     try {
       const r = await fetch("/api/portal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests, business, auditor, statuses, extras }) });
       const j = await r.json();
-      if (!r.ok) throw new Error(j.error);
+      if (!r.ok) {
+        throw new Error(j.error);
+      }
       const s: Shared = { id: j.id, owner_key: j.owner_key, expires_at: j.expires_at, business, sig };
       saveShared([...loadShared(), s]);
       setShared(s);

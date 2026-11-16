@@ -484,7 +484,9 @@ cases.push({
     sel.getRow(1).values = ["Sample #", "PBC #", "Txn Date", "Vendor/Payee", "Amount (USD)"];
     mixedSel.forEach((s, i) => {
       sel.getRow(2 + i).values = [s.ref, s.req, s.date, s.desc, s.amount];
-      if (s.date instanceof Date) sel.getCell(`C${2 + i}`).numFmt = "dd-mmm-yy";
+      if (s.date instanceof Date) {
+        sel.getCell(`C${2 + i}`).numFmt = "dd-mmm-yy";
+      }
     });
     sel.getRow(2 + mixedSel.length).values = ["", "", "", "Subtotal", mixedSel.reduce((a, s) => a + s.value, 0)];
     await wb.xlsx.writeFile(path);
@@ -645,7 +647,9 @@ cases.push({
 
 async function main() {
   // Hand-written cases in blind/ are kept.
-  for (const c of cases) rmSync(`${ROOT}/${c.name}`, { recursive: true, force: true });
+  for (const c of cases) {
+    rmSync(`${ROOT}/${c.name}`, { recursive: true, force: true });
+  }
   const index: string[] = [
     "# Parser corpus",
     "",

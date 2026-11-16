@@ -23,7 +23,9 @@ async function resolveTargets(list: z.infer<typeof Targets>): Promise<ReceiptTar
     list.map(async ({ finding_id, transaction_id }) => {
       const rec = (await source.record("transaction", transaction_id)) as { transaction?: RampTransaction } | RampTransaction | null;
       const t = rec && "transaction" in rec ? rec.transaction : (rec as RampTransaction | null);
-      if (!t) return null;
+      if (!t) {
+        return null;
+      }
       const amount = t.entity_amount?.value ?? Math.round(((t as unknown as { amount?: number }).amount ?? 0) * 100);
       return {
         finding_id,
@@ -45,7 +47,9 @@ export async function POST(req: Request) {
   try {
     if ((req.headers.get("content-type") ?? "").includes("application/json")) {
       const body = z.object({ demo: z.literal(true), targets: Targets }).safeParse(await req.json().catch(() => null));
-      if (!body.success) return Response.json({ error: "Invalid request" }, { status: 400 });
+      if (!body.success) {
+        return Response.json({ error: "Invalid request" }, { status: 400 });
+      }
       const targets = await resolveTargets(body.data.targets);
       const files = demoInbox(targets);
       const docs = await Promise.all(files.map((f) => readReceipt(f.name, new TextEncoder().encode(f.content), "message/rfc822")));
@@ -53,9 +57,13 @@ export async function POST(req: Request) {
     }
     const form = await req.formData();
     const t = Targets.safeParse(JSON.parse(String(form.get("targets") ?? "[]")));
-    if (!t.success) return Response.json({ error: "Invalid targets" }, { status: 400 });
+    if (!t.success) {
+      return Response.json({ error: "Invalid targets" }, { status: 400 });
+    }
     const files = form.getAll("files").filter((f): f is File => f instanceof File).slice(0, MAX_FILES);
-    if (!files.length) return Response.json({ error: "No files" }, { status: 400 });
+    if (!files.length) {
+      return Response.json({ error: "No files" }, { status: 400 });
+    }
     const targets = await resolveTargets(t.data);
     const docs = await Promise.all(files.map(async (f) => readReceipt(f.name, new Uint8Array(f.size > MAX_BYTES ? new ArrayBuffer(0) : await f.arrayBuffer()), f.type)));
     return Response.json({ targets, docs: docs.map((d, i) => summary(d, i)), matches: matchReceipts(docs, targets) });

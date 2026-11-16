@@ -24,7 +24,9 @@ describe("approval steps from live Ramp data", () => {
   it("treats a policy auto-approval as approved, not as missing or self-approved", () => {
     const snap = clone();
     for (const a of snap.approvals) {
-      if (a.entity_type !== "transaction") continue;
+      if (a.entity_type !== "transaction") {
+        continue;
+      }
       a.approval_history = [{ action_at: "2025-03-01T00:00:00Z", step_status: "AUTO_APPROVED", user_email: null, user_id: null }];
     }
     const r = runRequest(req("control_testing"), buildIndex(snap));

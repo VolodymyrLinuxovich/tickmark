@@ -46,7 +46,9 @@ function qpBytes(s: string): Uint8Array {
     if (clean[i] === "=" && /^[0-9A-Fa-f]{2}$/.test(clean.slice(i + 1, i + 3))) {
       out.push(parseInt(clean.slice(i + 1, i + 3), 16));
       i += 2;
-    } else out.push(...Buffer.from(clean[i], "utf8"));
+    } else {
+      out.push(...Buffer.from(clean[i], "utf8"));
+    }
   }
   return new Uint8Array(out);
 }
@@ -65,7 +67,9 @@ function splitPart(raw: string): Part {
   // Folded header lines start with whitespace and continue the previous header.
   for (const line of head.replace(/\n[ \t]+/g, " ").split("\n")) {
     const i = line.indexOf(":");
-    if (i > 0) headers.set(line.slice(0, i).trim().toLowerCase(), line.slice(i + 1).trim());
+    if (i > 0) {
+      headers.set(line.slice(0, i).trim().toLowerCase(), line.slice(i + 1).trim());
+    }
   }
   return { headers, body };
 }
@@ -75,8 +79,12 @@ const param = (header: string | undefined, name: string) =>
 
 function decodeBody(p: Part): Uint8Array {
   const enc = (p.headers.get("content-transfer-encoding") ?? "").toLowerCase();
-  if (enc === "base64") return new Uint8Array(Buffer.from(p.body.replace(/\s+/g, ""), "base64"));
-  if (enc === "quoted-printable") return qpBytes(p.body);
+  if (enc === "base64") {
+    return new Uint8Array(Buffer.from(p.body.replace(/\s+/g, ""), "base64"));
+  }
+  if (enc === "quoted-printable") {
+    return qpBytes(p.body);
+  }
   return new Uint8Array(Buffer.from(p.body, "utf8"));
 }
 
@@ -96,7 +104,11 @@ function walk(p: Part, out: { plain: string[]; html: string[]; files: Attachment
   const boundary = param(type, "boundary");
   if (/^multipart\//i.test(type) && boundary && depth < 8) {
     const pieces = p.body.split(new RegExp(`^--${boundary.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:--)?\\s*$`, "m"));
-    for (const piece of pieces.slice(1)) if (piece.trim()) walk(splitPart(piece.replace(/^\n/, "")), out, depth + 1);
+    for (const piece of pieces.slice(1)) {
+      if (piece.trim()) {
+        walk(splitPart(piece.replace(/^\n/, "")), out, depth + 1);
+      }
+    }
     return;
   }
   const disposition = p.headers.get("content-disposition") ?? "";
@@ -113,8 +125,11 @@ function walk(p: Part, out: { plain: string[]; html: string[]; files: Attachment
   } catch {
     text = new TextDecoder().decode(bytes);
   }
-  if (/text\/html/i.test(type)) out.html.push(htmlToText(text));
-  else out.plain.push(text);
+  if (/text\/html/i.test(type)) {
+    out.html.push(htmlToText(text));
+  } else {
+    out.plain.push(text);
+  }
 }
 
 export interface ParsedEmail {
@@ -150,10 +165,18 @@ const validDate = (y: number, m: number, d: number) => y > 2000 && y < 2100 && m
 export function findDates(text: string): string[] {
   const out: string[] = [];
   const add = (y: number, m: number, d: number) => validDate(y, m, d) && out.push(`${y}-${pad(m)}-${pad(d)}`);
-  for (const m of text.matchAll(/\b(20\d\d)-(\d\d)-(\d\d)\b/g)) add(+m[1], +m[2], +m[3]);
-  for (const m of text.matchAll(/\b(\d{1,2})\/(\d{1,2})\/(20\d\d)\b/g)) add(+m[3], +m[1], +m[2]);
-  for (const m of text.matchAll(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2}),?\s+(20\d\d)\b/gi)) add(+m[3], MONTHS.indexOf(m[1].toLowerCase()) + 1, +m[2]);
-  for (const m of text.matchAll(/\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+(20\d\d)\b/gi)) add(+m[3], MONTHS.indexOf(m[2].toLowerCase()) + 1, +m[1]);
+  for (const m of text.matchAll(/\b(20\d\d)-(\d\d)-(\d\d)\b/g)) {
+    add(+m[1], +m[2], +m[3]);
+  }
+  for (const m of text.matchAll(/\b(\d{1,2})\/(\d{1,2})\/(20\d\d)\b/g)) {
+    add(+m[3], +m[1], +m[2]);
+  }
+  for (const m of text.matchAll(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2}),?\s+(20\d\d)\b/gi)) {
+    add(+m[3], MONTHS.indexOf(m[1].toLowerCase()) + 1, +m[2]);
+  }
+  for (const m of text.matchAll(/\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+(20\d\d)\b/gi)) {
+    add(+m[3], MONTHS.indexOf(m[2].toLowerCase()) + 1, +m[1]);
+  }
   return [...new Set(out)];
 }
 
@@ -163,7 +186,9 @@ const cents = (whole: string, frac?: string) => Number(whole.replace(/,/g, "")) 
 /** Every money amount in the text, in cents. */
 export function findAmounts(text: string): number[] {
   const out: number[] = [];
-  for (const m of text.matchAll(new RegExp(MONEY, "gi"))) out.push(m[1] ? cents(m[1], m[2]) : cents(m[3], m[4]));
+  for (const m of text.matchAll(new RegExp(MONEY, "gi"))) {
+    out.push(m[1] ? cents(m[1], m[2]) : cents(m[3], m[4]));
+  }
   return out.filter((c) => c > 0);
 }
 
@@ -171,9 +196,13 @@ export function findAmounts(text: string): number[] {
 export function findTotal(text: string): number | null {
   let total: number | null = null;
   for (const line of text.split(/\n/)) {
-    if (!/\b(grand total|total|amount (paid|charged|due)|you paid|charged)\b/i.test(line) || /\bsub-?total\b/i.test(line)) continue;
+    if (!/\b(grand total|total|amount (paid|charged|due)|you paid|charged)\b/i.test(line) || /\bsub-?total\b/i.test(line)) {
+      continue;
+    }
     const a = findAmounts(line);
-    if (a.length) total = a[a.length - 1];
+    if (a.length) {
+      total = a[a.length - 1];
+    }
   }
   return total;
 }
@@ -184,9 +213,13 @@ const STOP = new Set(["receipt", "receipts", "your", "order", "invoice", "paymen
 export function merchantHints(...parts: (string | null | undefined)[]): string[] {
   const words: string[] = [];
   for (const p of parts) {
-    if (!p) continue;
+    if (!p) {
+      continue;
+    }
     // receipts@mail.asana.com gives "asana"; the last label before the TLD is the brand.
-    for (const m of p.matchAll(/@([a-z0-9.-]+)\.[a-z]{2,}/gi)) words.push(m[1].split(".").pop()!.toLowerCase());
+    for (const m of p.matchAll(/@([a-z0-9.-]+)\.[a-z]{2,}/gi)) {
+      words.push(m[1].split(".").pop()!.toLowerCase());
+    }
     words.push(...p.toLowerCase().replace(/<[^>]*>/g, " ").split(/[^a-z0-9]+/));
   }
   return [...new Set(words.filter((w) => w.length >= 3 && !STOP.has(w) && !/^\d+$/.test(w)))];

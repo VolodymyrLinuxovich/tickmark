@@ -48,22 +48,34 @@ let spec: { paths: Record<string, Record<string, Op>>; components: { schemas: Re
 
 function resolve(s: Schema | undefined): Schema | undefined {
   let cur = s;
-  for (let i = 0; cur?.$ref && i < 20; i++) cur = spec.components.schemas[cur.$ref.split("/").pop()!];
+  for (let i = 0; cur?.$ref && i < 20; i++) {
+    cur = spec.components.schemas[cur.$ref.split("/").pop()!];
+  }
   return cur;
 }
 
 /** All concrete schemas a value could have (follows refs and unions, steps into arrays). */
 function variants(s: Schema | undefined): Schema[] {
   const r = resolve(s);
-  if (!r) return [];
+  if (!r) {
+    return [];
+  }
   const out: Schema[] = [r];
-  for (const k of ["allOf", "anyOf", "oneOf"] as const) for (const sub of r[k] ?? []) out.push(...variants(sub));
-  if (r.items) out.push(...variants(r.items));
+  for (const k of ["allOf", "anyOf", "oneOf"] as const) {
+    for (const sub of r[k] ?? []) {
+      out.push(...variants(sub));
+    }
+  }
+  if (r.items) {
+    out.push(...variants(r.items));
+  }
   return out;
 }
 
 function hasPath(s: Schema | undefined, parts: string[]): boolean {
-  if (!parts.length) return true;
+  if (!parts.length) {
+    return true;
+  }
   const [head, ...rest] = parts;
   return variants(s).some((v) => v.properties && head in v.properties && hasPath(v.properties[head], rest));
 }
@@ -83,9 +95,13 @@ async function main() {
     const badFields = fields.filter((f) => !hasPath(item, f.split(".")));
     const known = new Set((op.parameters ?? []).map((p) => p.name));
     const badParams = params.filter((p) => !known.has(p));
-    if (isList && !hasPath(body, ["page", "next"])) badFields.push("page.next");
+    if (isList && !hasPath(body, ["page", "next"])) {
+      badFields.push("page.next");
+    }
     const ok = !badFields.length && !badParams.length;
-    if (!ok) failures++;
+    if (!ok) {
+      failures++;
+    }
     console.log(`${ok ? "ok  " : "FAIL"} ${method.toUpperCase()} ${path}${badFields.length ? `  fields not in spec: ${badFields.join(", ")}` : ""}${badParams.length ? `  params not in spec: ${badParams.join(", ")}` : ""}`);
   }
   console.log(failures ? `\n${failures} endpoint(s) disagree with Ramp's spec.` : "\nEvery field and parameter Tickmark uses is in Ramp's published spec.");

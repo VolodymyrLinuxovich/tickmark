@@ -87,15 +87,25 @@ export function PeriodChip({ r, onChange }: { r: AuditRequest; onChange: (from: 
   const [edit, setEdit] = useState(false);
   const [from, setFrom] = useState(r.period_from ?? "");
   const [to, setTo] = useState(r.period_to ?? "");
-  if (edit)
+  if (edit) {
     return (
       <span className="tag chip-edit">
         <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label="Period start" />
         <span>to</span>
         <input type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label="Period end" />
-        <button className="chip-ok" onClick={() => { onChange(from || null, to || null); setEdit(false); }} disabled={!!from && !!to && from > to}>Done</button>
+        <button
+          className="chip-ok"
+          onClick={() => {
+            onChange(from || null, to || null);
+            setEdit(false);
+          }}
+          disabled={!!from && !!to && from > to}
+        >
+          Done
+        </button>
       </span>
     );
+  }
   return (
     <button className="tag chip" onClick={() => setEdit(true)} title="Change the period">
       {r.period_from && r.period_to ? fmtPeriod(r.period_from, r.period_to) : "Add a period"}
@@ -108,13 +118,15 @@ export function AmountChip({ r, onChange }: { r: AuditRequest; onChange: (min: n
   const [edit, setEdit] = useState(false);
   const [v, setV] = useState(r.min_amount?.toString() ?? "");
   const relevant = r.type === "bill_support" || r.type === "receipt_completeness" || r.min_amount != null;
-  if (!relevant) return null;
+  if (!relevant) {
+    return null;
+  }
   const save = () => {
     const n = Number(v.replace(/[$,\s]/g, ""));
     onChange(v.trim() && Number.isFinite(n) && n > 0 ? n : null);
     setEdit(false);
   };
-  if (edit)
+  if (edit) {
     return (
       <span className="tag chip-edit">
         <span>over $</span>
@@ -122,6 +134,7 @@ export function AmountChip({ r, onChange }: { r: AuditRequest; onChange: (min: n
         <button className="chip-ok" onClick={save}>Done</button>
       </span>
     );
+  }
   return (
     <button className="tag chip" onClick={() => setEdit(true)} title="Change the dollar threshold">
       {r.min_amount != null ? `over $${r.min_amount.toLocaleString("en-US")}` : "Add a threshold"}

@@ -96,7 +96,9 @@ const openai: Provider = {
       ...(/^(gpt-5|o\d)/i.test(OPENAI_MODEL) && { reasoning: { effort: "low" as const } }),
       text: { format: zodTextFormat(ModelListSchema, "request_list") },
     }, { signal });
-    if (process.env.TICKMARK_LOG_USAGE) console.info(`[parse] ${OPENAI_MODEL} tokens in ${response.usage?.input_tokens} out ${response.usage?.output_tokens}`);
+    if (process.env.TICKMARK_LOG_USAGE) {
+      console.info(`[parse] ${OPENAI_MODEL} tokens in ${response.usage?.input_tokens} out ${response.usage?.output_tokens}`);
+    }
     return response.output_parsed ?? null;
   },
 };
@@ -112,7 +114,9 @@ const ITEM_START = /^\s*(\(?\d{1,3}(\.\d{1,2})?[.)]|\(?[a-z]{1,4}[.)]|[A-Z]{1,6}
 /** Splits text into parts of about PART_LINES lines, cutting just before an item start so no request is split. */
 export function splitIntoParts(text: string, size = PART_LINES): string[] {
   const lines = text.split("\n");
-  if (lines.filter((l) => l.trim()).length <= size * 1.25) return [text];
+  if (lines.filter((l) => l.trim()).length <= size * 1.25) {
+    return [text];
+  }
   const parts: string[] = [];
   let start = 0;
   while (start < lines.length) {
@@ -120,8 +124,12 @@ export function splitIntoParts(text: string, size = PART_LINES): string[] {
     if (end < lines.length) {
       // Look back up to a third of a part for an item start or blank line to cut at.
       let cut = end;
-      while (cut > start + size * 0.66 && !ITEM_START.test(lines[cut]) && lines[cut].trim()) cut--;
-      if (cut > start + size * 0.66) end = cut;
+      while (cut > start + size * 0.66 && !ITEM_START.test(lines[cut]) && lines[cut].trim()) {
+        cut--;
+      }
+      if (cut > start + size * 0.66) {
+        end = cut;
+      }
     }
     parts.push(lines.slice(start, end).join("\n"));
     start = end;
@@ -140,17 +148,25 @@ export function stripSharedPrefix<T extends { ref: string }>(requests: T[]): T[]
   const counts = new Map<string, number>();
   for (const r of requests) {
     const [first, ...rest] = r.ref.trim().split(/\s+/);
-    if (rest.length) counts.set(first, (counts.get(first) ?? 0) + 1);
+    if (rest.length) {
+      counts.set(first, (counts.get(first) ?? 0) + 1);
+    }
   }
   let out = requests;
   for (const [word, n] of counts) {
-    if (n < 2) continue;
+    if (n < 2) {
+      continue;
+    }
     const plain = out.filter((r) => !r.ref.startsWith(word + " "));
-    if (!plain.length || plain.some((r) => /\s/.test(r.ref.trim()))) continue;
+    if (!plain.length || plain.some((r) => /\s/.test(r.ref.trim()))) {
+      continue;
+    }
     const shapes = new Set(plain.map((r) => shape(r.ref)));
     const next = out.map((r) => (r.ref.startsWith(word + " ") ? { ...r, ref: r.ref.slice(word.length).trim() } : r));
     const unique = new Set(next.map((r) => r.ref)).size === new Set(out.map((r) => r.ref)).size;
-    if (unique && next.every((r) => shapes.has(shape(r.ref)))) out = next;
+    if (unique && next.every((r) => shapes.has(shape(r.ref)))) {
+      out = next;
+    }
   }
   return out;
 }
@@ -159,7 +175,9 @@ export function stripSharedPrefix<T extends { ref: string }>(requests: T[]): T[]
 async function parseInParts(p: Provider, input: NormalizedInput): Promise<ModelList | null> {
   // A selection with no request ref could be attached by several parts, so such lists are read whole.
   const parts = input.selections.some((s) => !s.request_ref) ? [input.text] : splitIntoParts(input.text);
-  if (parts.length === 1) return p.parse(input);
+  if (parts.length === 1) {
+    return p.parse(input);
+  }
   const head = input.text.split("\n").slice(0, CONTEXT_LINES).join("\n");
   const results = await Promise.all(
     parts.map((part, i) =>
@@ -169,7 +187,9 @@ async function parseInParts(p: Provider, input: NormalizedInput): Promise<ModelL
       }),
     ),
   );
-  if (results.some((r) => !r)) return null;
+  if (results.some((r) => !r)) {
+    return null;
+  }
   const lists = results as ModelList[];
   const seen = new Set<string>();
   const requests = stripSharedPrefix(lists.flatMap((l) => l.requests)).filter((r) => {
@@ -181,7 +201,11 @@ async function parseInParts(p: Provider, input: NormalizedInput): Promise<ModelL
   const refs = requests.map((r) => r.ref);
   if (new Set(refs).size < refs.length) {
     let n = 0;
-    for (const r of requests) if (/^PBC-\d+$/.test(r.ref) && !input.text.includes(r.ref)) r.ref = `PBC-${String(++n).padStart(2, "0")}`;
+    for (const r of requests) {
+      if (/^PBC-\d+$/.test(r.ref) && !input.text.includes(r.ref)) {
+        r.ref = `PBC-${String(++n).padStart(2, "0")}`;
+      }
+    }
   }
   return { ...lists[0], auditor: lists.find((l) => l.auditor)?.auditor ?? lists[0].auditor, requests };
 }
@@ -198,7 +222,9 @@ const MODELS = new Set(PROVIDERS.map((p) => p.model));
 export function widenBalanceDates<T extends { period_from: string | null; period_to: string | null }>(requests: T[], text: string): T[] {
   const fye = findFiscalYearEnd(text) ?? { month: 12, day: 31 };
   return requests.map((r) => {
-    if (!r.period_to) return r;
+    if (!r.period_to) {
+      return r;
+    }
     const fy = fiscalYearContaining(r.period_to, fye);
     const balance = r.period_from === r.period_to || (!r.period_from && r.period_to === fy.to);
     return balance ? { ...r, period_from: fy.from, period_to: fy.to } : r;
@@ -214,7 +240,9 @@ function shortError(err: unknown): string {
 /** Model providers that have a key and are not switched off. */
 export function availableProviders(): string[] {
   const pick = process.env.TICKMARK_PARSER;
-  if (pick === "rules") return [];
+  if (pick === "rules") {
+    return [];
+  }
   // "model" means model first with any provider; "claude" or "openai" picks one.
   const only = pick && pick !== "model" ? pick : null;
   return PROVIDERS.filter((p) => p.ready() && (!only || only === p.name.toLowerCase())).map((p) => p.name);
@@ -237,16 +265,31 @@ export function parseRequests(input: NormalizedInput, opts: { useModel?: boolean
   const useModel = opts.useModel || process.env.TICKMARK_PARSER === "model";
   const rules = parseWithRules(input);
   // With no model set up, the keyword reading is the answer either way.
-  if (!availableProviders().length) return Promise.resolve(withoutSplit(rules));
-  if (!useModel && rulesConfident(rules, input.text)) return rereadUnmatched(withoutSplit(rules), input);
+  if (!availableProviders().length) {
+    return Promise.resolve(withoutSplit(rules));
+  }
+  if (!useModel && rulesConfident(rules, input.text)) {
+    return rereadUnmatched(withoutSplit(rules), input);
+  }
   const key = createHash("sha256").update(JSON.stringify([availableProviders(), input])).digest("hex");
   const hit = parseCache.get(key);
-  if (hit && Date.now() - hit.at < PARSE_TTL_MS) return hit.p;
+  if (hit && Date.now() - hit.at < PARSE_TTL_MS) {
+    return hit.p;
+  }
   const p = parseUncached(input, rules);
   parseCache.set(key, { at: Date.now(), p });
   // Map keeps insertion order, so the first key is the oldest.
-  if (parseCache.size > PARSE_CACHE_MAX) parseCache.delete(parseCache.keys().next().value!);
-  p.then((r) => { if (!MODELS.has(r.parser)) parseCache.delete(key); }, () => parseCache.delete(key));
+  if (parseCache.size > PARSE_CACHE_MAX) {
+    parseCache.delete(parseCache.keys().next().value!);
+  }
+  p.then(
+    (r) => {
+      if (!MODELS.has(r.parser)) {
+        parseCache.delete(key);
+      }
+    },
+    () => parseCache.delete(key),
+  );
   return p;
 }
 
@@ -266,16 +309,24 @@ const rereadCache = new Map<string, { at: number; type: AuditRequest["type"]; re
 
 function cacheReread(text: string, type: AuditRequest["type"], reason: string) {
   const now = Date.now();
-  for (const [k, v] of rereadCache) if (now - v.at >= REREAD_TTL_MS) rereadCache.delete(k);
+  for (const [k, v] of rereadCache) {
+    if (now - v.at >= REREAD_TTL_MS) {
+      rereadCache.delete(k);
+    }
+  }
   rereadCache.delete(text);
   rereadCache.set(text, { at: now, type, reason });
   // Oldest entries go first, since a Map keeps insertion order.
-  while (rereadCache.size > REREAD_CACHE_MAX) rereadCache.delete(rereadCache.keys().next().value!);
+  while (rereadCache.size > REREAD_CACHE_MAX) {
+    rereadCache.delete(rereadCache.keys().next().value!);
+  }
 }
 
 async function rereadUnmatched(rules: ParsedList, input: NormalizedInput): Promise<ParsedList> {
   const unmatched = rules.requests.filter((r) => r.type === "unsupported" && r.reason === NO_MATCH);
-  if (!unmatched.length || unmatched.length > REREAD_MAX) return rules;
+  if (!unmatched.length || unmatched.length > REREAD_MAX) {
+    return rules;
+  }
   const fresh = (text: string) => {
     const hit = rereadCache.get(text);
     return hit && Date.now() - hit.at < REREAD_TTL_MS ? hit : null;
@@ -288,19 +339,26 @@ async function rereadUnmatched(rules: ParsedList, input: NormalizedInput): Promi
     const providers = PROVIDERS.filter((x) => availableProviders().includes(x.name));
     for (const [n, p] of providers.entries()) {
       const left = deadline - Date.now();
-      if (left <= 0) break;
+      if (left <= 0) {
+        break;
+      }
       const budget = n === providers.length - 1 ? left : Math.min(left, REREAD_FIRST_MS);
       // The call is cancelled when its time is up, so a slow provider is not left running and billed.
       const abort = new AbortController();
       const timer = setTimeout(() => abort.abort(new Error("timed out")), budget);
       try {
         const read = await p.parse({ rows: [], selections: [], text }, abort.signal);
-        if (!read) continue;
+        if (!read) {
+          continue;
+        }
         todo.forEach((r, i) => {
           const got = read.requests.find((x) => x.ref.trim().replace(/\.$/, "").toUpperCase() === `R${i + 1}`);
           // A line the model left out is cached as still unmatched, so it is not sent again on every parse.
-          if (got) cacheReread(r.text, got.type, `${p.name} read it: ${got.reason}`);
-          else cacheReread(r.text, "unsupported", NO_MATCH);
+          if (got) {
+            cacheReread(r.text, got.type, `${p.name} read it: ${got.reason}`);
+          } else {
+            cacheReread(r.text, "unsupported", NO_MATCH);
+          }
         });
         break;
       } catch (err) {
@@ -313,8 +371,12 @@ async function rereadUnmatched(rules: ParsedList, input: NormalizedInput): Promi
   const refs = rules.requests.map((r) => r.ref);
   const requests = rules.requests.map((r) => {
     const hit = r.type === "unsupported" && r.reason === NO_MATCH ? fresh(r.text) : null;
-    if (!hit) return r;
-    if (hit.type === "unsupported") return { ...r, reason: hit.reason };
+    if (!hit) {
+      return r;
+    }
+    if (hit.type === "unsupported") {
+      return { ...r, reason: hit.reason };
+    }
     const selections = hit.type === "transaction_support" ? sheetSelectionsFor(r.ref, refs, input.selections) : r.selections;
     return { ...r, type: hit.type, reason: hit.reason, selections, interpretation: interpret(hit.type, r.min_amount, selections.length) };
   });
@@ -331,7 +393,9 @@ const EMAIL_MAX_REQUESTS = 30;
  * strong. A short email, or a list the rules could not split, goes to a model when one is set up.
  */
 export function rulesConfident(rules: ParsedList & { split?: string }, text: string): boolean {
-  if (rules.split === "none" || !rules.requests.length) return false;
+  if (rules.split === "none" || !rules.requests.length) {
+    return false;
+  }
   return rules.split === "table" || rules.requests.length > EMAIL_MAX_REQUESTS || !isEmail(text);
 }
 
@@ -365,6 +429,8 @@ async function parseUncached(input: NormalizedInput, rules: ParsedList): Promise
       failures.push(`${p.name} failed (${shortError(err)})`);
     }
   }
-  if (!failures.length) return withoutSplit(rules);
+  if (!failures.length) {
+    return withoutSplit(rules);
+  }
   return { ...withoutSplit(rules), warnings: [...rules.warnings, `${failures.join("; ")}, so the keyword rules were used.`] };
 }

@@ -9,8 +9,12 @@ export function LanguageMenu({ lang, label }: { lang: Locale; label: string }) {
   useEffect(() => {
     const close = (e: MouseEvent | KeyboardEvent) => {
       const d = ref.current;
-      if (!d?.open) return;
-      if (e instanceof KeyboardEvent ? e.key === "Escape" : !d.contains(e.target as Node)) d.open = false;
+      if (!d?.open) {
+        return;
+      }
+      if (e instanceof KeyboardEvent ? e.key === "Escape" : !d.contains(e.target as Node)) {
+        d.open = false;
+      }
     };
     document.addEventListener("click", close);
     document.addEventListener("keydown", close);

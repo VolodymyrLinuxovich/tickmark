@@ -98,7 +98,11 @@ export function summarize(type: string, rec: unknown): [string, string][] {
       ["Paid", b.paid_at ? `${d(b.paid_at)}, ${b.payment?.payment_method ?? ""}` : "Open"],
     ];
   }
-  if (type === "vendor") return [["Vendor", r.name], ["Created", d(r.created_at)], ["Category", r.sk_category_name ?? ""], ["Terms", `Net ${r.net_payment_terms ?? "?"}`]];
-  if (type === "user") return [["Name", `${r.first_name} ${r.last_name}`], ["Email", r.email], ["Role", r.role], ["Status", r.status]];
+  if (type === "vendor") {
+    return [["Vendor", r.name], ["Created", d(r.created_at)], ["Category", r.sk_category_name ?? ""], ["Terms", `Net ${r.net_payment_terms ?? "?"}`]];
+  }
+  if (type === "user") {
+    return [["Name", `${r.first_name} ${r.last_name}`], ["Email", r.email], ["Role", r.role], ["Status", r.status]];
+  }
   return [];
 }

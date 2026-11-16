@@ -94,7 +94,9 @@ describe("receipt matching", () => {
     const matches = matchReceipts(docs, targets);
     const written = files.filter((f) => f.transaction_id).length;
     expect(matches.length).toBe(written);
-    for (const m of matches) expect(m.transaction_id).toBe(files[m.doc].transaction_id);
+    for (const m of matches) {
+      expect(m.transaction_id).toBe(files[m.doc].transaction_id);
+    }
   });
 });
 

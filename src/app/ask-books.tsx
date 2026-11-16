@@ -34,7 +34,9 @@ export function AskBooks({ periodFrom, periodTo, openRecord, extras, onAdd }: { 
   const [answer, setAnswer] = useState<{ question: string; by: string; plan: Plan; result: AskResult } | null>(null);
 
   async function ask(question: string, allowModel = false) {
-    if (question.trim().length < 3) return;
+    if (question.trim().length < 3) {
+      return;
+    }
     setBusy(true);
     setErr(null);
     setNeedsModel(false);

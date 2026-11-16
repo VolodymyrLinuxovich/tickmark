@@ -25,8 +25,15 @@ type Field = (typeof FIELDS)[number];
 function listCases(root: string): string[] {
   const out: string[] = [];
   for (const d of readdirSync(root, { withFileTypes: true }).filter((e) => e.isDirectory() && e.name !== "real")) {
-    if (existsSync(`${root}/${d.name}/expected.json`)) out.push(d.name);
-    else for (const sub of readdirSync(`${root}/${d.name}`, { withFileTypes: true })) if (sub.isDirectory()) out.push(`${d.name}/${sub.name}`);
+    if (existsSync(`${root}/${d.name}/expected.json`)) {
+      out.push(d.name);
+    } else {
+      for (const sub of readdirSync(`${root}/${d.name}`, { withFileTypes: true })) {
+        if (sub.isDirectory()) {
+          out.push(`${d.name}/${sub.name}`);
+        }
+      }
+    }
   }
   return out.sort();
 }
@@ -67,9 +74,14 @@ function score(name: string, expected: Expected, parsed: ParsedList, s: Score) {
       selections: got.selections.length,
     };
     for (const f of FIELDS) {
-      if (f === "found") continue;
-      if (actual[f] === e[f]) s.hit[f]++;
-      else s.misses.push(`${name} ${e.ref} ${f}: expected ${JSON.stringify(e[f])}, got ${JSON.stringify(actual[f])}`);
+      if (f === "found") {
+        continue;
+      }
+      if (actual[f] === e[f]) {
+        s.hit[f]++;
+      } else {
+        s.misses.push(`${name} ${e.ref} ${f}: expected ${JSON.stringify(e[f])}, got ${JSON.stringify(actual[f])}`);
+      }
     }
   });
 }
@@ -81,7 +93,9 @@ function table(scores: Record<string, Score>) {
   const names = Object.keys(scores);
   const w = 12;
   console.log(["field".padEnd(w), ...names.map((n) => n.padStart(18))].join(""));
-  for (const f of FIELDS) console.log([f.padEnd(w), ...names.map((n) => `${pct(scores[n].hit[f], scores[n].total)} (${scores[n].hit[f]}/${scores[n].total})`.padStart(18))].join(""));
+  for (const f of FIELDS) {
+    console.log([f.padEnd(w), ...names.map((n) => `${pct(scores[n].hit[f], scores[n].total)} (${scores[n].hit[f]}/${scores[n].total})`.padStart(18))].join(""));
+  }
   console.log(["extra refs".padEnd(w), ...names.map((n) => String(scores[n].extra).padStart(18))].join(""));
 }
 
@@ -90,10 +104,14 @@ async function main() {
   const cases = listCases(ROOT);
   const scores: Record<string, Score> = { rules: empty() };
   let useModel = availableProviders().length > 0;
-  if (!useModel) console.log("No model key set (ANTHROPIC_API_KEY or OPENAI_API_KEY): scoring the rules parser only.\n");
+  if (!useModel) {
+    console.log("No model key set (ANTHROPIC_API_KEY or OPENAI_API_KEY): scoring the rules parser only.\n");
+  }
 
   const loaded = await Promise.all(cases.map(async (name) => ({ name, ...(await load(name)) })));
-  for (const { name, expected, input } of loaded) score(name, expected, parseWithRules(input), scores.rules);
+  for (const { name, expected, input } of loaded) {
+    score(name, expected, parseWithRules(input), scores.rules);
+  }
 
   if (useModel) {
     // One probe call first, so a dead key fails once instead of once per case.
@@ -103,7 +121,9 @@ async function main() {
       useModel = false;
     } else {
       const results = [first];
-      for (let i = 1; i < loaded.length; i += 6) results.push(...(await Promise.all(loaded.slice(i, i + 6).map((c) => parseRequests(c.input, { useModel: true })))));
+      for (let i = 1; i < loaded.length; i += 6) {
+        results.push(...(await Promise.all(loaded.slice(i, i + 6).map((c) => parseRequests(c.input, { useModel: true })))));
+      }
       results.forEach((parsed, i) => {
         const key = parsed.parser === "rules" ? "model fell back" : parsed.parser;
         scores[key] ??= empty();
@@ -115,10 +135,16 @@ async function main() {
   console.log(`Corpus: ${cases.length} cases, ${scores.rules.total} requests\n`);
   table(scores);
   for (const [parser, s] of Object.entries(scores)) {
-    if (!s.misses.length) continue;
+    if (!s.misses.length) {
+      continue;
+    }
     console.log(`\n${parser}: ${s.misses.length} field misses`);
-    for (const m of verbose ? s.misses : s.misses.slice(0, 15)) console.log(`  ${m}`);
-    if (!verbose && s.misses.length > 15) console.log(`  ... ${s.misses.length - 15} more (use --verbose)`);
+    for (const m of verbose ? s.misses : s.misses.slice(0, 15)) {
+      console.log(`  ${m}`);
+    }
+    if (!verbose && s.misses.length > 15) {
+      console.log(`  ... ${s.misses.length - 15} more (use --verbose)`);
+    }
   }
 }
 

@@ -75,7 +75,9 @@ export function ExceptionList({ items, openRecord, sent, setSent, source }: { it
       const who = f.owner?.name ?? NO_OWNER;
       const e = p.get(who) ?? { n: 0, high: 0, codes: new Map() };
       e.n++;
-      if (f.severity === "high") e.high++;
+      if (f.severity === "high") {
+        e.high++;
+      }
       e.codes.set(f.code, (e.codes.get(f.code) ?? 0) + 1);
       p.set(who, e);
       t.set(f.code, (t.get(f.code) ?? 0) + 1);
@@ -139,7 +141,17 @@ export function ExceptionList({ items, openRecord, sent, setSent, source }: { it
       {(person || code) && (
         <div className="ex-filter">
           Showing {filtered.length} {code ? GROUP_LABEL[code].toLowerCase() : "exceptions"}{person ? ` for ${person}` : ""}.
-          <button className="ex-more" onClick={() => pick(() => { setPerson(null); setCode(null); })}>Clear filter</button>
+          <button
+            className="ex-more"
+            onClick={() =>
+              pick(() => {
+                setPerson(null);
+                setCode(null);
+              })
+            }
+          >
+            Clear filter
+          </button>
         </div>
       )}
       {filtered.slice(0, shown).map(({ f, refs }) => (
@@ -178,16 +190,22 @@ export function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f:
   const { watch } = useWatch();
   /** Posts the edited draft to /api/comment, records where it went, and starts watching Ramp for the fix. */
   async function post() {
-    if (!f.comment) return;
+    if (!f.comment) {
+      return;
+    }
     setPosting(true);
     setErr(null);
     try {
       const res = await fetch("/api/comment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f.comment, message: msg, owner_user_id: f.owner?.user_id || undefined }) });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error);
+      if (!res.ok) {
+        throw new Error(json.error);
+      }
       // No Ramp thread on this record yet: hand the follow-up to the user's mail app instead.
       const entry: Sent = json.email ? { kind: "email", to: json.email.name, href: mailto(json.email) } : { kind: "comment", destination: json.destination };
-      if (entry.kind === "email") window.location.href = entry.href;
+      if (entry.kind === "email") {
+        window.location.href = entry.href;
+      }
       // Updater form: two cards sent close together must not overwrite each other.
       setSent((prev) => ({ ...prev, [f.id]: entry }));
       setOpen(false);
@@ -242,7 +260,9 @@ export function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f:
 
 /** Where an approved follow-up went. An email is only opened in the mail app, so the note says to send it there. */
 function SentNote({ s, what }: { s: Sent; what: string }) {
-  if (s.kind === "comment") return <span className="sent">Sent as a comment on the Ramp {what} ({s.destination})</span>;
+  if (s.kind === "comment") {
+    return <span className="sent">Sent as a comment on the Ramp {what} ({s.destination})</span>;
+  }
   return (
     <span className="sent">
       Ramp has no thread on this {what}, so an email to {s.to} opened in your mail app. Send it from there.{" "}

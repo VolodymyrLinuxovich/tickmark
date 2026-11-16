@@ -93,7 +93,9 @@ const handler = createMcpHandler(
         let reqs = requests;
         let parser: string | null = null;
         if (!reqs?.length) {
-          if (!text?.trim()) return { ...json({ error: "Pass text or requests" }), isError: true };
+          if (!text?.trim()) {
+            return { ...json({ error: "Pass text or requests" }), isError: true };
+          }
           const parsed = await parseRequests(normalizeText(text));
           reqs = parsed.requests;
           parser = parsed.parser;
@@ -117,7 +119,9 @@ const handler = createMcpHandler(
       },
       async ({ type, id }) => {
         const record = await getSource().record(type, id);
-        if (!record) return { ...json({ error: `No ${type} ${id}` }), isError: true };
+        if (!record) {
+          return { ...json({ error: `No ${type} ${id}` }), isError: true };
+        }
         return json(record);
       },
     );

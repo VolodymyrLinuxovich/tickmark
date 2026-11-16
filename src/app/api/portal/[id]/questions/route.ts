@@ -6,14 +6,20 @@ const Body = z.object({ ref: z.string().max(40), text: z.string().trim().min(2).
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const portal = await getPortal((await params).id);
-  if (!portal) return Response.json({ error: "Not found" }, { status: 404 });
+  if (!portal) {
+    return Response.json({ error: "Not found" }, { status: 404 });
+  }
   return Response.json({ questions: portal.questions }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const parsed = Body.safeParse(await req.json().catch(() => null));
-  if (!parsed.success) return Response.json({ error: "Write a question first." }, { status: 400 });
+  if (!parsed.success) {
+    return Response.json({ error: "Write a question first." }, { status: 400 });
+  }
   const q = await addQuestion((await params).id, { ref: parsed.data.ref, text: parsed.data.text, name: parsed.data.name || null });
-  if (!q) return Response.json({ error: "This portal link is invalid or has expired." }, { status: 404 });
+  if (!q) {
+    return Response.json({ error: "This portal link is invalid or has expired." }, { status: 404 });
+  }
   return Response.json({ question: q });
 }

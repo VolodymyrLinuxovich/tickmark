@@ -49,8 +49,12 @@ const longDate = (d: Date) => d.toLocaleDateString("en-US", { month: "short", da
 
 /** One line an auditor reads first: what the test concluded. */
 function conclusion(r: RequestResult): string {
-  if (r.status === "manual") return "Not tested by Tickmark. The request is outside Ramp data and is assigned to the finance team.";
-  if (!r.findings.length) return `No exceptions noted. ${r.tested} item${r.tested === 1 ? "" : "s"} tested; procedures performed without exception.`;
+  if (r.status === "manual") {
+    return "Not tested by Tickmark. The request is outside Ramp data and is assigned to the finance team.";
+  }
+  if (!r.findings.length) {
+    return `No exceptions noted. ${r.tested} item${r.tested === 1 ? "" : "s"} tested; procedures performed without exception.`;
+  }
   const n = r.findings.length;
   return `Exceptions noted. See exception${n > 1 ? `s 1-${n}` : " 1"} below. Resolve or document each one before the binder goes to the auditor.`;
 }
@@ -70,7 +74,9 @@ class Writer {
     this.page.drawText(right, { x: 564 - this.font.widthOfTextAtSize(right, 8), y: 770, size: 8, font: this.font, color: rgb(0.45, 0.45, 0.45) });
   }
   ensure(h: number) {
-    if (this.y - h < 60) this.newPage();
+    if (this.y - h < 60) {
+      this.newPage();
+    }
   }
   /** Footer on every page: workpaper reference on the left, "Page n of m" on the right. Call once, after all content. */
   footers(ref: string) {
@@ -96,10 +102,14 @@ class Writer {
     for (const [label, who, when] of rows) {
       this.page.drawText(label, { x: 48, y: this.y, size: 9, font: this.bold, color: rgb(0.1, 0.1, 0.1) });
       line(130, this.y - 2, 250);
-      if (who) this.page.drawText(clean(who), { x: 134, y: this.y + 1, size: 9, font: this.font, color: grey });
+      if (who) {
+        this.page.drawText(clean(who), { x: 134, y: this.y + 1, size: 9, font: this.font, color: grey });
+      }
       this.page.drawText("Date", { x: 400, y: this.y, size: 9, font: this.bold, color: rgb(0.1, 0.1, 0.1) });
       line(430, this.y - 2, 134);
-      if (when) this.page.drawText(when, { x: 434, y: this.y + 1, size: 9, font: this.font, color: grey });
+      if (when) {
+        this.page.drawText(when, { x: 434, y: this.y + 1, size: 9, font: this.font, color: grey });
+      }
       this.y -= 26;
     }
   }
@@ -112,7 +122,9 @@ class Writer {
         if (font.widthOfTextAtSize(next, size) > width && line) {
           out.push(line);
           line = word;
-        } else line = next;
+        } else {
+          line = next;
+        }
       }
       out.push(line);
     }
@@ -143,7 +155,9 @@ class Writer {
       this.page.drawLine({ start: { x: 48, y: this.y + size }, end: { x: 564, y: this.y + size }, thickness: 0.3, color: rgb(0.8, 0.8, 0.8) });
     };
     drawRow(columns, true);
-    for (const r of rows) drawRow(r, false);
+    for (const r of rows) {
+      drawRow(r, false);
+    }
     this.y -= 8;
   }
 }
@@ -161,7 +175,9 @@ async function workpaper(r: RequestResult, ctx: Ctx, ref: string, statuses: Exce
   w.text("Request", { bold: true, size: 9 });
   w.text(r.request.text, { size: 9, gap: 8 });
   w.text("Procedure performed", { bold: true, size: 9 });
-  for (const p of r.procedure) w.text(`- ${p}`, { size: 9, indent: 6, gap: 1 });
+  for (const p of r.procedure) {
+    w.text(`- ${p}`, { size: 9, indent: 6, gap: 1 });
+  }
   w.y -= 8;
   if (r.rows.length) {
     w.text(`Evidence (${r.rows.length})`, { bold: true, size: 9 });
@@ -179,7 +195,9 @@ async function workpaper(r: RequestResult, ctx: Ctx, ref: string, statuses: Exce
       w.text(`${i + 1}. [${f.severity.toUpperCase()}] ${f.title}`, { size: 9, bold: true, indent: 6, gap: 0 });
       w.text(f.detail, { size: 9, indent: 18, gap: 0 });
       w.text(`Status: ${STATUS_LABEL[st?.status ?? "open"]}${st?.note ? `. ${st.note}` : ""}`, { size: 8.5, indent: 18, color: st?.status === "resolved" ? [0.1, 0.45, 0.25] : st?.status === "waived" ? [0.35, 0.35, 0.35] : [0.62, 0.32, 0], gap: 0 });
-      if (f.records.length) w.text(`Records: ${f.records.map((x) => `${x.label} (${x.type} ${x.id})`).join("; ")}`, { size: 7.5, indent: 18, color: [0.4, 0.4, 0.4], gap: 6 });
+      if (f.records.length) {
+        w.text(`Records: ${f.records.map((x) => `${x.label} (${x.type} ${x.id})`).join("; ")}`, { size: 7.5, indent: 18, color: [0.4, 0.4, 0.4], gap: 6 });
+      }
     });
   }
   w.text("Tickmarks", { bold: true, size: 9 });
@@ -250,17 +268,22 @@ export async function buildBinder(results: RequestResult[], snap: RampSnapshot, 
   fs.getRow(1).font = { bold: true };
     // A finding can come up under several requests; list it once, under the first request that found it.
   const seen = new Set<string>();
-  for (const r of results)
+  for (const r of results) {
     for (const f of r.findings) {
-      if (seen.has(f.id)) continue;
+      if (seen.has(f.id)) {
+        continue;
+      }
       seen.add(f.id);
       const st = statuses[f.id];
       fs.addRow([r.request.ref, f.severity, f.code, f.title, f.detail, f.owner?.name ?? "", f.records.map((x) => x.id).join(", "), STATUS_LABEL[st?.status ?? "open"], st?.note ?? ""]);
     }
+  }
   for (const r of results.filter((x) => x.rows.length)) {
     const ws = wb.addWorksheet(r.request.ref.slice(0, 31));
     ws.addRow([...r.columns, "Tickmarks", "Ramp id"]).font = { bold: true };
-    for (const row of r.rows) ws.addRow([...row.cells, row.tickmarks.join(" "), row.record.id]);
+    for (const row of r.rows) {
+      ws.addRow([...row.cells, row.tickmarks.join(" "), row.record.id]);
+    }
     ws.columns.forEach((c) => (c.width = 22));
   }
   root.file("00 Index.xlsx", new Uint8Array(await wb.xlsx.writeBuffer()));
@@ -298,7 +321,9 @@ export async function buildBinder(results: RequestResult[], snap: RampSnapshot, 
       if (row.record.type === "transaction") {
         const t = txn.get(row.record.id);
         const rc = receipt.get(url);
-        if (!t || !rc) continue;
+        if (!t || !rc) {
+          continue;
+        }
         const total = (rc.ocr?.line_items ?? []).reduce((s, i) => s + (i.item_total_price ?? 0), 0);
         folder.file(
           `Evidence/${base} receipt.pdf`,
@@ -313,7 +338,9 @@ export async function buildBinder(results: RequestResult[], snap: RampSnapshot, 
         );
       } else if (row.record.type === "bill") {
         const b = bill.get(row.record.id);
-        if (!b) continue;
+        if (!b) {
+          continue;
+        }
         folder.file(
           `Evidence/${base} invoice.pdf`,
           await demoDocument("invoice", [

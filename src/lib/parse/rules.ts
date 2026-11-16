@@ -34,37 +34,65 @@ const quote = (m: RegExpMatchArray | null) => (m ? `"${m[0].trim()}"` : "");
 export function classifyWithReason(text: string, hasSelections: boolean, area = ""): { type: RequestType; reason: string } {
   const t = expandShorthand(text);
   let m = t.match(OUTSIDE_RAMP);
-  if (m) return { type: "unsupported", reason: `Mentions ${quote(m)}, which Ramp data does not cover` };
+  if (m) {
+    return { type: "unsupported", reason: `Mentions ${quote(m)}, which Ramp data does not cover` };
+  }
   m = area.toLowerCase().match(OUTSIDE_RAMP);
-  if (m) return { type: "unsupported", reason: `Listed under ${quote(m)}, which Ramp data does not cover` };
-  if ((m = t.match(/duplicate/))) return { type: "duplicate_payments", reason: `Mentions ${quote(m)}` };
+  if (m) {
+    return { type: "unsupported", reason: `Listed under ${quote(m)}, which Ramp data does not cover` };
+  }
+  if ((m = t.match(/duplicate/))) {
+    return { type: "duplicate_payments", reason: `Mentions ${quote(m)}` };
+  }
   const missing = t.match(/(without|missing|no receipt|lack|not attached|n[o']t have|absent|unsupported by)/);
-  if (/receipt/.test(t) && missing) return { type: "receipt_completeness", reason: `Mentions receipts and ${quote(missing)}` };
+  if (/receipt/.test(t) && missing) {
+    return { type: "receipt_completeness", reason: `Mentions receipts and ${quote(missing)}` };
+  }
   m = t.match(/(split|their own|own (spend|purchases|transactions)|self[- ]?approv|segregation of duties|restricted|prohibited|merchant categor|\bmcc|circumvent|out[- ]of[- ]policy|policy violation|approved after|after (they were |it was )?paid|also the approver|approved by the (same (person|individual)|cardholder(?!'s))|approver is the same|approved by (someone|a person|an individual) other than|independent(ly)? approv|approv\w*[^.]{0,40}(after|later than) the payment)/);
-  if (m) return { type: "control_testing", reason: `Control test wording: ${quote(m)}` };
+  if (m) {
+    return { type: "control_testing", reason: `Control test wording: ${quote(m)}` };
+  }
   m = t.match(/(vendor master|vendor list|list(ing)? of vendors|new vendors|vendors (created|added|onboarded|set up)|vendor additions)/);
-  if (m) return { type: "vendor_listing", reason: `Mentions ${quote(m)}` };
+  if (m) {
+    return { type: "vendor_listing", reason: `Mentions ${quote(m)}` };
+  }
   m = t.match(/(user access|administrator|admin (access|rights|roles?|permissions|privileges)|access (listing|rights|review)|users with|users and their roles|user listing|system access|list of users|users (in|of) the|terminated (employees|users)|card access|ability to approve|who (has|can) (access|approve))/);
-  if (m) return { type: "user_access", reason: `Mentions ${quote(m)}` };
+  if (m) {
+    return { type: "user_access", reason: `Mentions ${quote(m)}` };
+  }
   // A sample of vendor bills or disbursements with no card wording is bill support.
   m = t.match(/(\bbills?\b|vendor invoice|disbursement|accounts payable|\bap\b|checks? (?:written|issued)|check register)/);
-  if (m && !/(card|amex|p-?card)/.test(t)) return { type: "bill_support", reason: `Mentions ${quote(m)} and no card spend` };
+  if (m && !/(card|amex|p-?card)/.test(t)) {
+    return { type: "bill_support", reason: `Mentions ${quote(m)} and no card spend` };
+  }
   const picked = t.match(/(selected|selection|sample|\bselect\b|following)/);
   const card = t.match(/(transaction|card|expense|charge|spend|refund|credit)/);
-  if (picked && card) return { type: "transaction_support", reason: `Asks about ${quote(picked)} ${quote(card)} items` };
+  if (picked && card) {
+    return { type: "transaction_support", reason: `Asks about ${quote(picked)} ${quote(card)} items` };
+  }
   // "Support for all card transactions over $5,000": evidence for card spend, sampled by the engine.
   // The wording must name card transactions, so "supporting invoices for all expenses" stays a bill request.
   m = t.match(/\b(support|documentation|backup|receipts?|approval evidence|evidence of approval) (for|of) (all |the |each |every |any )?([\w'-]+ ){0,3}(card|p-?card|amex) (transactions?|charges?|purchases?|expenses?|spend)\b/);
-  if (m) return { type: "transaction_support", reason: `Asks for ${quote(m)}` };
+  if (m) {
+    return { type: "transaction_support", reason: `Asks for ${quote(m)}` };
+  }
   m = t.match(/(\bbills?\b|invoice|vendor payment|accounts payable|disbursement|payments? to vendors)/);
-  if (m) return { type: "bill_support", reason: `Mentions ${quote(m)}` };
-  if (hasSelections && card) return { type: "transaction_support", reason: "Lists selected card items under the request" };
+  if (m) {
+    return { type: "bill_support", reason: `Mentions ${quote(m)}` };
+  }
+  if (hasSelections && card) {
+    return { type: "transaction_support", reason: "Lists selected card items under the request" };
+  }
   // Free wording about card spend ("corporate card charges above $10,000 and evidence of approval",
   // "receipts for meals over $250"): evidence for card spend, sampled by the engine.
   m = t.match(/\b((corporate |credit |company |purchasing |p-?)?cards? (transactions?|charges?|purchases?|expenses?|spend(ing)?|activity)|(amex|visa|mastercard) (transactions?|charges?|purchases?)|charges? (posted |made )?(over|above|greater than|more than|exceeding|in excess of|on weekends|on holidays)|corporate cards?|credit cards?|expense reports?|employee (expenses|spend(ing)?|purchases)|receipts? (for|to support|supporting)|meals|travel and entertainment|entertainment)\b/);
-  if (m) return { type: "transaction_support", reason: `Mentions ${quote(m)}` };
+  if (m) {
+    return { type: "transaction_support", reason: `Mentions ${quote(m)}` };
+  }
   m = t.match(/\b(purchases?|spend(ing)?) (over|above|exceeding|greater than|more than|in excess of)\s*\$/);
-  if (m) return { type: "transaction_support", reason: `Asks about ${quote(m)} a dollar amount` };
+  if (m) {
+    return { type: "transaction_support", reason: `Asks about ${quote(m)} a dollar amount` };
+  }
   return { type: "unsupported", reason: NO_MATCH };
 }
 
@@ -80,8 +108,12 @@ const BARE_PLUS = new RegExp(String.raw`(?<!\b(?:sample of|sample|top|first|last
 const scaled = (n: string, unit: string | undefined) => {
   const v = money(n);
   const u = unit?.toLowerCase();
-  if (u === "k" || u === "thousand") return v * 1000;
-  if (u === "m" || u === "mm" || u === "million") return v * 1_000_000;
+  if (u === "k" || u === "thousand") {
+    return v * 1000;
+  }
+  if (u === "m" || u === "mm" || u === "million") {
+    return v * 1_000_000;
+  }
   return v;
 };
 
@@ -97,8 +129,12 @@ const IN_WORDS = new RegExp(String.raw`(?:over|above|exceed(?:ing|s)?|in excess 
 export function findThreshold(text: string): number | null {
   const words = text.match(IN_WORDS);
   const hits = [BEFORE, AFTER, BARE_PLUS].map((re) => text.match(re)).filter((m): m is RegExpMatchArray => !!m);
-  if (words && !hits.some((h) => h.index! < words.index!)) return COUNT_WORDS[words[1].toLowerCase()] * (/thousand/i.test(words[2]) ? 1000 : 1_000_000);
-  if (!hits.length) return null;
+  if (words && !hits.some((h) => h.index! < words.index!)) {
+    return COUNT_WORDS[words[1].toLowerCase()] * (/thousand/i.test(words[2]) ? 1000 : 1_000_000);
+  }
+  if (!hits.length) {
+    return null;
+  }
   const m = hits.sort((a, b) => a.index! - b.index!)[0];
   return Math.round(scaled(m[1], m[2]) * 100) / 100;
 }
@@ -181,7 +217,9 @@ const PERIOD_RULES: Rule[] = [
     re: /\b(?:last|past|prior|trailing|preceding)\s+(\d{1,2}|three|six|nine|twelve|eighteen|twenty-four)\s+months\b(?!\s+(?:ended|ending|of|to|through|before)\b)/i,
     read: (m) => {
       const n = Number(m[1]) || WORD_NUMBER[m[1].toLowerCase()];
-      if (!n) return null;
+      if (!n) {
+        return null;
+      }
       const to = localToday();
       return { from: monthsBack(to, n), to };
     },
@@ -200,9 +238,13 @@ const PERIOD_RULES: Rule[] = [
     read: (m) => {
       const to = wordDate(m[3]);
       const month = monthNumber(m[1].replace(".", ""));
-      if (!to || !month) return null;
+      if (!to || !month) {
+        return null;
+      }
       let from = dateOf(Number(to.slice(0, 4)), month, Number(m[2]));
-      if (from > to) from = dateOf(Number(to.slice(0, 4)) - 1, month, Number(m[2]));
+      if (from > to) {
+        from = dateOf(Number(to.slice(0, 4)) - 1, month, Number(m[2]));
+      }
       return toIsoDate(from) ? { from, to } : null;
     },
   },
@@ -222,7 +264,9 @@ const PERIOD_RULES: Rule[] = [
       const a = monthNumber(m[1].replace(".", ""));
       const b = monthNumber(m[2].replace(".", ""));
       const y = Number(m[3]);
-      if (!a || !b) return null;
+      if (!a || !b) {
+        return null;
+      }
       const fromYear = a > b ? y - 1 : y;
       return { from: dateOf(fromYear, a, 1), to: dateOf(y, b, lastDay(y, b)) };
     },
@@ -292,7 +336,9 @@ function earliestPeriod(text: string, fye: FiscalYearEnd, rules: Rule[]): Period
     const re = new RegExp(rule.re.source, rule.re.flags.includes("g") ? rule.re.flags : rule.re.flags + "g");
     for (const m of text.matchAll(re)) {
       const at = m.index! + (m[0].length - m[0].trimStart().length);
-      if (best && at >= best.at) break;
+      if (best && at >= best.at) {
+        break;
+      }
       const period = rule.read(m, fye);
       if (period) {
         best = { at, period };
@@ -311,7 +357,9 @@ export function statedYearEnd(text: string): string | null {
   const counts = new Map<string, number>();
   for (const m of text.matchAll(new RegExp(YEAR_END_DATE.source, "gi"))) {
     const d = wordDate(m[1]);
-    if (d) counts.set(d, (counts.get(d) ?? 0) + 1);
+    if (d) {
+      counts.set(d, (counts.get(d) ?? 0) + 1);
+    }
   }
   return [...counts].sort((a, b) => b[1] - a[1] || b[0].localeCompare(a[0]))[0]?.[0] ?? null;
 }
@@ -367,20 +415,30 @@ const SEL_REF = /^(?:#\s?)?([A-Z]{1,3}-?\d{1,4}|\d{1,4})[.):]?$/i;
 /** One selection per line: "S-01 | 12/14/2025 | GOOGLE ADS | $4,641.49", "1  14-Dec-2025  GOOGLE ADS  $4,641.49". */
 export function selectionFromLine(line: string): Selection | null {
   const t = line.trim().replace(/^[-*•]\s*/, "");
-  if (!t || t.length > 160) return null;
+  if (!t || t.length > 160) {
+    return null;
+  }
   const amt = t.match(SEL_AMOUNT);
   const date = t.match(SEL_DATE);
-  if (!amt || !date || date.index! > amt.index!) return null;
+  if (!amt || !date || date.index! > amt.index!) {
+    return null;
+  }
   const head = t.slice(0, date.index).replace(/[\s|,:;-]+$/, "").trim();
   const after = t.slice(date.index! + date[0].length, amt.index).replace(/^[\s|,:;-]+|[\s|,:;-]+$/g, "").trim();
   const amount = money(amt[1]);
-  if (!Number.isFinite(amount) || !toIsoDate(date[1]) || SEL_DATE.test(after)) return null;
+  if (!Number.isFinite(amount) || !toIsoDate(date[1]) || SEL_DATE.test(after)) {
+    return null;
+  }
   if (!head || SEL_REF.test(head)) {
-    if (!after) return null;
+    if (!after) {
+      return null;
+    }
     return { ref: head ? head.match(SEL_REF)![1] : "", date: date[1], description: after, amount };
   }
   // "Kessler Mechanical, 07/18/2025, $48,250.00": a short description before the date
-  if (after || head.length > 45 || head.split(/\s+/).length > 7) return null;
+  if (after || head.length > 45 || head.split(/\s+/).length > 7) {
+    return null;
+  }
   return { ref: "", date: date[1], description: head, amount };
 }
 
@@ -388,7 +446,9 @@ function selectionsFromText(text: string): Selection[] {
   const out: Selection[] = [];
   for (const line of text.split("\n")) {
     const s = selectionFromLine(line);
-    if (s) out.push({ ...s, ref: s.ref || `S-${pad(out.length + 1)}` });
+    if (s) {
+      out.push({ ...s, ref: s.ref || `S-${pad(out.length + 1)}` });
+    }
   }
   return out;
 }
@@ -428,19 +488,33 @@ interface Marker {
 
 function marker(line: string): Marker | null {
   let m = line.match(/^\s*(?:PBC|Request|Req\.?|Item)\s*[-#.]?\s*(\d{1,3}(?:\.\d{1,2})?[a-z]?)\b\s*[:.)-]?\s*(.*)$/i);
-  if (m) return { ref: `PBC-${/^\d$/.test(m[1]) ? pad(Number(m[1])) : m[1]}`, bullet: false, rest: m[2] };
+  if (m) {
+    return { ref: `PBC-${/^\d$/.test(m[1]) ? pad(Number(m[1])) : m[1]}`, bullet: false, rest: m[2] };
+  }
   m = line.match(/^\s*([A-Z]{1,4}-\d{1,3}(?:\.\d{1,2})?)(?:\s*[:.)-]\s*|\s+)(.*)$/);
-  if (m) return { ref: m[1], bullet: false, rest: m[2] };
+  if (m) {
+    return { ref: m[1], bullet: false, rest: m[2] };
+  }
   m = line.match(/^\s*(\d{1,2}\.\d{1,2})[.)]?\s+(.*)$/);
-  if (m) return { ref: m[1], bullet: false, rest: m[2] };
+  if (m) {
+    return { ref: m[1], bullet: false, rest: m[2] };
+  }
   m = line.match(/^\s*\(?(\d{1,2})[.)]\s+(.*)$/);
-  if (m) return { ref: `PBC-${pad(Number(m[1]))}`, bullet: false, rest: m[2], section: String(Number(m[1])) };
+  if (m) {
+    return { ref: `PBC-${pad(Number(m[1]))}`, bullet: false, rest: m[2], section: String(Number(m[1])) };
+  }
   m = line.match(/^\s*\(?((?:x{0,3})(?:ix|iv|v?i{1,3}|v))[.)]\s+(.*)$/);
-  if (m) return { ref: m[1], bullet: false, rest: m[2], sub: true };
+  if (m) {
+    return { ref: m[1], bullet: false, rest: m[2], sub: true };
+  }
   m = line.match(/^\s*\(?([a-z])\)\s+(.*)$/) ?? line.match(/^\s*([a-z])\.\s+(.*)$/);
-  if (m) return { ref: m[1], bullet: false, rest: m[2], sub: true };
+  if (m) {
+    return { ref: m[1], bullet: false, rest: m[2], sub: true };
+  }
   m = line.match(/^\s*[-*•▪◦–]\s+(.*)$/);
-  if (m) return { ref: null, bullet: true, rest: m[1] };
+  if (m) {
+    return { ref: null, bullet: true, rest: m[1] };
+  }
   return null;
 }
 
@@ -473,7 +547,9 @@ export function splitFreeText(text: string): InputRow[] {
       continue;
     }
     if (selectionFromLine(line)) {
-      if (last) last.text += "\n" + line.trim();
+      if (last) {
+        last.text += "\n" + line.trim();
+      }
       gap = false;
       continue;
     }
@@ -512,11 +588,15 @@ export function splitFreeText(text: string): InputRow[] {
       gap = false;
       continue;
     }
-    if (mk) close();
-    else if (cur && !gap) cur.text += "\n" + line.trim();
-    else {
+    if (mk) {
       close();
-      if (isHeading(line)) heading = line.trim();
+    } else if (cur && !gap) {
+      cur.text += "\n" + line.trim();
+    } else {
+      close();
+      if (isHeading(line)) {
+        heading = line.trim();
+      }
     }
     gap = false;
   }
@@ -559,29 +639,41 @@ export function splitEmbeddedRefs(text: string): InputRow[] {
   const prefixes = new Map<string, number>();
   for (const l of lines) {
     const m = l.match(REF);
-    if (m) prefixes.set(m[1].split("-")[0], (prefixes.get(m[1].split("-")[0]) ?? 0) + 1);
+    if (m) {
+      prefixes.set(m[1].split("-")[0], (prefixes.get(m[1].split("-")[0]) ?? 0) + 1);
+    }
   }
   const families = new Set([...prefixes].filter(([, n]) => n >= 5).map(([p]) => p));
-  if (!families.size) return [];
+  if (!families.size) {
+    return [];
+  }
   const rows: InputRow[] = [];
   const cellStarts = new Set<string>(); // first words of the cells left of the ref, such as "FS/C-YE"
   let cur: InputRow | null = null;
   let junk = false;
   for (const raw of lines) {
     const line = raw.trim();
-    if (!line) continue;
+    if (!line) {
+      continue;
+    }
     const m = line.match(REF);
     if (m && families.has(m[1].split("-")[0])) {
       const before = line.slice(0, line.indexOf(m[1])).trim();
-      if (before) cellStarts.add(before.split(/\s+/)[0]);
+      if (before) {
+        cellStarts.add(before.split(/\s+/)[0]);
+      }
       cur = { ref: m[1], area: "", text: (m[2] ?? "").trim(), period_from: null, period_to: null };
       rows.push(cur);
       junk = false;
       continue;
     }
     // The next row's left cells can wrap onto lines of their own; skip them until its ref arrives.
-    if (cellStarts.has(line.split(/\s+/)[0])) junk = true;
-    if (cur && !junk) cur.text = cur.text ? cur.text + "\n" + line : line;
+    if (cellStarts.has(line.split(/\s+/)[0])) {
+      junk = true;
+    }
+    if (cur && !junk) {
+      cur.text = cur.text ? cur.text + "\n" + line : line;
+    }
   }
   return rows.filter((r) => r.text);
 }
@@ -598,11 +690,17 @@ const ALL_CAPS = (line: string) => /[A-Z]{2}/.test(line) && line === line.toUppe
 export function splitLineList(text: string): InputRow[] {
   const lines = text.replace(/\r\n?/g, "\n").split("\n").map((l) => l.trim()).filter(Boolean);
   const headings = lines.filter(ALL_CAPS);
-  if (headings.length < 2 || lines.length < 8) return [];
+  if (headings.length < 2 || lines.length < 8) {
+    return [];
+  }
   const items = lines.filter((l) => !ALL_CAPS(l));
   // Long prose lines, a greeting, a sign-off or a question mean a letter, not a one-line-per-item list.
-  if (items.filter((l) => l.length > 110).length > items.length * 0.2) return [];
-  if (lines.some((l) => LETTER_LINE.test(l))) return [];
+  if (items.filter((l) => l.length > 110).length > items.length * 0.2) {
+    return [];
+  }
+  if (lines.some((l) => LETTER_LINE.test(l))) {
+    return [];
+  }
   const rows: InputRow[] = [];
   let area: string | null = null;
   for (const line of lines) {
@@ -610,10 +708,15 @@ export function splitLineList(text: string): InputRow[] {
       area = line;
       continue;
     }
-    if (area === null || /^\d{1,3}$/.test(line) || /^page \d+/i.test(line)) continue;
+    if (area === null || /^\d{1,3}$/.test(line) || /^page \d+/i.test(line)) {
+      continue;
+    }
     const prev = rows.at(-1);
-    if (prev && /^[a-z(&]/.test(line)) prev.text += " " + line;
-    else rows.push({ ref: `PBC-${pad(rows.length + 1)}`, area: area.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()), text: line, period_from: null, period_to: null });
+    if (prev && /^[a-z(&]/.test(line)) {
+      prev.text += " " + line;
+    } else {
+      rows.push({ ref: `PBC-${pad(rows.length + 1)}`, area: area.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()), text: line, period_from: null, period_to: null });
+    }
   }
   return rows;
 }
@@ -626,21 +729,31 @@ export type SplitHow = "table" | "markers" | "embedded_refs" | "lines" | "none";
 
 /** Splits normalized input into rows: the spreadsheet if there is one, else numbered items, rows with refs, or a plain line list. */
 export function splitInput(input: NormalizedInput): { rows: InputRow[]; how: SplitHow } {
-  if (input.rows.length) return { rows: input.rows, how: "table" };
+  if (input.rows.length) {
+    return { rows: input.rows, how: "table" };
+  }
   const marked = splitFreeText(input.text);
   // A few stray "1." lines in a table of refs should not win over the refs.
   const embedded = splitEmbeddedRefs(input.text);
-  if (embedded.length > marked.length * 2) return { rows: embedded, how: "embedded_refs" };
-  if (marked.length >= 2) return { rows: marked, how: "markers" };
+  if (embedded.length > marked.length * 2) {
+    return { rows: embedded, how: "embedded_refs" };
+  }
+  if (marked.length >= 2) {
+    return { rows: marked, how: "markers" };
+  }
   const listed = splitLineList(input.text);
-  if (listed.length) return { rows: listed, how: "lines" };
+  if (listed.length) {
+    return { rows: listed, how: "lines" };
+  }
   return { rows: marked, how: "none" };
 }
 
 export function parseWithRules(input: NormalizedInput): ParsedList & { split: SplitHow } {
   const warnings: string[] = [];
   const { rows, how } = splitInput(input);
-  if (!rows.length) warnings.push("No numbered requests found. Number each request (1. 2. 3.) or upload the PBC spreadsheet.");
+  if (!rows.length) {
+    warnings.push("No numbered requests found. Number each request (1. 2. 3.) or upload the PBC spreadsheet.");
+  }
   const fye = findFiscalYearEnd(input.text) ?? { month: 12, day: 31 };
   // A stated year end ("for the fiscal year ending June 30, 2026") is the document's period, ahead of a stray "FY25" earlier on.
   const statedTo = statedYearEnd(input.text);

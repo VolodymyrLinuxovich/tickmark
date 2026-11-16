@@ -145,7 +145,9 @@ let cached: Fixture | null = null;
 
 /** The demo company, built once per process from a fixed seed. */
 export function getFixture(): Fixture {
-  if (!cached) cached = buildFixture(20251231);
+  if (!cached) {
+    cached = buildFixture(20251231);
+  }
   return cached;
 }
 
@@ -206,7 +208,9 @@ export function buildFixture(seed: number): Fixture {
   const deptName = (u: RampUser) => departments.find((d) => d.id === u.department_id)!.name;
   // Card spend is approved by the cardholder's manager, so background charges are never self-approved.
   const approverFor = (u: RampUser) => {
-    if (u.manager_id) return userById.get(u.manager_id)!;
+    if (u.manager_id) {
+      return userById.get(u.manager_id)!;
+    }
     return cfo; // the CEO's card spend is reviewed by the CFO
   };
 
@@ -312,7 +316,9 @@ export function buildFixture(seed: number): Fixture {
         tries < 20 &&
         [-2, -1, 0, 1, 2].some((k) => occupied.has(`${key}|${ymd(addDays(when, k))}`))
       );
-      if (tries >= 20) continue;
+      if (tries >= 20) {
+        continue;
+      }
       const cents = Math.round((m.min + g.rand() * (m.max - m.min)) * 100);
       const receipt = cents >= 7500 || g.rand() < 0.6 ? "match" : "none";
       addTxn({ user: u, merchant: m, when, cents, receipt: receipt as "match" | "none" });
@@ -410,7 +416,9 @@ export function buildFixture(seed: number): Fixture {
     t.card_holder.user_id === eng.id && t.merchant_name === digikey.name && Math.abs(new Date(t.user_transaction_time).getTime() - day("2025-08-19").getTime()) < 5 * 864e5;
   for (const t of transactions.filter(clash)) {
     transactions.splice(transactions.indexOf(t), 1);
-    for (const rid of t.receipts) receipts.splice(receipts.findIndex((r) => r.id === rid), 1);
+    for (const rid of t.receipts) {
+      receipts.splice(receipts.findIndex((r) => r.id === rid), 1);
+    }
     approvals.splice(approvals.findIndex((a) => a.entity_id === t.id), 1);
   }
   const s1 = addTxn({ user: eng, merchant: digikey, when: day("2025-08-19", 10, 14), cents: 486000, memo: "Motor controller boards, rev C build" });

@@ -21,7 +21,9 @@ const Body = z.object({
 
 export async function POST(req: Request) {
   const parsed = Body.safeParse(await req.json());
-  if (!parsed.success) return Response.json({ error: "Invalid comment" }, { status: 400 });
+  if (!parsed.success) {
+    return Response.json({ error: "Invalid comment" }, { status: 400 });
+  }
   const { object_type, object_id, message, mention_user_ids, owner_user_id } = parsed.data;
   try {
     const posted = await getSource().postComment(object_type, object_id, message, mention_user_ids, owner_user_id);

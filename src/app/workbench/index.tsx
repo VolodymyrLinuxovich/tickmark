@@ -38,7 +38,9 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
   const autoSample = search.get("sample");
   // Start reading Ramp in the background while the user picks a list. Only useful on live data.
   useEffect(() => {
-    if (source.kind !== "fixture") void fetch("/api/warm", { method: "POST" }).catch(() => {});
+    if (source.kind !== "fixture") {
+      void fetch("/api/warm", { method: "POST" }).catch(() => {});
+    }
   }, [source.kind]);
     // Guards against parsing the sample twice when effects run twice in development.
   const started = useRef(false);
@@ -47,7 +49,9 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
   useEffect(() => {
     // /app?sample=xlsx or ?sample=email opens straight on the sample list.
     // The parse is deferred with setTimeout so no state is set synchronously inside the effect.
-    if (started.current || (autoSample !== "xlsx" && autoSample !== "email")) return;
+    if (started.current || (autoSample !== "xlsx" && autoSample !== "email")) {
+      return;
+    }
     const t = setTimeout(() => {
       started.current = true;
       void parse({ sample: autoSample }, autoSample);
@@ -66,7 +70,9 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
     try {
       const res = await fetch("/api/parse", body instanceof FormData ? { method: "POST", body } : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "Could not read the list");
+      if (!res.ok) {
+        throw new Error(json.error ?? "Could not read the list");
+      }
       setParsed(json);
       setRequests(json.requests);
       setStage("plan");
@@ -81,14 +87,20 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
   /** Reads the same list again with the model, for when the keyword reading looks off. Asks first if the plan was edited. */
   function readWithModel() {
     const body = lastBody.current;
-    if (!body) return;
-    if (parsed && JSON.stringify(requests) !== JSON.stringify(parsed.requests) && !window.confirm("Reading again replaces the changes you made to this plan. Continue?")) return;
+    if (!body) {
+      return;
+    }
+    if (parsed && JSON.stringify(requests) !== JSON.stringify(parsed.requests) && !window.confirm("Reading again replaces the changes you made to this plan. Continue?")) {
+      return;
+    }
     if (body instanceof FormData) {
       const again = new FormData();
       body.forEach((v, k) => again.append(k, v));
       again.set("use_model", "1");
       void parse(again, "model");
-    } else void parse({ ...body, use_model: true }, "model");
+    } else {
+      void parse({ ...body, use_model: true }, "model");
+    }
   }
 
   /**
@@ -110,7 +122,9 @@ export default function Workbench({ source, models, scopes }: { source: SourceIn
       try {
         const res = await fetch("/api/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests: [requests[i]] }) });
         const json = await res.json();
-        if (!res.ok) throw new Error(json.error);
+        if (!res.ok) {
+          throw new Error(json.error);
+        }
         states[i] = { status: "done", result: json.results[0] };
         // Population counts and warnings describe the whole snapshot, so the latest response is enough.
         last = { counts: json.counts, business: json.business, warnings: json.warnings ?? [] };

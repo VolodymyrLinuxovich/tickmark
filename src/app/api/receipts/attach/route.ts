@@ -15,7 +15,9 @@ export async function POST(req: Request) {
   const file = form?.get("file");
   const transactionId = String(form?.get("transaction_id") ?? "");
   const userId = String(form?.get("user_id") ?? "");
-  if (!(file instanceof File) || !transactionId || !userId || file.size > 4_000_000) return Response.json({ error: "Invalid upload" }, { status: 400 });
+  if (!(file instanceof File) || !transactionId || !userId || file.size > 4_000_000) {
+    return Response.json({ error: "Invalid upload" }, { status: 400 });
+  }
   try {
     const bytes = new Uint8Array(await file.arrayBuffer());
     const doc = await readReceipt(file.name, bytes, file.type);

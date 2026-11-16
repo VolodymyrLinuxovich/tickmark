@@ -68,8 +68,12 @@ export function loginFromRampCli(env: "sandbox" | "production"): CliLogin | null
     let scopes = "";
     for (const line of text.split("\n")) {
       const h = line.match(/^\s*\[([^\]]+)\]\s*$/);
-      if (h) section = h[1].trim().replace(/^"|"$/g, "");
-      if (section !== env) continue;
+      if (h) {
+        section = h[1].trim().replace(/^"|"$/g, "");
+      }
+      if (section !== env) {
+        continue;
+      }
       token = line.match(/^\s*access_token\s*=\s*"([^"]+)"/)?.[1] ?? token;
       scopes = line.match(/^\s*granted_scopes\s*=\s*"([^"]*)"/)?.[1] ?? scopes;
     }
@@ -112,9 +116,13 @@ export class RampApiClient {
    * /developer/v1/token and caches the result until one minute before it expires.
    */
   private async accessToken(scope = READ_SCOPES): Promise<string> {
-    if (this.auth.kind === "token") return this.auth.token;
+    if (this.auth.kind === "token") {
+      return this.auth.token;
+    }
     const cached = this.tokens.get(scope);
-    if (cached && cached.expires > Date.now() + 60_000) return cached.value;
+    if (cached && cached.expires > Date.now() + 60_000) {
+      return cached.value;
+    }
     const res = await fetch(`${this.base}/developer/v1/token`, {
       method: "POST",
       headers: {
@@ -123,7 +131,9 @@ export class RampApiClient {
       },
       body: new URLSearchParams({ grant_type: "client_credentials", scope }),
     });
-    if (!res.ok) throw new RampHttpError(res.status, `${this.base}/developer/v1/token`, res.headers.get("x-trace-id"), await res.text());
+    if (!res.ok) {
+      throw new RampHttpError(res.status, `${this.base}/developer/v1/token`, res.headers.get("x-trace-id"), await res.text());
+    }
     const json = (await res.json()) as { access_token: string; expires_in: number };
     this.tokens.set(scope, { value: json.access_token, expires: Date.now() + json.expires_in * 1000 });
     return json.access_token;
@@ -148,7 +158,9 @@ export class RampApiClient {
         await new Promise((r) => setTimeout(r, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 800 * 2 ** attempt));
         continue;
       }
-      if (!res.ok) throw new RampHttpError(res.status, url, res.headers.get("x-trace-id"), await res.text());
+      if (!res.ok) {
+        throw new RampHttpError(res.status, url, res.headers.get("x-trace-id"), await res.text());
+      }
       return (await res.json()) as T;
     }
   }
@@ -160,7 +172,9 @@ export class RampApiClient {
   /** Follows page.next until the list is exhausted. Repeated keys (entity_ids) are kept. */
   async list<T>(p: string, params: URLSearchParams | Record<string, string> = {}): Promise<T[]> {
     const qs = params instanceof URLSearchParams ? new URLSearchParams(params) : new URLSearchParams(params);
-    if (!qs.has("page_size")) qs.set("page_size", "100");
+    if (!qs.has("page_size")) {
+      qs.set("page_size", "100");
+    }
     let next: string | null = `${p}?${qs}`;
     const out: T[] = [];
     // page.next is a full URL that carries the cursor, so it is fetched as is. The page cap guards against a loop.
@@ -195,8 +209,12 @@ export class RampApiClient {
       optional("Vendors", this.list<RampVendor>("/developer/v1/vendors")),
     ]);
     // Approvals are keyed by entity id, so they can only be fetched once the transaction and bill ids are known.
-    for (const t of transactions) normalizeTransaction(t);
-    for (const b of bills) normalizeBill(b);
+    for (const t of transactions) {
+      normalizeTransaction(t);
+    }
+    for (const b of bills) {
+      normalizeBill(b);
+    }
 
     let approvals: RampApproval[] = [];
     let billApprovalsUnavailable = false;
@@ -207,7 +225,9 @@ export class RampApiClient {
       ];
       notes.approvals = "approvals_api";
     } catch (e) {
-      if (!(e instanceof RampHttpError) || ![401, 403].includes(e.status)) throw e;
+      if (!(e instanceof RampHttpError) || ![401, 403].includes(e.status)) {
+        throw e;
+      }
       // Tokens without approvals:read (for example a Ramp CLI login): rebuild from bill history and audit logs.
       const billHistory = await this.billHistoryApprovals(bills, notes);
       billApprovalsUnavailable = billHistory === null;
@@ -238,7 +258,9 @@ export class RampApiClient {
   /** GET /approvals takes a list of entity_ids; ids go 50 per request with four requests in flight to stay under rate limits. */
   private async approvals(entityType: "TRANSACTION" | "BILL", ids: string[]): Promise<RampApproval[]> {
     const batches: string[][] = [];
-    for (let i = 0; i < ids.length; i += 50) batches.push(ids.slice(i, i + 50));
+    for (let i = 0; i < ids.length; i += 50) {
+      batches.push(ids.slice(i, i + 50));
+    }
     const pages = await pool(batches, 4, (batch) => {
       const qs = new URLSearchParams({ entity_type: entityType });
       batch.forEach((id) => qs.append("entity_ids", id));
@@ -287,7 +309,9 @@ export class RampApiClient {
         return null;
       }
     });
-    if (failed) notes.warnings.push(`Approval history was unavailable for ${failed} bills.`);
+    if (failed) {
+      notes.warnings.push(`Approval history was unavailable for ${failed} bills.`);
+    }
     return out.filter((x): x is RampApproval => !!x);
   }
 
@@ -298,7 +322,9 @@ export class RampApiClient {
   private async auditLogApprovals(range: { from_date: string; to_date: string }, transactions: RampTransaction[], notes: SnapshotNotes): Promise<RampApproval[]> {
     const ids = new Set(transactions.map((t) => t.id));
     const qs = new URLSearchParams({ from_date: range.from_date, to_date: addDays(range.to_date, 60) });
-    for (const t of ["Approval step approved", "Approved by manager", "Spend approved"]) qs.append("event_types", t);
+    for (const t of ["Approval step approved", "Approved by manager", "Spend approved"]) {
+      qs.append("event_types", t);
+    }
     let events: { actor_id: string | null; event_time: string; event_details?: { references?: { label?: string; url?: string; resource_name?: string }[] } }[] = [];
     try {
       events = await this.list("/developer/v1/audit-logs/events", qs);
@@ -310,7 +336,9 @@ export class RampApiClient {
     for (const ev of events) {
       for (const ref of ev.event_details?.references ?? []) {
         for (const id of `${ref.url ?? ""} ${ref.label ?? ""}`.match(UUID) ?? []) {
-          if (!ids.has(id.toLowerCase())) continue;
+          if (!ids.has(id.toLowerCase())) {
+            continue;
+          }
           const a = byTxn.get(id) ?? { entity_id: id, entity_type: "transaction" as const, status: "APPROVED" as const, approval_history: [], next_approvers: [] };
           a.approval_history.push({ action_at: ev.event_time, step_status: "APPROVED", user_email: null, user_id: ev.actor_id });
           byTxn.set(id, a);
@@ -324,7 +352,9 @@ export class RampApiClient {
   async download(url: string): Promise<{ bytes: Uint8Array; contentType: string } | null> {
     // Receipt and attachment URLs are pre-signed, so no bearer token is sent.
     const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      return null;
+    }
     return { bytes: new Uint8Array(await res.arrayBuffer()), contentType: res.headers.get("content-type") ?? "application/octet-stream" };
   }
 
@@ -333,7 +363,9 @@ export class RampApiClient {
     try {
       return await this.list(`/developer/v1/comments/${objectType}/${encodeURIComponent(objectId)}`);
     } catch (e) {
-      if (e instanceof RampHttpError && e.status < 500) return [];
+      if (e instanceof RampHttpError && e.status < 500) {
+        return [];
+      }
       throw e;
     }
   }
@@ -367,7 +399,9 @@ export class RampApiClient {
       body,
       signal: AbortSignal.timeout(55_000),
     });
-    if (!res.ok) throw new RampHttpError(res.status, `${this.base}/developer/v1/receipts`, res.headers.get("x-trace-id"), await res.text());
+    if (!res.ok) {
+      throw new RampHttpError(res.status, `${this.base}/developer/v1/receipts`, res.headers.get("x-trace-id"), await res.text());
+    }
     return (await res.json().catch(() => ({}))) as { id?: string };
   }
 
@@ -382,7 +416,9 @@ export class RampApiClient {
     } catch (e) {
       // Ramp only adds to a thread that already exists, and the API cannot start one.
       // Other 404s (a deleted record, a wrong id or type) stay errors, so nobody emails about a record that is not there.
-      if (e instanceof RampHttpError && e.status === 404 && /DEVELOPER_7084|comment thread/i.test(e.body)) throw new NoCommentThreadError(objectType, objectId);
+      if (e instanceof RampHttpError && e.status === 404 && /DEVELOPER_7084|comment thread/i.test(e.body)) {
+        throw new NoCommentThreadError(objectType, objectId);
+      }
       throw e;
     }
   }
@@ -398,7 +434,9 @@ export class NoCommentThreadError extends Error {
 // Older and newer API responses differ slightly; fill the fields the engine relies on.
 /** Fills entity_amount (in cents) from a legacy dollar amount, and defaults missing nested fields. */
 function normalizeTransaction(t: RampTransaction & { amount?: number; currency_code?: string }) {
-  if (!t.entity_amount && typeof t.amount === "number") t.entity_amount = { value: Math.round(t.amount * 100), currency: t.currency_code ?? "USD" };
+  if (!t.entity_amount && typeof t.amount === "number") {
+    t.entity_amount = { value: Math.round(t.amount * 100), currency: t.currency_code ?? "USD" };
+  }
   t.receipts ??= [];
   t.card_holder ??= { user_id: "", first_name: "Unknown", last_name: "" };
   t.merchant_name ??= "Unknown merchant";

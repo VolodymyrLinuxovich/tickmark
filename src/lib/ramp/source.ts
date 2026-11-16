@@ -58,8 +58,12 @@ export function recordFromSnapshot(snap: RampSnapshot, type: RecordKind, id: str
     const b = snap.bills.find((x) => x.id === id);
     return b ? { bill: b, approval: snap.approvals.find((a) => a.entity_id === id) ?? null } : null;
   }
-  if (type === "vendor") return snap.vendors.find((x) => x.id === id) ?? null;
-  if (type === "user") return snap.users.find((x) => x.id === id) ?? null;
+  if (type === "vendor") {
+    return snap.vendors.find((x) => x.id === id) ?? null;
+  }
+  if (type === "user") {
+    return snap.users.find((x) => x.id === id) ?? null;
+  }
   return snap.receipts.find((x) => x.id === id) ?? null;
 }
 
@@ -101,12 +105,18 @@ class FixtureSource implements RampSource {
     };
     return items.map((it) => {
       const base: RecheckResult = { finding_id: it.finding_id, resolved: false, how: null, replies: [], checked_at: new Date(now).toISOString(), simulated: true };
-      if (it.attached && it.code === "MISSING_RECEIPT") return { ...base, resolved: true, how: "Receipt attached from Tickmark" };
+      if (it.attached && it.code === "MISSING_RECEIPT") {
+        return { ...base, resolved: true, how: "Receipt attached from Tickmark" };
+      }
       const since = it.since ? Date.parse(it.since) : NaN;
-      if (Number.isNaN(since) || now - since < SIM_REPLY_MS) return base;
+      if (Number.isNaN(since) || now - since < SIM_REPLY_MS) {
+        return base;
+      }
       const owner = it.owner ?? "The owner";
       const replies: ThreadReply[] = [{ id: `sim-${it.finding_id}`, author: owner, message: SIM_REPLY[it.code] ?? "Thanks, looking into it.", created_at: new Date(since + SIM_REPLY_MS).toISOString() }];
-      if (now - since < SIM_FIX_MS || !AUTO_RESOLVABLE.has(it.code)) return { ...base, replies };
+      if (now - since < SIM_FIX_MS || !AUTO_RESOLVABLE.has(it.code)) {
+        return { ...base, replies };
+      }
       const approver = userName(snap.approvals.find((a) => a.entity_id === it.object_id)?.approval_history.at(-1)?.user_id);
       const how = it.code === "MISSING_RECEIPT" ? `Receipt uploaded by ${owner}` : it.code === "MISSING_INVOICE" ? `Invoice attached by ${owner}` : `Approved by ${approver}`;
       return { ...base, replies, resolved: true, how };
@@ -140,7 +150,9 @@ export class ApiSource implements RampSource {
   snapshot(period: Period) {
     const key = `${period.from}|${period.to}`;
     const hit = this.cache.get(key);
-    if (hit && Date.now() - hit.at < SNAPSHOT_TTL_MS) return hit.p;
+    if (hit && Date.now() - hit.at < SNAPSHOT_TTL_MS) {
+      return hit.p;
+    }
     // The promise itself is cached so concurrent callers share one read. A failed read is evicted so the next call retries.
     const p = this.client.snapshot(period, this.info);
     p.catch(() => this.cache.delete(key));
@@ -156,7 +168,9 @@ export class ApiSource implements RampSource {
     for (const c of recent) {
       const snap = await c.p.catch(() => null);
       const hit = snap && recordFromSnapshot(snap, type, id);
-      if (hit) return hit;
+      if (hit) {
+        return hit;
+      }
     }
     const path = { transaction: "transactions", bill: "bills", vendor: "vendors", user: "users", receipt: "receipts" }[type];
     return this.client.get(`/developer/v1/${path}/${encodeURIComponent(id)}`).catch(() => null);
@@ -167,7 +181,9 @@ export class ApiSource implements RampSource {
       await this.client.postComment(objectType, objectId, message, mentionUserIds);
       return { ...base, destination: this.info.label };
     } catch (e) {
-      if (!(e instanceof NoCommentThreadError)) throw e;
+      if (!(e instanceof NoCommentThreadError)) {
+        throw e;
+      }
       // Ramp's API cannot start a thread, so the follow-up goes out as an email to the owner instead.
       const ownerUser = ownerId || mentionUserIds[0];
       const owner = ownerUser ? await this.user(ownerUser) : null;
@@ -199,7 +215,9 @@ export class ApiSource implements RampSource {
   private async user(id: string): Promise<{ first_name?: string; last_name?: string; email?: string } | null> {
     for (const hit of this.cache.values()) {
       const u = (await hit.p.catch(() => null))?.users.find((x) => x.id === id);
-      if (u) return u;
+      if (u) {
+        return u;
+      }
     }
     return this.client.get<{ first_name?: string; last_name?: string; email?: string }>(`/developer/v1/users/${encodeURIComponent(id)}`).catch(() => null);
   }
@@ -215,10 +233,16 @@ export class ApiSource implements RampSource {
     const out = new Map<string, string>();
     for (const c of [...this.cache.values()].sort((a, b) => b.at - a.at)) {
       const snap = await c.p.catch(() => null);
-      for (const u of snap?.users ?? []) if (!out.has(u.id)) out.set(u.id, `${u.first_name} ${u.last_name}`);
+      for (const u of snap?.users ?? []) {
+        if (!out.has(u.id)) {
+          out.set(u.id, `${u.first_name} ${u.last_name}`);
+        }
+      }
     }
     for (const id of new Set(ids)) {
-      if (!id || out.has(id)) continue;
+      if (!id || out.has(id)) {
+        continue;
+      }
       const u = await this.client.get<{ first_name?: string; last_name?: string }>(`/developer/v1/users/${encodeURIComponent(id)}`).catch(() => null);
       out.set(id, u ? `${u.first_name ?? ""} ${u.last_name ?? ""}`.trim() || "Ramp user" : "Ramp user");
     }
@@ -242,7 +266,9 @@ export class ApiSource implements RampSource {
     let changed = false;
     const out = fetched.map(({ it, isTxn, rec, comments, approval }) => {
       const r = resolution(it.code, { txn: isTxn ? (rec as RampTransaction | null) : null, bill: isTxn ? null : (rec as RampBill | null), approval, name });
-      if (r.resolved) changed = true;
+      if (r.resolved) {
+        changed = true;
+      }
       const replies = comments
         // Ramp prepends "@Name" mentions to the posted text, so Tickmark's own comment is matched by containment.
         .filter((c) => !it.posted_message || !c.message.includes(it.posted_message.trim()))
@@ -250,7 +276,9 @@ export class ApiSource implements RampSource {
         .sort((a, b) => a.created_at.localeCompare(b.created_at));
       return { finding_id: it.finding_id, resolved: r.resolved, how: r.how, replies, checked_at: new Date().toISOString() };
     });
-    if (changed) this.cache.clear();
+    if (changed) {
+      this.cache.clear();
+    }
     return out;
   }
 }
@@ -272,7 +300,9 @@ let cached: Connection | null = null;
  * auto uses Ramp when any credential is found and sample data otherwise.
  */
 export function getConnection(): Connection {
-  if (cached) return cached;
+  if (cached) {
+    return cached;
+  }
   const mode = (process.env.TICKMARK_SOURCE ?? "auto").toLowerCase();
   const env: "sandbox" | "production" = mode === "production" || process.env.RAMP_ENV === "production" ? "production" : "sandbox";
   if (mode === "sample" || mode === "fixture") {
@@ -280,15 +310,20 @@ export function getConnection(): Connection {
     return cached;
   }
   let auth: RampAuth | null = null;
-  if (process.env.RAMP_CLIENT_ID && process.env.RAMP_CLIENT_SECRET) auth = { kind: "client_credentials", clientId: process.env.RAMP_CLIENT_ID, clientSecret: process.env.RAMP_CLIENT_SECRET };
-  else if (process.env.RAMP_ACCESS_TOKEN) auth = { kind: "token", token: process.env.RAMP_ACCESS_TOKEN, origin: "access token" };
+  if (process.env.RAMP_CLIENT_ID && process.env.RAMP_CLIENT_SECRET) {
+    auth = { kind: "client_credentials", clientId: process.env.RAMP_CLIENT_ID, clientSecret: process.env.RAMP_CLIENT_SECRET };
+  } else if (process.env.RAMP_ACCESS_TOKEN) {
+    auth = { kind: "token", token: process.env.RAMP_ACCESS_TOKEN, origin: "access token" };
+  }
   let reason = "No Ramp credentials are configured, so sample data is used.";
   if (!auth) {
     const cli = loginFromRampCli(env);
     // A CLI login made during signup only has application scopes; it can't read spend yet.
     if (cli && cli.scopes.length && !cli.scopes.includes("transactions:read")) {
       reason = `The Ramp CLI is logged in to the ${env} but cannot read transactions yet (granted: ${cli.scopes.join(", ")}). Finish the Ramp application, then run \`ramp auth login\` again.`;
-    } else if (cli) auth = { kind: "token", token: cli.token, origin: "Ramp CLI login" };
+    } else if (cli) {
+      auth = { kind: "token", token: cli.token, origin: "Ramp CLI login" };
+    }
   }
   if (auth) {
     cached = { source: new ApiSource(env, auth, process.env.RAMP_API_BASE_URL), connected: true, reason: "" };

@@ -36,9 +36,14 @@ export function PortalView({ id }: { id: string }) {
     fetch(`/api/portal/${id}`)
       .then(async (r) => {
         const j = await r.json();
-        if (!live) return;
-        if (!r.ok && !j.portal) setLoadError(j.error ?? "This link is invalid or has expired.");
-        else setView(j);
+        if (!live) {
+          return;
+        }
+        if (!r.ok && !j.portal) {
+          setLoadError(j.error ?? "This link is invalid or has expired.");
+        } else {
+          setView(j);
+        }
       })
       .catch((e) => live && setLoadError(String(e)))
       .finally(() => clearInterval(tick));
@@ -51,7 +56,9 @@ export function PortalView({ id }: { id: string }) {
   // Keep questions fresh so answers show up without a reload.
   const refreshQuestions = useCallback(async () => {
     const r = await fetch(`/api/portal/${id}/questions`).catch(() => null);
-    if (!r?.ok) return;
+    if (!r?.ok) {
+      return;
+    }
     const { questions } = await r.json();
     setView((v) => (v ? { ...v, portal: { ...v.portal, questions } } : v));
   }, [id]);
@@ -61,11 +68,15 @@ export function PortalView({ id }: { id: string }) {
   }, [refreshQuestions]);
 
   async function download() {
-    if (!view) return;
+    if (!view) {
+      return;
+    }
     setDownloading(true);
     try {
       const res = await fetch("/api/binder", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ requests: view.portal.requests, auditor: view.portal.auditor, statuses: view.portal.statuses ?? {}, extras: view.portal.extras ?? [] }) });
-      if (!res.ok) throw new Error("Binder failed");
+      if (!res.ok) {
+        throw new Error("Binder failed");
+      }
       const blob = await res.blob();
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
@@ -179,7 +190,9 @@ function Questions({ id, reqRef, questions, onAsked }: { id: string; reqRef: str
     try {
       const r = await fetch(`/api/portal/${id}/questions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ref: reqRef, text, name: name || null }) });
       const j = await r.json();
-      if (!r.ok) throw new Error(j.error);
+      if (!r.ok) {
+        throw new Error(j.error);
+      }
       setText("");
       onAsked();
     } catch (e) {

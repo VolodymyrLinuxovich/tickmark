@@ -11,7 +11,9 @@ vi.mock("openai", () => ({
       parse: async ({ input }: { input: string }) => {
         calls.push(input);
         const out = answer(input);
-        if (out instanceof Error) throw out;
+        if (out instanceof Error) {
+          throw out;
+        }
         return { output_parsed: out, usage: {} };
       },
     };

@@ -95,7 +95,9 @@ describe("workpapers when bill approvals could not be read", () => {
     if (bs && bs.rows.length) {
       expect(bs.procedure.join(" ")).toMatch(/were not tested/);
       const col = bs.columns.indexOf("Approved by");
-      for (const r of bs.rows.filter((x) => x.record.id)) expect(r.cells[col]).toBe("Not read from Ramp");
+      for (const r of bs.rows.filter((x) => x.record.id)) {
+        expect(r.cells[col]).toBe("Not read from Ramp");
+      }
     }
   });
 
