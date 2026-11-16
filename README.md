@@ -360,6 +360,26 @@ npm run mock:ramp        # prints the mock URL
 RAMP_API_BASE_URL=<url> RAMP_CLIENT_ID=ramp_id_test RAMP_CLIENT_SECRET=ramp_sec_test npm run dev
 ```
 
+### Run it offline
+
+Tickmark runs on the generated sample company with no keys and no `.env.local`. The keyword parser reads the request list and fonts are bundled at build time. Install and build once while online:
+
+```bash
+npm ci
+npx vitest run
+TICKMARK_SOURCE=sample npm run build
+```
+
+Then start it, with or without a network:
+
+```bash
+TICKMARK_SOURCE=sample npx next start -p 3000
+```
+
+Open http://localhost:3000/app, click **Try the sample list**, then **Pull evidence from sample data**, then **Download binder (.zip)**. http://localhost:3000/eval should show 8/8 planted problems found and 0 false alarms. If a `.env.local` exists, move it aside first so no keys are picked up.
+
+The MCP server runs offline too, at http://localhost:3000/api/mcp. Point a local client at it with `claude mcp add --transport http tickmark-local http://localhost:3000/api/mcp`. With no model keys, the keyword parser reads the request text.
+
 Record the demo video (Chrome, visible cursor, chapter timestamps):
 
 ```bash
