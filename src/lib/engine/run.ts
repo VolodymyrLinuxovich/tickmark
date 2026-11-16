@@ -166,7 +166,7 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
         code: "MISSING_RECEIPT",
         severity: "medium",
         title: `No receipt for ${usd(cents)} at ${t.merchant_name} on ${shortDate(t.user_transaction_time)}`,
-        detail: `Charged ${shortDate(t.user_transaction_time)} by ${owner.name}. Ramp shows its receipt requirement as not met.`,
+        detail: `Charged by ${owner.name}. Ramp shows its receipt requirement as not met.`,
         records: [txnRef(t)],
         owner,
         comment: {
@@ -240,7 +240,7 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
         code: "SELF_APPROVAL",
         severity: "high",
         title: `${owner.name} approved their own ${usd(cents)} charge on ${shortDate(t.user_transaction_time)}`,
-        detail: `${t.merchant_name} on ${shortDate(t.user_transaction_time)}.`,
+        detail: `Approved by the same person who made the charge at ${t.merchant_name}.`,
         records: [txnRef(t)],
         owner,
       });
