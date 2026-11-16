@@ -378,6 +378,8 @@ TICKMARK_SOURCE=sample npx next start -p 3000
 
 Open http://localhost:3000/app, click **Try the sample list**, then **Pull evidence from sample data**, then **Download binder (.zip)**. http://localhost:3000/eval should show 8/8 planted problems found and 0 false alarms. If a `.env.local` exists, move it aside first so no keys are picked up.
 
+The MCP server runs offline too, at http://localhost:3000/api/mcp. Point a local client at it with `claude mcp add --transport http tickmark-local http://localhost:3000/api/mcp`. With no model keys, the keyword parser reads the request text.
+
 Record the demo video (Chrome, visible cursor, chapter timestamps):
 
 ```bash
