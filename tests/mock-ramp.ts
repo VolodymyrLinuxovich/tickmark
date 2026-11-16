@@ -26,6 +26,8 @@ export interface MockRamp {
   noThread: Set<string>;
   /** Ramp removed /developer/v1/agent-tools/*, so bill history 404s. Set false to serve the old endpoint. */
   billHistoryGone: boolean;
+  /** Paths the mock accepts but never answers, to test timeouts. */
+  hangPaths: Set<string>;
   maxEntityIds: number;
   failNextWith429: boolean;
   close(): Promise<void>;
@@ -41,9 +43,11 @@ export async function startMockRamp(): Promise<MockRamp> {
     comments: [],
     noThread: new Set(),
     billHistoryGone: true,
+    hangPaths: new Set(),
     maxEntityIds: 0,
     failNextWith429: true,
-    close: () => new Promise((r) => server.close(() => r())),
+    // Drop open connections first, so a request left hanging by hangPaths cannot keep the server open.
+    close: () => new Promise((r) => (server.closeAllConnections(), server.close(() => r()))),
   };
   // Pre-signed URLs, like Ramp's receipt_url and attachment urls.
   const signed = (kind: string, id: string) => `${base}/files/${kind}/${id}?X-Amz-Signature=test`;
@@ -81,6 +85,7 @@ export async function startMockRamp(): Promise<MockRamp> {
     const auth = req.headers.authorization ?? "";
     state.log.push({ method: req.method!, path: u.pathname, query: q, auth });
     const p = u.pathname;
+    if (state.hangPaths.has(p)) return;
 
     if (p.startsWith("/files/")) {
       res.writeHead(200, { "Content-Type": "image/png" });
