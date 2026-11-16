@@ -9,7 +9,7 @@ receipts, approvals, bills and payments behind every request **straight from Ram
 run**, and hands back an **evidence binder** where every line traces to a Ramp record. Problems come with a drafted
 Ramp comment to the right person, sent only after you approve it.
 
-<img src="docs/results.png" alt="Tickmark results screen">
+<img src="docs/how-it-works.gif" alt="An auditor sends a request list, Tickmark answers it from Ramp, a cardholder fixes a missing receipt, and the auditor gets the binder">
 
 <br/>
 
@@ -144,7 +144,7 @@ sequenceDiagram
 
 ## How It Works
 
-![An auditor sends a request list, Tickmark answers it from Ramp, a cardholder fixes a missing receipt, and the auditor gets the binder](docs/how-it-works.gif)
+![Tickmark results screen: 7 of 9 requests answered from Ramp, the evidence rows behind them, and every exception with who to follow up with](docs/results.png)
 
 1. **Read the list.** Excel (including a separate Selections sheet), CSV, a text PDF or a pasted email. Each request
    becomes one of seven types with its period, dollar threshold and the items the auditor selected. A keyword parser
@@ -259,6 +259,14 @@ planted problems.
 We scored the request reader on five lists that were posted publicly, against answers written by hand. Tickmark found
 every request in about 2 seconds per list. A general AI model reading the same files took 14 to 33 seconds and missed
 11. Sources, scoring and caveats are in `docs/real-lists.md`.
+
+### Next to other audit tools
+
+![Tickmark answers the 9 request list in 9 seconds and checks every record. Other audit tools are estimated at 3 to 6 days, spreadsheets at 3 weeks, checking a sample of 2 to 9 percent.](docs/competitors-chart.svg)
+
+Suralink, DataSnipper, Fieldguide and AuditBoard organize files that someone uploads. We found no public Ramp
+integration for any of them, so every answer waits on a person finding a document. Tickmark starts from Ramp's data and
+checks every record. Tickmark's time is measured; the others are our estimates.
 
 ### Against the Ramp API
 
