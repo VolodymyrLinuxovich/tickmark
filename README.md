@@ -1,15 +1,12 @@
 <div align="center">
 
-<img src="src/app/icon.svg" alt="Tickmark logo" width="72" height="72">
-
-# Tickmark
+<img src="docs/intro.svg" alt="Tickmark. Your auditor's request list, answered from Ramp." width="560">
 
 **Your auditor's request list, answered from Ramp.** Tickmark reads the year-end **PBC request list**, pulls the
 receipts, approvals, bills and payments behind every request **straight from Ramp**, runs the **control tests auditors
 run**, and hands back an **evidence binder** where every line traces to a Ramp record. Problems come with a drafted
 Ramp comment to the right person, sent only after you approve it.
 
-<img src="docs/intro.svg" alt="An auditor's 9 item request list. Seven items get a green check, answered from Ramp; bank reconciliations and fixed assets go to the team. Then the evidence binder is ready." width="720">
 
 <br/>
 
@@ -144,9 +141,7 @@ sequenceDiagram
 
 ## How It Works
 
-[![Watch the Tickmark demo on YouTube: a request list answered from the Ramp sandbox](https://img.youtube.com/vi/n8gwskNsgbE/maxresdefault.jpg)](https://youtu.be/n8gwskNsgbE)
-
-**[Watch the 3 minute demo](https://youtu.be/n8gwskNsgbE)** on the Ramp sandbox.
+![An auditor sends a request list, Tickmark answers it from Ramp, a cardholder fixes a missing receipt, and the auditor gets the binder](docs/how-it-works.gif)
 
 1. **Read the list.** Excel (including a separate Selections sheet), CSV, a text PDF or a pasted email. Each request
    becomes one of seven types with its period, dollar threshold and the items the auditor selected. A keyword parser
