@@ -187,6 +187,33 @@ export class RampApiClient {
   }
 
   /**
+   * Lists a date-filtered endpoint by splitting the range into equal slices fetched in parallel.
+   * Each slice still follows page.next, so nothing is skipped; slices do not overlap, and rows are
+   * deduplicated by id in case an API treats both ends as inclusive. A year of card transactions
+   * is about a dozen pages, which one cursor reads one after another.
+   */
+  async listByDateChunks<T extends { id: string }>(p: string, range: { from_date: string; to_date: string }, slices = 6): Promise<T[]> {
+    const start = Date.parse(range.from_date);
+    const end = Date.parse(range.to_date);
+    if (!(end > start) || slices < 2) {
+      return this.list<T>(p, range);
+    }
+    // Whole seconds, since the filters take second precision. The last slice always ends at the range end.
+    const step = Math.ceil((end - start) / slices / 1000) * 1000;
+    const iso = (ms: number) => new Date(ms).toISOString().replace(/\.\d{3}Z$/, "Z");
+    const parts: { from_date: string; to_date: string }[] = [];
+    for (let i = 0; i < slices; i++) {
+      const a = start + i * step;
+      if (a > end) {
+        break;
+      }
+      parts.push({ from_date: iso(a), to_date: iso(i === slices - 1 ? end : Math.min(end, a + step - 1000)) });
+    }
+    const lists = await Promise.all(parts.map((r) => this.list<T>(p, r)));
+    return [...new Map(lists.flat().map((x) => [x.id, x])).values()];
+  }
+
+  /**
    * Reads everything one audit period needs in parallel. Users and transactions are required; the other
    * lists are optional, so a token missing one scope degrades to a warning instead of failing the run.
    */
@@ -198,15 +225,21 @@ export class RampApiClient {
         notes.warnings.push(`${label} could not be read (${e instanceof RampHttpError ? e.status : "error"}).`);
         return [];
       });
-    const [business, users, departments, transactions, receipts, bills, vendors] = await Promise.all([
+    // Everything starts at once. Approvals need the transaction and bill ids, so they start as soon as
+    // those two lists arrive instead of waiting for the slower vendor list.
+    const rest = Promise.all([
       this.get<{ business_name_legal?: string; business_name_on_card?: string }>("/developer/v1/business").catch(() => ({} as { business_name_legal?: string; business_name_on_card?: string })),
       this.list<RampUser>("/developer/v1/users"),
       optional("Departments", this.list<RampDepartment>("/developer/v1/departments")),
-      this.list<RampTransaction>("/developer/v1/transactions", range),
       // Receipts often arrive after the charge, so look 90 days past the period end.
       optional("Receipts", this.list<RampReceipt>("/developer/v1/receipts", { from_date: range.from_date, to_date: addDays(range.to_date, 90), include_ocr_data: "true" })),
-      optional("Bills", this.list<RampBill>("/developer/v1/bills", { from_issued_date: range.from_date, to_issued_date: range.to_date })),
       optional("Vendors", this.list<RampVendor>("/developer/v1/vendors")),
+    ]);
+    // Awaited below; this only stops an early failure from being reported as unhandled meanwhile.
+    rest.catch(() => undefined);
+    const [transactions, bills] = await Promise.all([
+      this.listByDateChunks<RampTransaction>("/developer/v1/transactions", range),
+      optional("Bills", this.list<RampBill>("/developer/v1/bills", { from_issued_date: range.from_date, to_issued_date: range.to_date })),
     ]);
     // Approvals are keyed by entity id, so they can only be fetched once the transaction and bill ids are known.
     for (const t of transactions) {
@@ -219,10 +252,8 @@ export class RampApiClient {
     let approvals: RampApproval[] = [];
     let billApprovalsUnavailable = false;
     try {
-      approvals = [
-        ...(await this.approvals("TRANSACTION", transactions.map((t) => t.id))),
-        ...(await this.approvals("BILL", bills.map((b) => b.id))),
-      ];
+      const [cardApprovals, billApprovals] = await Promise.all([this.approvals("TRANSACTION", transactions.map((t) => t.id)), this.approvals("BILL", bills.map((b) => b.id))]);
+      approvals = [...cardApprovals, ...billApprovals];
       notes.approvals = "approvals_api";
     } catch (e) {
       if (!(e instanceof RampHttpError) || ![401, 403].includes(e.status)) {
@@ -240,6 +271,7 @@ export class RampApiClient {
       );
     }
 
+    const [business, users, departments, receipts, vendors] = await rest;
     return {
       business_name: business.business_name_legal ?? business.business_name_on_card ?? "Ramp business",
       source: info,
