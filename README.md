@@ -9,7 +9,7 @@ receipts, approvals, bills and payments behind every request **straight from Ram
 run**, and hands back an **evidence binder** where every line traces to a Ramp record. Problems come with a drafted
 Ramp comment to the right person, sent only after you approve it.
 
-<img src="docs/how-it-works.gif" alt="An auditor sends a request list, Tickmark answers it from Ramp, a cardholder fixes a missing receipt, and the auditor gets the binder">
+<img src="docs/intro.svg" alt="An auditor's 9 item request list. Seven items get a green check, answered from Ramp; bank reconciliations and fixed assets go to the team. Then the evidence binder is ready." width="720">
 
 <br/>
 
@@ -144,7 +144,7 @@ sequenceDiagram
 
 ## How It Works
 
-![Tickmark results screen: 7 of 9 requests answered from Ramp, the evidence rows behind them, and every exception with who to follow up with](docs/results.png)
+![An auditor sends a request list, Tickmark answers it from Ramp, a cardholder fixes a missing receipt, and the auditor gets the binder](docs/how-it-works.gif)
 
 1. **Read the list.** Excel (including a separate Selections sheet), CSV, a text PDF or a pasted email. Each request
    becomes one of seven types with its period, dollar threshold and the items the auditor selected. A keyword parser
