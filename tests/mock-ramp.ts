@@ -21,6 +21,8 @@ export interface MockRamp {
   snap: RampSnapshot;
   log: { method: string; path: string; query: URLSearchParams; auth: string }[];
   comments: { type: string; id: string; body: unknown }[];
+  /** Record ids with no comment thread, so posting to them 404s. */
+  noThread: Set<string>;
   maxEntityIds: number;
   failNextWith429: boolean;
   close(): Promise<void>;
@@ -34,6 +36,7 @@ export async function startMockRamp(): Promise<MockRamp> {
     snap,
     log: [],
     comments: [],
+    noThread: new Set(),
     maxEntityIds: 0,
     failNextWith429: true,
     close: () => new Promise((r) => server.close(() => r())),
@@ -162,6 +165,8 @@ export async function startMockRamp(): Promise<MockRamp> {
     }
     const cm = p.match(/^\/developer\/v1\/comments\/(bills|transactions)\/([^/]+)$/);
     if (cm && req.method === "POST") {
+      // Like Ramp: the API only adds to a thread that already exists on the record.
+      if (state.noThread.has(cm[2])) return send(res, 404, { error_v2: { message: "The transaction does not have an associated comment thread", error_code: "DEVELOPER_7084" } });
       state.comments.push({ type: cm[1], id: cm[2], body: JSON.parse(await body(req)) });
       return send(res, 201, { id: "comment-1" });
     }

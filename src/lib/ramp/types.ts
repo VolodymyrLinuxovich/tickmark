@@ -142,6 +142,8 @@ export interface PostedComment {
   mention_user_ids: string[];
   posted_at: string;
   destination: string;
+  /** Set when Ramp could not take the comment: an email for the UI to open instead. */
+  email?: { to: string | null; name: string; subject: string; body: string };
 }
 
 /** Everything Tickmark needs from one Ramp business for an audit period. */

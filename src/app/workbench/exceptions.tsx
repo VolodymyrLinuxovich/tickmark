@@ -151,6 +151,11 @@ export function ExceptionList({ items, openRecord, sent, setSent, source }: { it
   );
 }
 
+/** A mailto link for a follow-up Ramp could not take as a comment. */
+function mailto(e: { to: string | null; subject: string; body: string }) {
+  return `mailto:${encodeURIComponent(e.to ?? "")}?subject=${encodeURIComponent(e.subject)}&body=${encodeURIComponent(e.body)}`;
+}
+
 /**
  * One exception: title, severity, detail, the Ramp records behind it, and its drafted follow-up.
  * The draft is editable and is posted only when the user presses "Approve and send". On sample
@@ -168,9 +173,11 @@ export function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f:
     setPosting(true);
     setErr(null);
     try {
-      const res = await fetch("/api/comment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f.comment, message: msg }) });
+      const res = await fetch("/api/comment", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...f.comment, message: msg, owner_user_id: f.owner?.user_id || undefined }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
+      // No Ramp thread on this record yet: hand the follow-up to the user's mail app instead.
+      if (json.email) window.location.href = mailto(json.email);
       setSent({ ...sent, [f.id]: json.destination });
       setOpen(false);
       watch({ finding_id: f.id, code: f.code, object_type: f.comment.object_type, object_id: f.comment.object_id, posted_message: msg, since: new Date().toISOString(), owner: f.owner?.name });
@@ -198,7 +205,7 @@ export function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f:
       {f.comment && (
         <div className="row" style={{ marginTop: 10 }}>
           {sent[f.id] ? (
-            <span className="sent">Sent as a comment on the Ramp {f.comment.object_type === "bills" ? "bill" : "transaction"} ({sent[f.id]})</span>
+            <span className="sent">{sent[f.id].startsWith("email to") ? `Sent by ${sent[f.id]}` : `Sent as a comment on the Ramp ${f.comment.object_type === "bills" ? "bill" : "transaction"} (${sent[f.id]})`}</span>
           ) : (
             <button className="btn small" onClick={() => setOpen(!open)}>{open ? "Hide draft" : `Draft comment to ${f.owner?.name ?? "owner"}`}</button>
           )}
@@ -211,7 +218,7 @@ export function FindingCard({ f, refs, openRecord, sent, setSent, source }: { f:
           <textarea value={msg} onChange={(e) => setMsg(e.target.value)} aria-label="Comment draft" />
           <div className="row end" style={{ marginTop: 8 }}>
             <span className="muted" style={{ marginRight: "auto", fontSize: 12 }}>
-              Posts to the {f.comment.object_type === "bills" ? "bill" : "transaction"} thread{source.kind === "fixture" ? " (sample outbox, no Ramp account connected)" : " in Ramp"}.
+              Posts to the {f.comment.object_type === "bills" ? "bill" : "transaction"} thread{source.kind === "fixture" ? " (sample outbox, no Ramp account connected)" : " in Ramp, or opens an email to the owner if Ramp has no thread on it yet"}.
             </span>
             <button className="btn primary small" onClick={post} disabled={posting || !msg.trim()}>{posting ? "Sending..." : "Approve and send"}</button>
           </div>

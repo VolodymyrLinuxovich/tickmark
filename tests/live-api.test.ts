@@ -79,6 +79,20 @@ describe("live Ramp client against a spec-shaped mock", () => {
     expect(tokenReq.length).toBeGreaterThan(0);
   });
 
+  it("drafts an email to the owner when the Ramp record has no comment thread", async () => {
+    const src = new ApiSource("sandbox", { kind: "client_credentials", ...APP }, ramp.url);
+    const t = ramp.snap.transactions[1];
+    const u = ramp.snap.users.find((x) => x.id === t.card_holder.user_id)!;
+    ramp.noThread.add(t.id);
+    const before = ramp.comments.length;
+    const out = await src.postComment("transactions", t.id, "Please attach the approval.", [], u.id);
+    expect(ramp.comments.length).toBe(before);
+    expect(out.email?.to).toBe(u.email);
+    expect(out.email?.body).toContain("Please attach the approval.");
+    expect(out.email?.body).toContain(t.id);
+    expect(out.destination).toMatch(/^email to .+no comment thread/);
+  });
+
   it("looks up a record from the last snapshot, then directly", async () => {
     const src = new ApiSource("sandbox", { kind: "client_credentials", ...APP }, ramp.url);
     await src.snapshot(period);
