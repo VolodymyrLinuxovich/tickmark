@@ -165,8 +165,8 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
         id: findingId("MISSING_RECEIPT", [t.id]),
         code: "MISSING_RECEIPT",
         severity: "medium",
-        title: `No receipt for ${usd(cents)} at ${t.merchant_name}`,
-        detail: `Charged ${shortDate(t.user_transaction_time)} by ${owner.name}. Ramp shows its receipt requirement as not met.`,
+        title: `No receipt for ${usd(cents)} at ${t.merchant_name} on ${shortDate(t.user_transaction_time)}`,
+        detail: `Charged by ${owner.name}. Ramp shows its receipt requirement as not met.`,
         records: [txnRef(t)],
         owner,
         comment: {
@@ -215,8 +215,8 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
         code: "NOT_APPROVED",
         severity: pendingSeverity(cents, Boolean(record)),
         title: record
-          ? `Approval still ${String(record.status ?? "open").toLowerCase()} for ${usd(cents)} at ${t.merchant_name}`
-          : `No approval recorded for ${usd(cents)} at ${t.merchant_name}`,
+          ? `Approval still ${String(record.status ?? "open").toLowerCase()} for ${usd(cents)} at ${t.merchant_name} on ${shortDate(t.user_transaction_time)}`
+          : `No approval recorded for ${usd(cents)} at ${t.merchant_name} on ${shortDate(t.user_transaction_time)}`,
         detail: record
           ? `Ramp opened an approval for this transaction, but it is ${String(record.status ?? "not complete").toLowerCase()}.`
           : `Above the ${usd(POLICY.cardApprovalLimit)} pre-approval limit, and Ramp has no approval for it.`,
@@ -239,8 +239,8 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
         id: findingId("SELF_APPROVAL", [t.id]),
         code: "SELF_APPROVAL",
         severity: "high",
-        title: `${owner.name} approved their own ${usd(cents)} charge`,
-        detail: `${t.merchant_name} on ${shortDate(t.user_transaction_time)}.`,
+        title: `${owner.name} approved their own ${usd(cents)} charge on ${shortDate(t.user_transaction_time)}`,
+        detail: `Approved by the same person who made the charge at ${t.merchant_name}.`,
         records: [txnRef(t)],
         owner,
       });
@@ -254,7 +254,7 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
       id: findingId("RESTRICTED_MCC", [t.id]),
       code: "RESTRICTED_MCC",
       severity: "medium",
-      title: `${usd(cents)} at ${t.merchant_name} (${POLICY.restrictedMcc[mcc].toLowerCase()})`,
+      title: `${usd(cents)} at ${t.merchant_name} on ${shortDate(t.user_transaction_time)} (${POLICY.restrictedMcc[mcc].toLowerCase()})`,
       detail: `Merchant category ${mcc}. ${t.memo ? `Memo: "${t.memo}".` : "No business purpose given."} Charged by ${owner.name}${holder ? `, ${t.card_holder.department_name ?? ""}` : ""}.`,
       records: [txnRef(t)],
       owner,
