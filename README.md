@@ -275,6 +275,8 @@ bills and 419 vendors over the last 12 months (run on Nov 15, 2026).
   are outside Ramp data and go to the team.
 - 366 exceptions: 11 high, 319 medium, 36 low. Most are missing receipts (247) and approvals missing or pending (115).
   The list opens on a $29,407.46 Hyatt charge with no approval and an $18,000.00 approval still pending.
+  Receipt exceptions follow Ramp's own `all_requirements_met_and_approved` flag. On Nov 15 the sandbox reported it as
+  false for every transaction we sampled, so most charges without a receipt now count as missing one.
 - The receipt hunter's demo inbox matched 33 of 43 receipts to charges, with 0 wrong matches.
 - Writes are verified end to end: a receipt attached to an Office Depot charge, and an approver nudge posted as a Ramp
   comment.
