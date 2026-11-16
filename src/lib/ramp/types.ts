@@ -108,6 +108,8 @@ export interface RampBill {
   bill_owner: { id: string; first_name?: string; last_name?: string };
   attachments: { id: string; attachment_type: "EMAIL" | "FILE" | "INVOICE" | "VENDOR_CREDIT"; url: string }[];
   payment?: { payment_method: string | null; payment_date?: string | null; amount?: CurrencyAmount } | null;
+  /** Link to the bill in the Ramp web app. Ramp returns this for bills; transactions have no such field. */
+  deep_link_url?: string | null;
 }
 
 /** A vendor master record. created_at is used to spot vendors paid soon after they were added. */

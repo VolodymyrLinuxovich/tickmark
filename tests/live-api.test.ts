@@ -93,6 +93,30 @@ describe("live Ramp client against a spec-shaped mock", () => {
     expect(out.destination).toMatch(/^email to .+no comment thread/);
   });
 
+  it("links straight to the Ramp bill in the fallback email", async () => {
+    const src = new ApiSource("sandbox", { kind: "client_credentials", ...APP }, ramp.url);
+    const bill = ramp.snap.bills[2];
+    const link = `https://example.ramp.test/bills/${bill.id}`;
+    bill.deep_link_url = link;
+    ramp.noThread.add(bill.id);
+    try {
+      const out = await src.postComment("bills", bill.id, "Please attach the invoice.", [], bill.bill_owner.id);
+      expect(out.email?.body).toContain(`Open in Ramp: ${link}`);
+      expect(out.email?.body).toContain(bill.id);
+    } finally {
+      delete bill.deep_link_url;
+    }
+  });
+
+  it("leaves the link out when Ramp gives none", async () => {
+    const src = new ApiSource("sandbox", { kind: "client_credentials", ...APP }, ramp.url);
+    const t = ramp.snap.transactions[3];
+    ramp.noThread.add(t.id);
+    const out = await src.postComment("transactions", t.id, "Please attach the receipt.", [], t.card_holder.user_id);
+    expect(out.email?.body).not.toContain("Open in Ramp");
+    expect(out.email?.body).toContain(`Ramp transaction ID: ${t.id}`);
+  });
+
   it("looks up a record from the last snapshot, then directly", async () => {
     const src = new ApiSource("sandbox", { kind: "client_credentials", ...APP }, ramp.url);
     await src.snapshot(period);
