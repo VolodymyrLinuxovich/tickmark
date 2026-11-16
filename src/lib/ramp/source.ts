@@ -117,7 +117,6 @@ class FixtureSource implements RampSource {
 // A full snapshot is many paginated calls, so it is reused for a few minutes across requests in the same process.
 const SNAPSHOT_TTL_MS = 5 * 60_000;
 
-/** Live Ramp source. Sandbox uses demo-api.ramp.com and production uses api.ramp.com unless RAMP_API_BASE_URL overrides it. */
 /** Resolves to the promise's value, or to `fallback` if it fails or takes longer than `ms`. Never rejects. */
 function within<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -125,6 +124,7 @@ function within<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([p.catch(() => fallback), late]).finally(() => clearTimeout(timer));
 }
 
+/** Live Ramp source. Sandbox uses demo-api.ramp.com and production uses api.ramp.com unless RAMP_API_BASE_URL overrides it. */
 export class ApiSource implements RampSource {
   /** How long the fallback email waits for the record link before going out without it. */
   static recordLinkTimeoutMs = 3000;
