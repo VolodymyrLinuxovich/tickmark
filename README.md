@@ -271,7 +271,7 @@ checks every record. Tickmark's time is measured; the others are our estimates.
 
 | What | How we got it | Measured or estimated |
 |---|---|---|
-| Tickmark's time | The sample 9 request list (`public/samples/hartwell-pbc-fy2025.xlsx`) uploaded to the live app on the Ramp sandbox, timed from upload to finished binder. About 9 s in the browser. Through the API on Nov 16, 2026, reading the file and running all 9 requests took 6.7 s on a cold start and 0.9 s warm. | Measured |
+| Tickmark's time | The sample 9 request list (`public/samples/hartwell-pbc-fy2025.xlsx`) uploaded to the live app on the Ramp sandbox, timed from upload to finished binder. Under 9 s in the browser. Through the API on Nov 16, 2026, reading the file and running all 9 requests took 4.7 s on a cold start and 0.9 s warm. | Measured |
 | Tickmark's coverage | Each test runs over every card transaction, receipt and bill in the period, not a sample. On Nov 15 that was 1,092 records. | Measured |
 | Requests answered | 7 of 9 come straight from Ramp. Bank reconciliation and fixed assets are outside Ramp data and go to the team. | Measured |
 | Ramp integration | Ramp's integrations directory has no page for any of the four on Nov 16, 2026 (`ramp.com/integrations/suralink` and the others return 404; Vanta's page, for comparison, loads), and a web search found no Ramp connector for them. | Checked by hand |
