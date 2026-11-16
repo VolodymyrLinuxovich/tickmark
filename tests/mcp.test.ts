@@ -18,11 +18,19 @@ async function rpc(method: string, params: unknown = {}) {
 }
 
 describe("MCP server", () => {
-  it("lists three read-only tools", async () => {
+  it("lists four read-only tools", async () => {
     const out = await rpc("tools/list");
     const tools = out.result.tools as { name: string; annotations?: { readOnlyHint?: boolean } }[];
-    expect(tools.map((t) => t.name).sort()).toEqual(["answer_audit_requests", "get_ramp_record", "read_request_list"]);
+    expect(tools.map((t) => t.name).sort()).toEqual(["answer_audit_requests", "check_audit_readiness", "get_ramp_record", "read_request_list"]);
     expect(tools.every((t) => t.annotations?.readOnlyHint)).toBe(true);
+  });
+
+  it("checks audit readiness on recent data", async () => {
+    const out = await rpc("tools/call", { name: "check_audit_readiness", arguments: { days: 180, max_exceptions: 3 } });
+    const result = JSON.parse(out.result.content[0].text);
+    expect(result.records).toBeGreaterThan(0);
+    expect(result.score_pct).toBe(Math.round((result.clean / result.records) * 100));
+    expect(result.fix_now.length).toBeLessThanOrEqual(3);
   });
 
   it("answers the sample request email end to end", async () => {

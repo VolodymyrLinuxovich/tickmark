@@ -19,7 +19,7 @@ export const homeHref = (l: Locale) => (l === "en" ? "/" : `/${l}`);
 
 export interface Dict {
   meta: { title: string; description: string };
-  nav: { problem: string; solution: string; accuracy: string; open: string; language: string };
+  nav: { problem: string; solution: string; accuracy: string; readiness: string; open: string; language: string };
   hero: { h1a: string; h1b: string; lede: string; try: string; upload: string; sample: string; connected: string };
   flow: { aria: string; k1: string; t1: string; from: string; ask: string; c2: string; k2: string; t2: string; d2: string; k3: string; t3: string; d3: string; chip: string };
   problem: { h2: string; items: { t: string; d: string }[] };
@@ -40,7 +40,7 @@ export interface Dict {
 
 const en: Dict = {
   meta: { title: "Tickmark · Audit evidence from Ramp", description: "Turns an auditor's request list into a cited evidence binder from Ramp data, and flags control problems before the auditor finds them." },
-  nav: { problem: "Problem", solution: "Solution", accuracy: "Accuracy", open: "Open Tickmark", language: "Language" },
+  nav: { problem: "Problem", solution: "Solution", accuracy: "Accuracy", readiness: "Readiness", open: "Open Tickmark", language: "Language" },
   hero: {
     h1a: "Your auditor’s request list,",
     h1b: "answered from Ramp.",
@@ -103,7 +103,7 @@ const en: Dict = {
 
 const es: Dict = {
   meta: { title: "Tickmark · Evidencia de auditoría desde Ramp", description: "Convierte la lista de solicitudes del auditor en un expediente de evidencia con datos de Ramp y señala los problemas de control antes que el auditor." },
-  nav: { problem: "Problema", solution: "Solución", accuracy: "Precisión", open: "Abrir Tickmark", language: "Idioma" },
+  nav: { problem: "Problema", solution: "Solución", accuracy: "Precisión", readiness: "Preparación", open: "Abrir Tickmark", language: "Idioma" },
   hero: {
     h1a: "La lista de tu auditor,",
     h1b: "respondida desde Ramp.",
@@ -183,7 +183,7 @@ const es: Dict = {
 
 const de: Dict = {
   meta: { title: "Tickmark · Prüfungsnachweise aus Ramp", description: "Macht aus der Anforderungsliste des Prüfers einen belegten Nachweisordner aus Ramp-Daten und meldet Kontrollprobleme, bevor der Prüfer sie findet." },
-  nav: { problem: "Problem", solution: "Lösung", accuracy: "Genauigkeit", open: "Tickmark öffnen", language: "Sprache" },
+  nav: { problem: "Problem", solution: "Lösung", accuracy: "Genauigkeit", readiness: "Prüfbereitschaft", open: "Tickmark öffnen", language: "Sprache" },
   hero: {
     h1a: "Die Liste Ihres Prüfers,",
     h1b: "beantwortet aus Ramp.",
@@ -263,7 +263,7 @@ const de: Dict = {
 
 const fr: Dict = {
   meta: { title: "Tickmark · Preuves d’audit depuis Ramp", description: "Transforme la liste de demandes de l’auditeur en dossier de preuves sourcé à partir des données Ramp, et signale les problèmes de contrôle avant l’auditeur." },
-  nav: { problem: "Problème", solution: "Solution", accuracy: "Précision", open: "Ouvrir Tickmark", language: "Langue" },
+  nav: { problem: "Problème", solution: "Solution", accuracy: "Précision", readiness: "Préparation", open: "Ouvrir Tickmark", language: "Langue" },
   hero: {
     h1a: "La liste de votre auditeur,",
     h1b: "traitée depuis Ramp.",
@@ -343,7 +343,7 @@ const fr: Dict = {
 
 const uk: Dict = {
   meta: { title: "Tickmark · Аудиторські докази з Ramp", description: "Перетворює список запитів аудитора на теку доказів із даних Ramp і позначає проблеми з контролем раніше, ніж їх знайде аудитор." },
-  nav: { problem: "Проблема", solution: "Рішення", accuracy: "Точність", open: "Відкрити Tickmark", language: "Мова" },
+  nav: { problem: "Проблема", solution: "Рішення", accuracy: "Точність", readiness: "Готовність", open: "Відкрити Tickmark", language: "Мова" },
   hero: {
     h1a: "Список запитів вашого аудитора,",
     h1b: "з відповідями з Ramp.",

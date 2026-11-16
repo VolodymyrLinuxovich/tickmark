@@ -37,6 +37,7 @@ Ramp comment to the right person, sent only after you approve it.
 | [Sample audit](https://tickmark-eta.vercel.app/app?sample=xlsx) | Nine auditor requests, read, tested and turned into a binder |
 | [App](https://tickmark-eta.vercel.app/app) | Upload your own request list (Excel, CSV, PDF or the auditor's email) |
 | [Accuracy](https://tickmark-eta.vercel.app/eval) | Scores on a company with eight planted control problems |
+| [Readiness](https://tickmark-eta.vercel.app/readiness) | The same checks on the last 30, 90 or 180 days, with drafted follow-ups for anything under 30 days old |
 | `/portal/{id}` | Read-only auditor portal, shared from a run |
 | `/api/mcp` | MCP server, so an agent can run an audit request |
 
@@ -340,13 +341,14 @@ your business: the last 12 months, with 12 selections drawn from your own transa
 
 ## Agent API: MCP
 
-`/api/mcp` is a Streamable HTTP MCP server with three read-only tools.
+`/api/mcp` is a Streamable HTTP MCP server with four read-only tools.
 
 | Tool | Returns |
 |------|---------|
 | `read_request_list` | Typed requests from a request list (type, period, threshold, selections) |
 | `answer_audit_requests` | Each request's result, every exception with its Ramp records, and a drafted follow-up |
 | `get_ramp_record` | The transaction, bill, vendor or user behind an exception, with receipts and approvals |
+| `check_audit_readiness` | A readiness score for recent weeks, open exceptions by type, who has fresh items, and drafted follow-ups |
 
 ```bash
 claude mcp add --transport http tickmark https://tickmark-eta.vercel.app/api/mcp
