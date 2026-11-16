@@ -24,5 +24,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx vitest run
+      # Next generates route types (LayoutProps, PageProps) into .next/types; a clean checkout has none.
+      - run: npx next typegen
       - run: npx tsc --noEmit
       - run: npm run lint
