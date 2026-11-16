@@ -102,7 +102,10 @@ describe("monetary unit sampling", () => {
     let large = 0;
     const pop = [...Array.from({ length: 100 }, (_, i) => ({ id: `s${i}`, amount: 10 })), ...Array.from({ length: 100 }, (_, i) => ({ id: `l${i}`, amount: 90 }))];
     for (let seed = 1; seed <= 50; seed++) {
-      for (const id of monetaryUnitSample(pop, 20, seed).selected) id.startsWith("s") ? small++ : large++;
+      for (const id of monetaryUnitSample(pop, 20, seed).selected) {
+        if (id.startsWith("s")) small++;
+        else large++;
+      }
     }
     expect(large / (small + large)).toBeGreaterThan(0.8);
   });

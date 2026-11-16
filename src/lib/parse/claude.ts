@@ -336,7 +336,11 @@ export function rulesConfident(rules: ParsedList & { split?: string }, text: str
 }
 
 /** Drops the rules parser's internal split label before the list leaves the parser. */
-const withoutSplit = ({ split: _split, ...rest }: ParsedList & { split?: string }): ParsedList => rest;
+const withoutSplit = (list: ParsedList & { split?: string }): ParsedList => {
+  const rest = { ...list };
+  delete rest.split;
+  return rest;
+};
 
 /** Parses with the first model that works; the rules reading is the cross-check and last fallback. */
 async function parseUncached(input: NormalizedInput, rules: ParsedList): Promise<ParsedList> {

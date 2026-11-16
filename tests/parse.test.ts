@@ -267,3 +267,21 @@ describe("balance dates from the model", () => {
     ]);
   });
 });
+
+describe("parseRequests without model keys", () => {
+  it("drops the rules parser's internal split label", async () => {
+    vi.stubEnv("ANTHROPIC_API_KEY", "");
+    vi.stubEnv("OPENAI_API_KEY", "");
+    try {
+      const { parseRequests } = await import("../src/lib/parse/claude");
+      const name = "hartwell-pbc-fy2025.xlsx";
+      const input = await normalizeFile(name, new Uint8Array(readFileSync(`public/samples/${name}`)));
+      expect("split" in parseWithRules(input)).toBe(true);
+      const parsed = await parseRequests(input);
+      expect(parsed.requests.length).toBeGreaterThan(0);
+      expect("split" in parsed).toBe(false);
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+});
