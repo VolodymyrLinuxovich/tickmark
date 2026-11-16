@@ -260,6 +260,14 @@ We scored the request reader on five lists that were posted publicly, against an
 every request in about 2 seconds per list. A general AI model reading the same files took 14 to 33 seconds and missed
 11. Sources, scoring and caveats are in `docs/real-lists.md`.
 
+### Next to other audit tools
+
+![Tickmark answers the 9 request list in 9 seconds and checks every record. Other audit tools are estimated at 3 to 6 days, spreadsheets at 3 weeks, checking a sample of 2 to 9 percent.](docs/competitors-chart.svg)
+
+Suralink, DataSnipper, Fieldguide and AuditBoard organize files that someone uploads. We found no public Ramp
+integration for any of them, so every answer waits on a person finding a document. Tickmark starts from Ramp's data and
+checks every record. Tickmark's time is measured; the others are our estimates.
+
 ### Against the Ramp API
 
 `tests/live-api.test.ts` runs the live client against a mock Ramp API built to the published spec (client credentials
