@@ -41,6 +41,13 @@ describe("bill requests with a threshold no bill crosses", () => {
     expect(Number(r.headline.split(" ")[0])).toBeGreaterThan(0);
   });
 
+  it("says there were no bills when none were paid in the period", () => {
+    const ix = buildIndex(getFixture().snapshot);
+    const r = runRequest({ ...base, ref: "PBC-V", type: "bill_support", text: "Invoices for all bills over $10,000 paid in 1990", period_from: "1990-01-01", period_to: "1990-12-31", min_amount: 10_000 }, ix);
+    expect(r.rows).toHaveLength(0);
+    expect(r.headline).toBe("No bills paid in the period");
+  });
+
   it("keeps the usual headline when some bills cross it", () => {
     const ix = buildIndex(getFixture().snapshot);
     const r = runRequest({ ...base, ref: "PBC-U", type: "bill_support", text: "Invoices for all bills over $1", min_amount: 1 }, ix);

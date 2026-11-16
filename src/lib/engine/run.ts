@@ -709,7 +709,11 @@ function answer(req: AuditRequest, ix: Index): RequestResult {
       }
       const noneOver = !req.selections.length && minCents != null && rows.length === 0;
       return result(req, {
-        ...(noneOver && { headline: `${inPeriodBills.length} bill${inPeriodBills.length === 1 ? "" : "s"} checked, none of ${usd(minCents)} or more` }),
+        ...(noneOver && {
+          headline: inPeriodBills.length
+            ? `${inPeriodBills.length} bill${inPeriodBills.length === 1 ? "" : "s"} checked, none of ${usd(minCents)} or more`
+            : "No bills paid in the period",
+        }),
         procedure: [
           req.selections.length
             ? `Matched ${req.selections.length} auditor selections to Ramp bills by amount, issue or payment date (within 5 days) and vendor or invoice number.`
