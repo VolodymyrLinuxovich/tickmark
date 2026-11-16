@@ -129,3 +129,18 @@ describe("binder", () => {
     expect(invoices).toHaveLength(results[2].rows.length);
   }, 30000);
 });
+
+describe("exception titles", () => {
+  it("tells apart same-amount charges at one merchant on different days", () => {
+    const { snapshot } = getFixture();
+    const base = snapshot.transactions.find((t) => t.state === "CLEARED") ?? snapshot.transactions[0];
+    const days = ["2025-03-04T17:00:00Z", "2025-06-10T17:00:00Z", "2025-09-22T17:00:00Z"];
+    const copies = days.map((d, i) => ({ ...base, id: `asana-${i}`, merchant_name: "Asana", user_transaction_time: d, entity_amount: { ...base.entity_amount, value: 1_299_480 } }));
+    const ix = buildIndex({ ...snapshot, transactions: [...snapshot.transactions, ...copies] });
+    const r = runRequest({ ref: "PBC-T", type: "control_testing", text: "Approvals", period_from: "2025-01-01", period_to: "2025-12-31", min_amount: null, selections: [], interpretation: "" }, ix);
+    const titles = r.findings.filter((f) => f.code === "NOT_APPROVED" && f.records.some((x) => x.id.startsWith("asana-"))).map((f) => f.title);
+    expect(titles).toHaveLength(3);
+    expect(new Set(titles).size).toBe(3);
+    expect(titles[0]).toMatch(/^No approval recorded for \$12,994\.80 at Asana on [A-Z][a-z]{2} \d{1,2}, 2025$/);
+  });
+});
