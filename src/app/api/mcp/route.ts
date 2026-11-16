@@ -10,6 +10,8 @@ import { AuditRequestSchema, REQUEST_TYPE_INFO } from "@/lib/parse/schema";
 import { getSource } from "@/lib/ramp/source";
 import { buildIndex, runRequest, uniqueFindings } from "@/lib/engine/run";
 import type { RequestResult } from "@/lib/engine/types";
+import { trailingYear } from "@/lib/engine/live-sample";
+import { asOfDate, computeReadiness } from "@/lib/engine/readiness";
 
 // A tool call may parse with a model and then fetch a full Ramp snapshot.
 export const maxDuration = 120;
@@ -106,6 +108,48 @@ const handler = createMcpHandler(
         const results = reqs.map((r) => runRequest(r, ix));
         const warnings = (snap as { notes?: { warnings: string[] } }).notes?.warnings ?? [];
         return json({ business: snap.business_name, data_source: source.info.label, parser, warnings, ...summarize(results, include_rows, max_exceptions) });
+      },
+    );
+
+    server.registerTool(
+      "check_audit_readiness",
+      {
+        title: "Check audit readiness",
+        description:
+          "Run the year-end audit checks on recent Ramp data, before any auditor asks: missing receipts, missing or pending approvals, split purchases, self-approval, restricted merchants, bill invoices and duplicate bills. Returns a readiness score (share of records with no open exception), open exceptions by type, who has the most fresh items, and the fresh exceptions with drafted follow-ups. Good to run weekly. Nothing is posted to Ramp.",
+        inputSchema: z.object({
+          days: z.number().int().min(30).max(180).default(90).describe("How many recent days to check"),
+          max_exceptions: z.number().int().min(1).max(100).default(10).describe("Fresh exceptions to return, most severe and largest first"),
+        }),
+        annotations: { readOnlyHint: true },
+      },
+      async ({ days, max_exceptions }) => {
+        const source = getSource();
+        const snap = await source.snapshot(trailingYear());
+        const r = computeReadiness(snap, asOfDate(snap, source.info.kind !== "fixture"), days);
+        return json({
+          business: r.business,
+          data_source: source.info.label,
+          period: { from: r.from, to: r.to },
+          score_pct: r.score,
+          records: r.records,
+          clean: r.clean,
+          open_exceptions: r.open,
+          high: r.high,
+          fresh_under_30_days: r.fresh,
+          median_age_days: r.median_age_days,
+          by_type: r.by_code,
+          owners: r.owners,
+          fix_now: r.fix_now.slice(0, max_exceptions).map((f) => ({
+            id: f.id,
+            severity: f.severity,
+            age_days: f.age_days,
+            amount_usd: f.amount != null ? f.amount / 100 : null,
+            title: f.title,
+            owner: f.owner?.name ?? null,
+            draft_comment: f.comment ? { on: `${f.comment.object_type}/${f.comment.object_id}`, message: f.comment.message } : null,
+          })),
+        });
       },
     );
 
