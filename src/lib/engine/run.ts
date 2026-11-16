@@ -700,11 +700,20 @@ function answer(req: AuditRequest, ix: Index): RequestResult {
           findings.push(f);
           rows.push({ record: { type: "bill", id: "", label: sel.ref }, cells: [sel.ref, sel.description, "", sel.date, usd(Math.round(sel.amount * 100)), "", "Not found in Ramp"], tickmarks: ["X"], finding_ids: [f.id], files: [] });
         }
-      } else {
-        // Bills are tested in full (no sampling) because a request like "every bill over $10,000" asks for all of them.
-        for (const b of bills.filter((b) => (minCents == null || b.amount.amount >= minCents) && (b.paid_at ? inPeriod(b.paid_at, req) : true))) test(b);
       }
+      // Bills in the period, before the amount threshold. Used to say how many were checked when none cross it.
+      const inPeriodBills = req.selections.length ? [] : bills.filter((b) => (b.paid_at ? inPeriod(b.paid_at, req) : true));
+      if (!req.selections.length) {
+        // Bills are tested in full (no sampling) because a request like "every bill over $10,000" asks for all of them.
+        for (const b of inPeriodBills.filter((b) => minCents == null || b.amount.amount >= minCents)) test(b);
+      }
+      const noneOver = !req.selections.length && minCents != null && rows.length === 0;
       return result(req, {
+        ...(noneOver && {
+          headline: inPeriodBills.length
+            ? `${inPeriodBills.length} bill${inPeriodBills.length === 1 ? "" : "s"} checked, none of ${usd(minCents)} or more`
+            : "No bills paid in the period",
+        }),
         procedure: [
           req.selections.length
             ? `Matched ${req.selections.length} auditor selections to Ramp bills by amount, issue or payment date (within 5 days) and vendor or invoice number.`

@@ -30,6 +30,32 @@ describe("bill requests with auditor selections", () => {
   });
 });
 
+describe("bill requests with a threshold no bill crosses", () => {
+  it("says how many bills were checked instead of 0 items tested", () => {
+    const { snapshot } = getFixture();
+    const ix = buildIndex(snapshot);
+    const r = runRequest({ ...base, ref: "PBC-T", type: "bill_support", text: "Invoices for all bills over $100,000,000", min_amount: 100_000_000 }, ix);
+    expect(r.rows).toHaveLength(0);
+    expect(r.headline).not.toMatch(/0 items tested/);
+    expect(r.headline).toMatch(/^\d+ bills? checked, none of \$100,000,000(\.00)? or more$/);
+    expect(Number(r.headline.split(" ")[0])).toBeGreaterThan(0);
+  });
+
+  it("says there were no bills when none were paid in the period", () => {
+    const ix = buildIndex(getFixture().snapshot);
+    const r = runRequest({ ...base, ref: "PBC-V", type: "bill_support", text: "Invoices for all bills over $10,000 paid in 1990", period_from: "1990-01-01", period_to: "1990-12-31", min_amount: 10_000 }, ix);
+    expect(r.rows).toHaveLength(0);
+    expect(r.headline).toBe("No bills paid in the period");
+  });
+
+  it("keeps the usual headline when some bills cross it", () => {
+    const ix = buildIndex(getFixture().snapshot);
+    const r = runRequest({ ...base, ref: "PBC-U", type: "bill_support", text: "Invoices for all bills over $1", min_amount: 1 }, ix);
+    expect(r.rows.length).toBeGreaterThan(0);
+    expect(r.headline).toMatch(/items tested/);
+  });
+});
+
 describe("control testing workpaper", () => {
   it("has a summary row per test with readable names", () => {
     const ix = buildIndex(getFixture().snapshot);
