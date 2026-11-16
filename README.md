@@ -144,7 +144,9 @@ sequenceDiagram
 
 ## How It Works
 
-![An auditor sends a request list, Tickmark answers it from Ramp, a cardholder fixes a missing receipt, and the auditor gets the binder](docs/how-it-works.gif)
+[![Watch the Tickmark demo on YouTube: a request list answered from the Ramp sandbox](https://img.youtube.com/vi/n8gwskNsgbE/maxresdefault.jpg)](https://youtu.be/n8gwskNsgbE)
+
+**[Watch the 3 minute demo](https://youtu.be/n8gwskNsgbE)** on the Ramp sandbox.
 
 1. **Read the list.** Excel (including a separate Selections sheet), CSV, a text PDF or a pasted email. Each request
    becomes one of seven types with its period, dollar threshold and the items the auditor selected. A keyword parser
