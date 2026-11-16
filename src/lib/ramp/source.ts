@@ -4,7 +4,7 @@
 import { getFixture } from "../fixtures/generate";
 import type { CommentObjectType, PostedComment, RampBill, RampSnapshot, RampTransaction, RecheckItem, RecheckResult, ReceiptUpload, SourceInfo, ThreadReply } from "./types";
 import { AUTO_RESOLVABLE, resolution } from "../engine/recheck";
-import { RampApiClient, loginFromRampCli, type RampAuth, type SnapshotNotes } from "./api-client";
+import { NoCommentThreadError, RampApiClient, loginFromRampCli, type RampAuth, type SnapshotNotes } from "./api-client";
 
 /** Audit period, inclusive on both ends. */
 export interface Period {
@@ -18,7 +18,8 @@ export interface RampSource {
   snapshot(period: Period): Promise<RampSnapshot & { notes?: SnapshotNotes }>;
   /** Raw bytes of a receipt image or invoice, or null when only metadata is available. */
   file(url: string): Promise<{ bytes: Uint8Array; contentType: string } | null>;
-  postComment(objectType: CommentObjectType, objectId: string, message: string, mentionUserIds: string[]): Promise<PostedComment>;
+  /** `ownerId` is who an email goes to when Ramp cannot take the comment (defaults to the first mention). */
+  postComment(objectType: CommentObjectType, objectId: string, message: string, mentionUserIds: string[], ownerId?: string): Promise<PostedComment>;
   /** One record with its receipts and approval history, for the record viewer. */
   record(type: RecordKind, id: string): Promise<unknown | null>;
   /** What Ramp shows now for findings the UI is watching: fixed or not, and replies on the thread. */
@@ -151,9 +152,32 @@ export class ApiSource implements RampSource {
     const path = { transaction: "transactions", bill: "bills", vendor: "vendors", user: "users", receipt: "receipts" }[type];
     return this.client.get(`/developer/v1/${path}/${encodeURIComponent(id)}`).catch(() => null);
   }
-  async postComment(objectType: CommentObjectType, objectId: string, message: string, mentionUserIds: string[]) {
-    await this.client.postComment(objectType, objectId, message, mentionUserIds);
-    return { object_type: objectType, object_id: objectId, message, mention_user_ids: mentionUserIds, posted_at: new Date().toISOString(), destination: this.info.label };
+  async postComment(objectType: CommentObjectType, objectId: string, message: string, mentionUserIds: string[], ownerId?: string): Promise<PostedComment> {
+    const base = { object_type: objectType, object_id: objectId, message, mention_user_ids: mentionUserIds, posted_at: new Date().toISOString() };
+    try {
+      await this.client.postComment(objectType, objectId, message, mentionUserIds);
+      return { ...base, destination: this.info.label };
+    } catch (e) {
+      if (!(e instanceof NoCommentThreadError)) throw e;
+      // Ramp's API cannot start a thread, so the follow-up goes out as an email to the owner instead.
+      const ownerUser = ownerId || mentionUserIds[0];
+      const owner = ownerUser ? await this.user(ownerUser) : null;
+      const name = owner ? `${owner.first_name ?? ""} ${owner.last_name ?? ""}`.trim() || "the owner" : "the owner";
+      const what = objectType === "bills" ? "bill" : "transaction";
+      return {
+        ...base,
+        destination: `email to ${name}, since this Ramp ${what} has no comment thread yet`,
+        email: { to: owner?.email ?? null, name, subject: `Audit follow-up on a Ramp ${what}`, body: `${message}\n\nRamp ${what} ID: ${objectId}` },
+      };
+    }
+  }
+  /** A user from the last snapshot, or straight from Ramp. */
+  private async user(id: string): Promise<{ first_name?: string; last_name?: string; email?: string } | null> {
+    for (const hit of this.cache.values()) {
+      const u = (await hit.p.catch(() => null))?.users.find((x) => x.id === id);
+      if (u) return u;
+    }
+    return this.client.get<{ first_name?: string; last_name?: string; email?: string }>(`/developer/v1/users/${encodeURIComponent(id)}`).catch(() => null);
   }
   async uploadReceipt(transactionId: string, userId: string, file: ReceiptUpload) {
     // One key per transaction and file, so a double click or a retry attaches the receipt once.

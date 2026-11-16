@@ -355,15 +355,17 @@ export class RampApiClient {
     try {
       await this.request("POST", `/developer/v1/comments/${objectType}/${objectId}`, { message, message_format: "PLAIN_TEXT", mention_user_ids: mentionUserIds }, scope);
     } catch (e) {
-      // This endpoint only adds to an existing thread. Ramp's agent tool starts one when there is none.
-      if (!(e instanceof RampHttpError && e.status === 404)) throw e;
-      await this.request(
-        "POST",
-        "/developer/v1/agent-tools/post-comment",
-        { message, ramp_object_type: objectType === "bills" ? "bill" : "transaction", ramp_object_uuid: objectId, mention_user_uuids: mentionUserIds, rationale: "Audit follow-up approved by the user in Tickmark" },
-        "comments:write",
-      );
+      // Ramp only adds to a thread that already exists, and the API cannot start one.
+      if (e instanceof RampHttpError && e.status === 404) throw new NoCommentThreadError(objectType, objectId);
+      throw e;
     }
+  }
+}
+
+/** Ramp has no comment thread on this record yet, so the API cannot post to it. */
+export class NoCommentThreadError extends Error {
+  constructor(public objectType: CommentObjectType, public objectId: string) {
+    super(`Ramp has no comment thread on this ${objectType === "bills" ? "bill" : "transaction"} yet`);
   }
 }
 
