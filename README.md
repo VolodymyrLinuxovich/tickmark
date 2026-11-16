@@ -203,6 +203,12 @@ parser counts the requests on its own and warns when the counts differ.
 controller approves each one. The MCP server is read-only for the same reason: an agent can run an audit request, but a
 person sends the follow-up.
 
+**Where "Approve and send" goes.** An approved follow-up is posted as a comment on the Ramp transaction or bill, so
+the owner sees it in the thread they already use. Ramp's API can only add to a thread that exists and cannot start one.
+When a record has no thread yet, Tickmark opens an email to the record's owner in your mail app instead, with the
+drafted message and the Ramp record ID, and marks the follow-up as sent by email. Watch Ramp still rechecks that record,
+so the exception closes once the fix lands in Ramp. On the sample company, comments go to an in-memory outbox.
+
 **The Developer API, not MCP.** A binder needs every receipt file and every row. Ramp's MCP server returns at
 most 100 rows and can't download files. The Developer API gives both, and client credentials work on a server, so the hosted app runs on a real Ramp business.
 
