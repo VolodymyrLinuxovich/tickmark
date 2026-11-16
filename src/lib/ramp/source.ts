@@ -164,10 +164,13 @@ export class ApiSource implements RampSource {
       const owner = ownerUser ? await this.user(ownerUser) : null;
       const name = owner ? `${owner.first_name ?? ""} ${owner.last_name ?? ""}`.trim() || "the owner" : "the owner";
       const what = objectType === "bills" ? "bill" : "transaction";
+      // A direct link to the record when Ramp gives one. Bills carry deep_link_url; the API has no link for transactions.
+      const link = objectType === "bills" ? ((await this.record("bill", objectId)) as { deep_link_url?: string | null } | null)?.deep_link_url : null;
+      const body = `${message}\n\n${link ? `Open in Ramp: ${link}\n` : ""}Ramp ${what} ID: ${objectId}`;
       return {
         ...base,
         destination: `email to ${name}, since this Ramp ${what} has no comment thread yet`,
-        email: { to: owner?.email ?? null, name, subject: `Audit follow-up on a Ramp ${what}`, body: `${message}\n\nRamp ${what} ID: ${objectId}` },
+        email: { to: owner?.email ?? null, name, subject: `Audit follow-up on a Ramp ${what}`, body },
       };
     }
   }
