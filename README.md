@@ -252,6 +252,14 @@ planted problems.
 
 **8 of 8 found, 0 false alarms.** The checks run in about 10 ms for all nine requests.
 
+### On five real audit request lists
+
+![Tickmark reads each of five real request lists in 2 seconds and finds 375 of 375 requests. A general AI model takes 14 to 33 seconds and finds 364.](docs/real-lists-chart.svg)
+
+We scored the request reader on five lists that were posted publicly, against answers written by hand. Tickmark found
+every request in about 2 seconds per list. A general AI model reading the same files took 14 to 33 seconds and missed
+11. Sources, scoring and caveats are in `docs/real-lists.md`.
+
 ### Against the Ramp API
 
 `tests/live-api.test.ts` runs the live client against a mock Ramp API built to the published spec (client credentials

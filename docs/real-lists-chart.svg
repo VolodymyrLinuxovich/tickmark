@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="520" viewBox="0 0 900 520" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif">
+<rect width="900" height="520" rx="14" fill="#F6F5F1"/>
+<text x="32" y="48" font-family="Georgia, serif" font-size="26" fill="#1B1B18">Seconds to read each real audit request list</text>
+<rect x="32" y="68" width="14" height="14" rx="3" fill="#17714A"/><text x="54" y="80" font-size="15" fill="#1B1B18">Tickmark (keyword rules)</text>
+<rect x="250" y="68" width="14" height="14" rx="3" fill="#B9B6AC"/><text x="272" y="80" font-size="15" fill="#1B1B18">General AI model on the same list (gpt-5.5)</text>
+<text x="32" y="132" font-size="15" font-weight="600" fill="#1B1B18">UC Hastings</text><text x="32" y="150" font-size="13" fill="#6B6A64">131 requests</text>
+<rect x="230" y="116" width="34.9" height="16" rx="3" fill="#17714A"/><text x="272.9" y="129" font-size="13" font-weight="600" fill="#17714A">2 s</text>
+<rect x="230" y="136" width="418.3" height="16" rx="3" fill="#B9B6AC"/><text x="656.3" y="149" font-size="13" fill="#6B6A64">24 s</text>
+<text x="32" y="188" font-size="15" font-weight="600" fill="#1B1B18">Buncombe County</text><text x="32" y="206" font-size="13" fill="#6B6A64">171 requests</text>
+<rect x="230" y="172" width="34.9" height="16" rx="3" fill="#17714A"/><text x="272.9" y="185" font-size="13" font-weight="600" fill="#17714A">2 s</text>
+<rect x="230" y="192" width="575.1" height="16" rx="3" fill="#B9B6AC"/><text x="813.1" y="205" font-size="13" fill="#6B6A64">33 s</text>
+<text x="32" y="244" font-size="15" font-weight="600" fill="#1B1B18">NAIHC</text><text x="32" y="262" font-size="13" fill="#6B6A64">33 requests</text>
+<rect x="230" y="228" width="34.9" height="16" rx="3" fill="#17714A"/><text x="272.9" y="241" font-size="13" font-weight="600" fill="#17714A">2 s</text>
+<rect x="230" y="248" width="313.7" height="16" rx="3" fill="#B9B6AC"/><text x="551.7" y="261" font-size="13" fill="#6B6A64">18 s</text>
+<text x="32" y="300" font-size="15" font-weight="600" fill="#1B1B18">SC P-Card</text><text x="32" y="318" font-size="13" fill="#6B6A64">9 requests</text>
+<rect x="230" y="284" width="34.9" height="16" rx="3" fill="#17714A"/><text x="272.9" y="297" font-size="13" font-weight="600" fill="#17714A">2 s</text>
+<rect x="230" y="304" width="244.0" height="16" rx="3" fill="#B9B6AC"/><text x="482.0" y="317" font-size="13" fill="#6B6A64">14 s</text>
+<text x="32" y="356" font-size="15" font-weight="600" fill="#1B1B18">Holly Springs</text><text x="32" y="374" font-size="13" fill="#6B6A64">31 requests</text>
+<rect x="230" y="340" width="34.9" height="16" rx="3" fill="#17714A"/><text x="272.9" y="353" font-size="13" font-weight="600" fill="#17714A">2 s</text>
+<rect x="230" y="360" width="400.9" height="16" rx="3" fill="#B9B6AC"/><text x="638.9" y="373" font-size="13" fill="#6B6A64">23 s</text>
+<line x1="32" x2="868" y1="410" y2="410" stroke="#DCDAD3"/>
+<text x="32" y="450" font-family="Georgia, serif" font-size="22" fill="#17714A">375 of 375 requests found (100%)</text><text x="430" y="450" font-family="Georgia, serif" font-size="22" fill="#6B6A64">vs 364 of 375 (97.1%)</text>
+<text x="32" y="476" font-size="13" fill="#6B6A64">Five publicly posted lists, scored against answers written by hand. Live app times, Oct 30 2026.</text>
+<text x="32" y="498" font-size="13" fill="#6B6A64">The rules were tuned after seeing these lists, so this is not a blind score. Details in docs/real-lists.md.</text>
+</svg>
