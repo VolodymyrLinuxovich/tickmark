@@ -136,7 +136,8 @@ export async function startMockRamp(): Promise<MockRamp> {
         return page(res, p, q, snap.approvals.filter((a) => a.entity_type === type && ids.includes(a.entity_id)));
       }
       case "/developer/v1/agent-tools/get-bill-history": {
-        if (state.billHistoryGone) return send(res, 404, { error: "Not found" });
+        // What Ramp's sandbox answers as of Nov 2026 (checked live).
+        if (state.billHistoryGone) return send(res, 404, { error_v2: { message: `Unknown agent tool client: ${APP.clientId}`, error_code: "DEVELOPER_7127" } });
         const { bill_id } = JSON.parse(await body(req)) as { bill_id: string };
         const a = snap.approvals.find((x) => x.entity_id === bill_id);
         return send(res, 200, {

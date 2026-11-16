@@ -257,7 +257,8 @@ export class RampApiClient {
       events?: { date?: string; approval_chain_events?: { status?: string; step_date?: string; assigned_entities?: { assigned_user_id?: string }[] }[] }[];
     }
     const history = (b: RampBill) => this.request<Hist>("POST", "/developer/v1/agent-tools/get-bill-history", { bill_id: b.id, rationale: "Audit evidence: trace bill approvals" });
-    // Ramp removed the agent-tools endpoints. Try one bill first so a 404 costs one request, not one per bill.
+    // Ramp removed the agent-tools endpoints (the sandbox answers 404 DEVELOPER_7127, "Unknown agent tool client").
+    // Try one bill first so a 404 costs one request, not one per bill.
     let first: Hist | undefined;
     if (bills.length) {
       try {
