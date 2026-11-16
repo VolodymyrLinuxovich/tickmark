@@ -1,12 +1,13 @@
 <div align="center">
 
-<img src="docs/intro.svg" alt="Tickmark. Your auditor's request list, answered from Ramp." width="560">
+<img src="src/app/icon.svg" alt="Tickmark logo" width="72" height="72">
+
+# Tickmark
 
 **Your auditor's request list, answered from Ramp.** Tickmark reads the year-end **PBC request list**, pulls the
 receipts, approvals, bills and payments behind every request **straight from Ramp**, runs the **control tests auditors
 run**, and hands back an **evidence binder** where every line traces to a Ramp record. Problems come with a drafted
 Ramp comment to the right person, sent only after you approve it.
-
 
 <br/>
 
