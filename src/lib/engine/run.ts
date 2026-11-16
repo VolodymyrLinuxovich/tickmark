@@ -584,17 +584,20 @@ const billCells = (b: RampBill, ix: Index) => {
     b.invoice_number ?? "",
     shortDate(b.issued_at),
     usd(b.amount.amount),
-    last ? `${approverName(ix, last)}, ${shortDate(last.action_at)}` : "None",
+    last ? `${approverName(ix, last)}, ${shortDate(last.action_at)}` : ix.snap.bill_approvals_unavailable ? "Not read from Ramp" : "None",
     b.paid_at ? `${shortDate(b.paid_at)} ${b.payment?.payment_method ?? ""}`.trim() : "Open",
   ];
 };
 const BILL_COLS = ["Vendor", "Invoice", "Issued", "Amount", "Approved by", "Paid"];
 
-/** The control tests in the control testing workpaper, with the finding codes each one raises and what it runs over. */
-const CONTROL_TESTS: { name: string; codes: Finding["code"][]; population: (t: RampTransaction[], b: RampBill[]) => number }[] = [
+/**
+ * The control tests in the control testing workpaper, with the finding codes each one raises and what it runs over.
+ * `b` is empty when bill approvals could not be read, so bills are not counted as tested.
+ */
+const CONTROL_TESTS: { name: string; codes: Finding["code"][]; population: (t: RampTransaction[], b: RampBill[]) => number; billsOnly?: boolean }[] = [
   { name: "Split purchase", codes: ["SPLIT_PURCHASE"], population: (t) => t.length },
   { name: "Self-approval", codes: ["SELF_APPROVAL"], population: (t, b) => t.length + b.length },
-  { name: "Approval after payment", codes: ["APPROVAL_AFTER_PAYMENT"], population: (_t, b) => b.filter((x) => x.paid_at).length },
+  { name: "Approval after payment", codes: ["APPROVAL_AFTER_PAYMENT"], population: (_t, b) => b.filter((x) => x.paid_at).length, billsOnly: true },
   { name: "No approval recorded", codes: ["NOT_APPROVED", "NO_APPROVAL"], population: (t, b) => t.length + b.length },
   { name: "Restricted merchant category (MCC)", codes: ["RESTRICTED_MCC"], population: (t) => t.length },
 ];
@@ -721,7 +724,9 @@ function answer(req: AuditRequest, ix: Index): RequestResult {
           req.selections.length
             ? `Matched ${req.selections.length} auditor selections to Ramp bills by amount, issue or payment date (within 5 days) and vendor or invoice number.`
             : `Selected all ${rows.length} bills${minCents ? ` of ${usd(minCents)} or more` : ""} issued or paid in the period.`,
-          "Obtained the invoice attachment, traced the approval to the approver and date, confirmed approval came before payment and that the approver was not the bill owner, and traced the payment.",
+          ix.snap.bill_approvals_unavailable
+            ? "Obtained the invoice attachment and traced the payment. Bill approvals could not be read from Ramp, so approval, approval timing and approver independence were not tested."
+            : "Obtained the invoice attachment, traced the approval to the approver and date, confirmed approval came before payment and that the approver was not the bill owner, and traced the payment.",
         ],
         columns: req.selections.length ? ["Ref", ...BILL_COLS] : BILL_COLS,
         rows,
@@ -762,24 +767,37 @@ function answer(req: AuditRequest, ix: Index): RequestResult {
         findings.push(...c.findings.filter((f) => f.code === "SELF_APPROVAL" || f.code === "APPROVAL_AFTER_PAYMENT" || f.code === "NO_APPROVAL"));
       }
       const fs = dedupe(findings);
+      // Without bill approval data the bill approval tests were not performed, so bills do not count toward them.
+      const noBillApprovals = !!ix.snap.bill_approvals_unavailable;
+      const approvalBills = noBillApprovals ? [] : bills;
       return result(req, {
         headline: fs.length ? `${fs.length} control exceptions across ${txns.length + bills.length} card transactions and bills` : `No control exceptions across ${txns.length + bills.length} records`,
         procedure: [
           `Split purchases: grouped ${txns.length} card transactions by cardholder and merchant and flagged charges within ${POLICY.splitWindowHours} hours that are each under the ${usd(POLICY.cardApprovalLimit)} approval limit but exceed it together.`,
-          "Segregation of duties: compared the final approver with the cardholder on every transaction and with the bill owner on every bill.",
-          `Approval timing: compared approval time with payment time on ${bills.filter((b) => b.paid_at).length} paid bills.`,
+          noBillApprovals
+            ? "Segregation of duties: compared the final approver with the cardholder on every transaction. Bill approvals could not be read from Ramp, so bills were not tested for approval."
+            : "Segregation of duties: compared the final approver with the cardholder on every transaction and with the bill owner on every bill.",
+          noBillApprovals
+            ? `Approval timing: not performed. Bill approvals could not be read from Ramp for the ${bills.filter((b) => b.paid_at).length} paid bills.`
+            : `Approval timing: compared approval time with payment time on ${bills.filter((b) => b.paid_at).length} paid bills.`,
           `Restricted merchants: screened merchant category codes against ${Object.keys(POLICY.restrictedMcc).join(", ")}.`,
         ],
         columns: ["Test", "Result", "Records", "Owner"],
         rows: [
           // One summary row per test, so tests that passed show in the workpaper too.
-          ...CONTROL_TESTS.map(({ name, codes, population }) => {
+          ...CONTROL_TESTS.map(({ name, codes, population, billsOnly }) => {
             const hits = fs.filter((f) => codes.includes(f.code));
-            const n = population(txns, bills);
+            const n = population(txns, approvalBills);
+            const notTested = billsOnly && noBillApprovals;
             return {
               record: { type: "transaction" as const, id: "", label: name },
-              cells: [name, hits.length ? `${hits.length} exception${hits.length > 1 ? "s" : ""} in ${n} records` : `${n} records tested, no exceptions`, "", ""],
-              tickmarks: (hits.length ? ["X"] : ["T"]) as Tickmark[],
+              cells: [
+                name,
+                notTested ? "Not tested: bill approvals could not be read from Ramp" : hits.length ? `${hits.length} exception${hits.length > 1 ? "s" : ""} in ${n} records` : `${n} records tested, no exceptions`,
+                "",
+                "",
+              ],
+              tickmarks: (notTested ? [] : hits.length ? ["X"] : ["T"]) as Tickmark[],
               finding_ids: hits.map((f) => f.id),
               files: [],
             };
