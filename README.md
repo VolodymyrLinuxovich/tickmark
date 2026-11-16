@@ -172,7 +172,7 @@ sequenceDiagram
 5. **Hand over.** The results open with a plain summary, with exceptions grouped by person and type and sorted by
    severity, then by dollars at stake. Each exception
    links to its Ramp records and carries a drafted comment for the cardholder or bill owner, or for the next approver
-   when an approval is still pending. Approve it and it posts to that Ramp thread, starting one if none exists. Mark
+   when an approval is still pending. Approve it and it posts to that Ramp thread. Ramp's API only adds to a thread that already exists, so when a record has none, Tickmark opens an email to the owner instead. Mark
    each exception open, resolved or waived with a note. The binder holds `00 Index.xlsx` (requests, exceptions with their status, evidence rows with Ramp ids), a PDF workpaper
    per request (reference WP-01 onward, conclusion, evidence with tickmarks, exceptions, prepared and reviewed sign-off,
    page numbers), and every receipt and invoice.
@@ -256,7 +256,7 @@ pre-signed files). It checks that:
 - A **Ramp CLI token without `approvals:read`** rebuilds approvals from bill history and audit logs and still finds all
   eight problems.
 - The binder contains the **downloaded** receipt and invoice files.
-- Approved comments post to the right thread with a write-scoped token. Rate limits (429) are retried.
+- Approved comments post to the right thread with a write-scoped token. A record with no thread gets an email to its owner instead. Rate limits (429) are retried.
 
 ### On a real Ramp sandbox
 
