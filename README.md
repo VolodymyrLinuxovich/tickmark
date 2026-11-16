@@ -268,6 +268,20 @@ Suralink, DataSnipper, Fieldguide and AuditBoard organize files that someone upl
 integration for any of them, so every answer waits on a person finding a document. Tickmark starts from Ramp's data and
 checks every record. Tickmark's time is measured; the others are our estimates.
 
+**How we tested**
+
+| What | How we got it | Measured or estimated |
+|---|---|---|
+| Tickmark's time | The sample 9 request list (`public/samples/hartwell-pbc-fy2025.xlsx`) uploaded to the live app on the Ramp sandbox, timed from upload to finished binder. About 9 s in the browser. Through the API on Nov 16, 2026, reading the file and running all 9 requests took 6.7 s on a cold start and 0.9 s warm. | Measured |
+| Tickmark's coverage | Each test runs over every card transaction, receipt and bill in the period, not a sample. On Nov 15 that was 1,092 records. | Measured |
+| Requests answered | 7 of 9 come straight from Ramp. Bank reconciliation and fixed assets are outside Ramp data and go to the team. | Measured |
+| Ramp integration | Ramp's integrations directory has no page for any of the four on Nov 16, 2026 (`ramp.com/integrations/suralink` and the others return 404; Vanta's page, for comparison, loads), and a web search found no Ramp connector for them. | Checked by hand |
+| Other tools' coverage | Auditors usually test a sample of 25 to 100 items. Against 1,092 records that is 2 to 9 percent. | Estimated |
+| Other tools' time | The time for a person to find, export and upload the files for 9 requests before the tool can use them. We did not run the other tools. | Estimated |
+
+To repeat Tickmark's run, upload the same file at [tickmark-eta.vercel.app/app](https://tickmark-eta.vercel.app/app),
+or post it to `/api/parse` and the result to `/api/run`.
+
 ### Against the Ramp API
 
 `tests/live-api.test.ts` runs the live client against a mock Ramp API built to the published spec (client credentials
