@@ -157,6 +157,8 @@ export interface RampSnapshot {
   bills: RampBill[];
   vendors: RampVendor[];
   approvals: RampApproval[];
+  /** Set when bill approvals could not be read at all. Bill approval checks are then skipped, not reported as missing. */
+  bill_approvals_unavailable?: boolean;
 }
 
 /** Which data source produced a snapshot, shown in the UI and the binder. */

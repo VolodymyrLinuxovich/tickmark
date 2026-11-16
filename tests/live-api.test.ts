@@ -47,9 +47,30 @@ describe("live Ramp client against a spec-shaped mock", () => {
     expect(ramp.log.filter((l) => l.path === "/developer/v1/users").length).toBeGreaterThanOrEqual(2);
   });
 
+  it("Ramp CLI token, bill history removed: one 404, a clear warning, and no bill marked unapproved", async () => {
+    const src = new ApiSource("sandbox", { kind: "token", token: CLI_TOKEN, origin: "Ramp CLI login" }, ramp.url);
+    const before = ramp.log.length;
+    const snap = await src.snapshot(period);
+    expect(ramp.log.slice(before).filter((l) => l.path.endsWith("/get-bill-history"))).toHaveLength(1);
+    expect(snap.bill_approvals_unavailable).toBe(true);
+    expect(snap.approvals.filter((a) => a.entity_type === "bill")).toHaveLength(0);
+    expect(snap.notes.warnings.join(" ")).toMatch(/no longer serves bill history.*404/);
+    expect(snap.notes.warnings.join(" ")).toMatch(/Bill approvals were not checked/);
+    const found = uniqueFindings(runAll(parsedCache, snap));
+    // Bill approval tests are skipped, not failed: no bill is reported as unapproved.
+    expect(found.filter((f) => f.code === "NO_APPROVAL")).toHaveLength(0);
+    // Everything that does not depend on bill approvals is still found.
+    const billApprovalCodes = new Set(["NO_APPROVAL", "SELF_APPROVAL", "APPROVAL_AFTER_PAYMENT"]);
+    const isBillApproval = (f: { code: string; records: { type: string }[] }) => billApprovalCodes.has(f.code) && f.records.some((r) => r.type === "bill");
+    const expected = uniqueFindings(runAll(parsedCache, getFixture().snapshot)).filter((f) => !isBillApproval(f)).map((f) => f.id).sort();
+    expect(found.map((f) => f.id).sort()).toEqual(expected);
+  });
+
   it("Ramp CLI token without approvals:read: rebuilds approvals and finds the same problems", async () => {
     const src = new ApiSource("sandbox", { kind: "token", token: CLI_TOKEN, origin: "Ramp CLI login" }, ramp.url);
-    const snap = await src.snapshot(period);
+    ramp.billHistoryGone = false;
+    const snap = await src.snapshot(period).finally(() => (ramp.billHistoryGone = true));
+    expect(snap.bill_approvals_unavailable).toBeUndefined();
     expect(snap.notes.approvals).toBe("fallback");
     expect(snap.approvals.filter((a) => a.entity_type === "bill")).toHaveLength(ramp.snap.bills.length);
     expect(snap.approvals.filter((a) => a.entity_type === "transaction").length).toBe(ramp.snap.approvals.filter((a) => a.entity_type === "transaction").length);

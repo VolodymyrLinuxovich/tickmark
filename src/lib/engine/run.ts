@@ -293,7 +293,10 @@ function checkBill(ix: Index, b: RampBill): { findings: Finding[]; ticks: Tickma
     });
 
   const { last } = lastApproval(ix, b.id);
-  if (!last) {
+  if (ix.snap.bill_approvals_unavailable) {
+    // No bill approval data could be read (see the snapshot warning), so approval tests are not performed
+    // rather than reporting every bill as unapproved.
+  } else if (!last) {
     findings.push({
       id: findingId("NO_APPROVAL", [b.id]),
       code: "NO_APPROVAL",
