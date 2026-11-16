@@ -86,7 +86,7 @@ flowchart LR
     subgraph RAMP["Ramp Developer API"]
         TX[Transactions<br/>+ receipts with OCR]
         BL[Bills<br/>+ invoices, payments]
-        AP[Approvals<br/>or bill history + audit logs]
+        AP[Approvals<br/>or audit logs]
         VU[Vendors, users,<br/>departments]
     end
 
@@ -255,12 +255,14 @@ planted problems.
 ### Against the Ramp API
 
 `tests/live-api.test.ts` runs the live client against a mock Ramp API built to the published spec (client credentials
-token, `page.next` pagination, repeated `entity_ids`, scope errors, `get-bill-history`, audit log events, comments,
+token, `page.next` pagination, repeated `entity_ids`, scope errors, audit log events, comments,
 pre-signed files). It checks that:
 
 - A developer app reads every page and produces **exactly the same findings** as the sample run.
-- A **Ramp CLI token without `approvals:read`** rebuilds approvals from bill history and audit logs and still finds all
-  eight problems.
+- A **Ramp CLI token without `approvals:read`** rebuilds card approvals from audit logs. Ramp removed the agent-tools
+  `get-bill-history` endpoint, so bill approvals can't be read with such a token: Tickmark makes one call, gets a 404,
+  warns that bill approvals were not checked, and skips those tests instead of reporting every bill as unapproved. Use
+  a developer app with `approvals:read` to test bill approvals.
 - The binder contains the **downloaded** receipt and invoice files.
 - Approved comments post to the right thread with a write-scoped token. A record with no thread gets an email to its owner instead. Rate limits (429) are retried.
 

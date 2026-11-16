@@ -1,6 +1,7 @@
 // A local stand-in for the Ramp Developer API, shaped like docs.ramp.com/developer-api/v1:
 // client credentials token, page.next pagination, repeated entity_ids, scope checks,
-// agent-tools bill history, audit log events, comments and pre-signed file URLs.
+// audit log events, comments and pre-signed file URLs. Like Ramp today, agent-tools bill history
+// answers 404 unless billHistoryGone is set to false.
 
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
@@ -23,6 +24,8 @@ export interface MockRamp {
   comments: { type: string; id: string; body: unknown }[];
   /** Record ids with no comment thread, so posting to them 404s. */
   noThread: Set<string>;
+  /** Ramp removed /developer/v1/agent-tools/*, so bill history 404s. Set false to serve the old endpoint. */
+  billHistoryGone: boolean;
   maxEntityIds: number;
   failNextWith429: boolean;
   close(): Promise<void>;
@@ -37,6 +40,7 @@ export async function startMockRamp(): Promise<MockRamp> {
     log: [],
     comments: [],
     noThread: new Set(),
+    billHistoryGone: true,
     maxEntityIds: 0,
     failNextWith429: true,
     close: () => new Promise((r) => server.close(() => r())),
@@ -132,6 +136,8 @@ export async function startMockRamp(): Promise<MockRamp> {
         return page(res, p, q, snap.approvals.filter((a) => a.entity_type === type && ids.includes(a.entity_id)));
       }
       case "/developer/v1/agent-tools/get-bill-history": {
+        // What Ramp's sandbox answers as of Nov 2026 (checked live).
+        if (state.billHistoryGone) return send(res, 404, { error_v2: { message: `Unknown agent tool client: ${APP.clientId}`, error_code: "DEVELOPER_7127" } });
         const { bill_id } = JSON.parse(await body(req)) as { bill_id: string };
         const a = snap.approvals.find((x) => x.entity_id === bill_id);
         return send(res, 200, {

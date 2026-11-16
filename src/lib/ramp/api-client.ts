@@ -199,6 +199,7 @@ export class RampApiClient {
     for (const b of bills) normalizeBill(b);
 
     let approvals: RampApproval[] = [];
+    let billApprovalsUnavailable = false;
     try {
       approvals = [
         ...(await this.approvals("TRANSACTION", transactions.map((t) => t.id))),
@@ -208,9 +209,15 @@ export class RampApiClient {
     } catch (e) {
       if (!(e instanceof RampHttpError) || ![401, 403].includes(e.status)) throw e;
       // Tokens without approvals:read (for example a Ramp CLI login): rebuild from bill history and audit logs.
-      approvals = [...(await this.billHistoryApprovals(bills, notes)), ...(await this.auditLogApprovals(range, transactions, notes))];
+      const billHistory = await this.billHistoryApprovals(bills, notes);
+      billApprovalsUnavailable = billHistory === null;
+      approvals = [...(billHistory ?? []), ...(await this.auditLogApprovals(range, transactions, notes))];
       notes.approvals = "fallback";
-      notes.warnings.push("This token cannot read /approvals, so approvals were rebuilt from bill history and audit logs.");
+      notes.warnings.push(
+        billApprovalsUnavailable
+          ? "This token cannot read /approvals, so card approvals were rebuilt from audit logs. Bill approvals were not checked."
+          : "This token cannot read /approvals, so approvals were rebuilt from bill history and audit logs.",
+      );
     }
 
     return {
@@ -223,6 +230,7 @@ export class RampApiClient {
       bills,
       vendors,
       approvals,
+      ...(billApprovalsUnavailable && { bill_approvals_unavailable: true }),
       notes,
     };
   }
@@ -242,15 +250,30 @@ export class RampApiClient {
   /**
    * Fallback for bills: rebuilds approvals from each bill's history events. Only approved steps count
    * (not unapproved, rejected or pending). A bill with no approved step is marked PENDING.
+   * Returns null when Ramp no longer serves the agent-tools bill history endpoint (it answers 404).
    */
-  private async billHistoryApprovals(bills: RampBill[], notes: SnapshotNotes): Promise<RampApproval[]> {
+  private async billHistoryApprovals(bills: RampBill[], notes: SnapshotNotes): Promise<RampApproval[] | null> {
     interface Hist {
       events?: { date?: string; approval_chain_events?: { status?: string; step_date?: string; assigned_entities?: { assigned_user_id?: string }[] }[] }[];
+    }
+    const history = (b: RampBill) => this.request<Hist>("POST", "/developer/v1/agent-tools/get-bill-history", { bill_id: b.id, rationale: "Audit evidence: trace bill approvals" });
+    // Ramp removed the agent-tools endpoints (the sandbox answers 404 DEVELOPER_7127, "Unknown agent tool client").
+    // Try one bill first so a 404 costs one request, not one per bill.
+    let first: Hist | undefined;
+    if (bills.length) {
+      try {
+        first = await history(bills[0]);
+      } catch (e) {
+        if (e instanceof RampHttpError && e.status === 404) {
+          notes.warnings.push("Ramp no longer serves bill history (agent-tools/get-bill-history returns 404), so bill approvals could not be read with this token. Use a developer app with approvals:read to test bill approvals.");
+          return null;
+        }
+      }
     }
     let failed = 0;
     const out = await pool(bills, 6, async (b): Promise<RampApproval | null> => {
       try {
-        const h = await this.request<Hist>("POST", "/developer/v1/agent-tools/get-bill-history", { bill_id: b.id, rationale: "Audit evidence: trace bill approvals" });
+        const h = b === bills[0] && first ? first : await history(b);
         const steps = (h.events ?? []).flatMap((e) =>
           (e.approval_chain_events ?? [])
             .filter((c) => /approv/i.test(String(c.status ?? "")) && !/(unapprov|reject|pending)/i.test(String(c.status ?? "")))
