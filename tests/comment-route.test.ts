@@ -35,7 +35,7 @@ describe("POST /api/comment", () => {
   it("returns 400 for a bad body and never calls Ramp", async () => {
     const postComment = vi.fn();
     state.source = { postComment } as unknown as RampSource;
-    for (const body of [{ object_type: "vendors", object_id: "v1", message: "hi" }, { object_type: "bills", object_id: "", message: "hi" }, { object_type: "bills", object_id: "b1", message: "" }]) {
+    for (const body of [{ object_type: "vendors", object_id: "v1", message: "hi" }, { object_type: "bills", object_id: "", message: "hi" }, { object_type: "bills", object_id: "b1", message: "" }, { object_type: "bills", object_id: "b1", message: "x".repeat(4001) }]) {
       const res = await post(body);
       expect(res.status).toBe(400);
       expect(await res.json()).toEqual({ error: "Invalid comment" });
