@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="560" height="300" viewBox="0 0 560 300">
-<rect width="560" height="300" rx="16" fill="#F6F5F1"/>
-<g opacity="0"><animate attributeName="opacity" from="0" to="1" begin="0.2s" dur="0.45s" fill="freeze"/>
-<rect x="232.0" y="28" width="96" height="96" rx="24.0" fill="#17714A"/></g>
-<path transform="translate(232.0 28) scale(3.0)" d="M8.6 16.8l4.9 4.9L23.6 10.6" fill="none" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="23" stroke-dashoffset="23"><animate attributeName="stroke-dashoffset" from="23" to="0" begin="0.7s" dur="0.6s" fill="freeze"/></path>
-<text x="280.0" y="190" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="54" fill="#1B1B18" opacity="0">Tickmark<animate attributeName="opacity" from="0" to="1" begin="1.4s" dur="0.5s" fill="freeze"/></text>
-<text x="280.0" y="236" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="22" fill="#1B1B18" opacity="0">Your auditor’s request list, <tspan fill="#17714A" font-style="italic">answered from Ramp.</tspan><animate attributeName="opacity" from="0" to="1" begin="1.9s" dur="0.5s" fill="freeze"/></text>
-</svg>
