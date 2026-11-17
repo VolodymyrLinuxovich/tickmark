@@ -5,6 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Readiness } from "@/lib/engine/readiness";
+import { fixNowCsv } from "@/lib/engine/readiness-csv";
 import type { RecordRef } from "@/lib/engine/types";
 import type { SourceInfo } from "@/lib/ramp/types";
 import { WatchProvider } from "../loop";
@@ -12,6 +13,16 @@ import { ExceptionList, GROUP_LABEL, StatusContext, useStatuses, type SentMap } 
 import { RecordDrawer } from "../workbench/record-drawer";
 
 type Data = Readiness & { source: SourceInfo; ms: number };
+
+/** Saves the Fix now list as a CSV named for the window, built in the browser from what is on screen. */
+function downloadCsv(data: Data) {
+  const blob = new Blob([fixNowCsv(data.fix_now)], { type: "text/csv;charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `tickmark-fix-now-${data.from}-to-${data.to}.csv`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 const short = (iso: string) => new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
@@ -155,7 +166,12 @@ function Body({ data, source, openRecord }: { data: Data; source: SourceInfo; op
           </>
         )}
 
-        <div className="label">Fix now: drafted follow-ups for the last 30 days</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div className="label">Fix now: drafted follow-ups for the last 30 days</div>
+          {data.fix_now.length > 0 && (
+            <button className="btn small" onClick={() => downloadCsv(data)}>Download CSV</button>
+          )}
+        </div>
         {data.fix_now.length ? (
           <ExceptionList items={data.fix_now.map((f) => ({ f }))} openRecord={openRecord} sent={sent} setSent={setSent} source={source} />
         ) : (
