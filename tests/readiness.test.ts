@@ -1,11 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { getFixture } from "../src/lib/fixtures/generate";
 import { asOfDate, computeReadiness, FRESH_DAYS, readinessRequests } from "../src/lib/engine/readiness";
+import { readinessDays } from "../src/lib/engine/readiness-days";
 import type { RampSnapshot } from "../src/lib/ramp/types";
 
 const snap = () => getFixture().snapshot;
 
 describe("audit readiness", () => {
+  it("reads the days window from a link: 30 to 180, and 90 for a missing or bad value", () => {
+    expect(readinessDays("30")).toBe(30);
+    expect(readinessDays("180")).toBe(180);
+    expect(readinessDays("10")).toBe(30);
+    expect(readinessDays("999")).toBe(180);
+    expect(readinessDays("abc")).toBe(90);
+    expect(readinessDays("")).toBe(90);
+    expect(readinessDays(null)).toBe(90);
+    expect(readinessDays(undefined)).toBe(90);
+  });
+
   it("counts back from the sample company's last record, not today", () => {
     const s = snap();
     const last = s.transactions.map((t) => t.user_transaction_time).sort().at(-1)!.slice(0, 10);
