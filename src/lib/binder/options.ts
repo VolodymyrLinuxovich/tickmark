@@ -6,7 +6,7 @@ import { PlanSchema } from "../ask/plan";
 
 const Day = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-export const StatusSchema = z.object({ status: z.enum(["open", "resolved", "waived"]), note: z.string().max(500).optional() });
+export const StatusSchema = z.object({ status: z.enum(["open", "resolved", "waived"]), note: z.string().max(500).optional(), at: z.string().max(40).optional() });
 
 // Exception statuses set in the app, keyed by finding id. Shown in the workpapers and the index.
 export const StatusesSchema = z.record(z.string(), StatusSchema);
