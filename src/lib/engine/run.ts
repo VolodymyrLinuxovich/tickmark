@@ -233,14 +233,19 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
         records: [txnRef(t)],
         // A pending approval is waiting on a person: follow up with the next approver, not the cardholder.
         owner: next ? { user_id: next.user_id, name: nextName } : owner,
-        ...(next && {
-          comment: {
-            object_type: "transactions" as const,
-            object_id: t.id,
-            message: `Hi ${nextName.split(" ")[0]}, this ${usd(cents)} ${t.merchant_name} charge by ${owner.name} on ${shortDate(t.user_transaction_time)} is still waiting for your approval in Ramp. Our auditors are testing it. Could you review it this week? Thank you.`,
-            mention_user_ids: [next.user_id],
-          },
-        }),
+        comment: next
+          ? {
+              object_type: "transactions" as const,
+              object_id: t.id,
+              message: `Hi ${nextName.split(" ")[0]}, this ${usd(cents)} ${t.merchant_name} charge by ${owner.name} on ${shortDate(t.user_transaction_time)} is still waiting for your approval in Ramp. Our auditors are testing it. Could you review it this week? Thank you.`,
+              mention_user_ids: [next.user_id],
+            }
+          : {
+              object_type: "transactions" as const,
+              object_id: t.id,
+              message: `Hi ${t.card_holder.first_name}, our auditors are testing this ${usd(cents)} charge at ${t.merchant_name} on ${shortDate(t.user_transaction_time)}. It is above the ${usd(POLICY.cardApprovalLimit)} pre-approval limit and Ramp has no approval for it. Could you get it approved by your manager, or add a note with who approved it? Thank you.`,
+              mention_user_ids: [t.card_holder.user_id],
+            },
       });
         // Segregation of duties: the person who spends must not be the person who approves.
         // A policy auto-approval (no user id) is not self-approval.
@@ -253,6 +258,12 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
         detail: `Approved by the same person who made the charge at ${t.merchant_name}.`,
         records: [txnRef(t)],
         owner,
+        comment: {
+          object_type: "transactions",
+          object_id: t.id,
+          message: `Hi ${t.card_holder.first_name}, this ${usd(cents)} charge at ${t.merchant_name} on ${shortDate(t.user_transaction_time)} was approved by the same person who made it. Our auditors will ask for an independent review. Could your manager review it and record approval in Ramp? Thank you.`,
+          mention_user_ids: [t.card_holder.user_id],
+        },
       });
     } else {
       ticks.push("A");
@@ -305,6 +316,12 @@ function checkBill(ix: Index, b: RampBill): { findings: Finding[]; ticks: Tickma
       detail: `Bill ${b.invoice_number ?? "without invoice number"}, issued ${shortDate(b.issued_at)}.`,
       records: [billRef(b)],
       owner,
+      comment: {
+        object_type: "bills",
+        object_id: b.id,
+        message: `Hi ${ownerName.split(" ")[0]}, our auditors are testing this ${usd(b.amount.amount)} ${b.vendor.name} bill issued ${shortDate(b.issued_at)}. Ramp has no invoice attached to it. Could you attach the invoice to the bill this week? Thank you.`,
+        mention_user_ids: [b.bill_owner.id],
+      },
     });
   }
 
@@ -321,6 +338,12 @@ function checkBill(ix: Index, b: RampBill): { findings: Finding[]; ticks: Tickma
       detail: b.paid_at ? `Paid ${shortDate(b.paid_at)} with no completed approval step.` : "No completed approval step.",
       records: [billRef(b)],
       owner,
+      comment: {
+        object_type: "bills",
+        object_id: b.id,
+        message: `Hi ${ownerName.split(" ")[0]}, our auditors are testing this ${usd(b.amount.amount)} ${b.vendor.name} bill. Ramp shows no completed approval for it. Could you get it approved in Ramp, or add a note with who approved it and when? Thank you.`,
+        mention_user_ids: [b.bill_owner.id],
+      },
     });
   } else {
     if (last.user_id && last.user_id === b.bill_owner.id) {
