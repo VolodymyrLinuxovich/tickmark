@@ -23,7 +23,6 @@ export function TopBar({ landing = false, lang }: { info?: SourceInfo; landing?:
           <a href={landing ? "#problem" : "/#problem"} className="hide-sm">{n.problem}</a>
           <a href={landing ? "#solution" : "/#solution"} className="hide-sm">{n.solution}</a>
           <Link href="/eval" className="hide-xs">{n.accuracy}</Link>
-          <Link href="/readiness" className="hide-xs">{n.readiness}</Link>
           {lang && <LanguageMenu lang={lang} label={n.language} />}
           <Link href="/app" className="btn primary small">{n.open}</Link>
         </nav>
