@@ -2,6 +2,7 @@
 
 // Results screen: plain summary, per request workpapers and the tools that act on them.
 
+import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import type { AuditRequest } from "@/lib/parse/schema";
 import { REQUEST_TYPE_INFO } from "@/lib/parse/schema";
@@ -83,7 +84,8 @@ export function Results({ requests, runs, meta, auditor, source, openRecord }: {
           <h2>Evidence binder{meta.business ? ` for ${meta.business}` : ""}</h2>
           <p className="lead">{summaryLine(auto.length, results.length, allFindings.map((x) => x.f.code))}</p>
           <p className="muted small">
-            Checked {meta.counts.transactions?.toLocaleString("en-US")} transactions, {meta.counts.receipts?.toLocaleString("en-US")} receipts and {meta.counts.bills} bills in {(meta.ms / 1000).toFixed(1)} s.
+            Checked {meta.counts.transactions?.toLocaleString("en-US")} transactions, {meta.counts.receipts?.toLocaleString("en-US")} receipts and {meta.counts.bills} bills in {(meta.ms / 1000).toFixed(1)} s.{" "}
+            <Link href="/readiness">Run the same checks on the last 90 days</Link>
           </p>
         </div>
         <button className="btn primary" onClick={download} disabled={downloading}>{downloading ? "Building binder..." : "Download binder (.zip)"}</button>
