@@ -4,7 +4,9 @@
 // with their drafted follow-ups. Sending reuses the workbench cards, so nothing goes out without approval.
 
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { Readiness } from "@/lib/engine/readiness";
+import { readinessDays } from "@/lib/engine/readiness-days";
 import type { RecordRef } from "@/lib/engine/types";
 import type { SourceInfo } from "@/lib/ramp/types";
 import { WatchProvider } from "../loop";
@@ -16,17 +18,25 @@ type Data = Readiness & { source: SourceInfo; ms: number };
 const short = (iso: string) => new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 
 export function ReadinessView({ source }: { source: SourceInfo }) {
-  const [days, setDays] = useState(90);
+  // /readiness?days=30 opens on the 30 day window, so the link can be shared.
+  const search = useSearchParams();
+  const [days, setDays] = useState(() => readinessDays(search.get("days")));
   const [data, setData] = useState<Data | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [record, setRecord] = useState<RecordRef | null>(null);
 
-  /** Switches the window and clears the old result, so the loading line shows while the new one runs. */
+  /**
+   * Switches the window and clears the old result, so the loading line shows while the new one runs.
+   * The URL follows, so the address bar is a link to the window on screen.
+   */
   function pick(d: number) {
     if (d !== days) {
       setData(null);
       setError(null);
       setDays(d);
+      const url = new URL(window.location.href);
+      url.searchParams.set("days", String(d));
+      window.history.replaceState(window.history.state, "", url);
     }
   }
 

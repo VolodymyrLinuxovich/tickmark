@@ -2,6 +2,7 @@
 // Server wrapper that passes the data source to the client view.
 
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { getSource } from "@/lib/ramp/source";
 import { TopBar } from "../topbar";
 import { ReadinessView } from "./view";
@@ -13,7 +14,10 @@ export default function ReadinessPage() {
   return (
     <>
       <TopBar info={info} />
-      <ReadinessView source={info} />
+      {/* The view reads ?days= with useSearchParams, which needs a Suspense boundary under Cache Components. */}
+      <Suspense>
+        <ReadinessView source={info} />
+      </Suspense>
     </>
   );
 }

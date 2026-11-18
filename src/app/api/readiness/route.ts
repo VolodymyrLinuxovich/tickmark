@@ -6,11 +6,12 @@
 import { getSource } from "@/lib/ramp/source";
 import { trailingYear } from "@/lib/engine/live-sample";
 import { asOfDate, computeReadiness } from "@/lib/engine/readiness";
+import { readinessDays } from "@/lib/engine/readiness-days";
 
 export const maxDuration = 120;
 
 export async function GET(req: Request) {
-  const days = Math.min(180, Math.max(30, Number(new URL(req.url).searchParams.get("days")) || 90));
+  const days = readinessDays(new URL(req.url).searchParams.get("days"));
   const source = getSource();
   try {
     const t0 = Date.now();
