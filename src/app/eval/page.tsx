@@ -15,6 +15,7 @@ import { scoreAgainstPlanted } from "@/lib/engine/eval";
 import { TopBar } from "../topbar";
 import ClaudeEval from "./claude-eval";
 import { CountUp, PlantedTable } from "./animated";
+import { RealResults } from "./real-results";
 
 export const metadata = { title: "Accuracy" };
 
@@ -71,6 +72,7 @@ async function EvalBody() {
             {report.extra.map((f) => <div className="finding" key={f.id}><b>{f.title}</b><div className="fd">{f.detail}</div></div>)}
           </>
         )}
+        <RealResults />
         <div className="label" style={{ marginTop: 28 }}>Request reading with a model</div>
         <ClaudeEval />
         <div className="label" style={{ marginTop: 28 }}>Limits</div>
