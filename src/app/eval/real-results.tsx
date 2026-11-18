@@ -41,7 +41,7 @@ export function RealResults() {
         </table>
       </div>
       <p className="muted" style={{ fontSize: 12 }}>
-        Not a blind score: we fixed the keyword rules after looking at these lists. They also add extra rows, mostly sub-items split into their own request, which the plan screen lets you remove. Sources and scoring are in{" "}
+        Not a blind score: we fixed the keyword rules after looking at these lists. They also add extra rows, mostly sub-items split into their own request. On the plan screen you can set any of them to Manual so no check runs on them. Sources and scoring are in{" "}
         <a href="https://github.com/VolodymyrLinuxovich/tickmark/blob/main/docs/real-lists.md">docs/real-lists.md</a>.
       </p>
 
