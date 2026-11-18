@@ -3,7 +3,7 @@
 // Exceptions: grouped list, one card per finding with its drafted Ramp comment, and open/resolved/waived statuses.
 
 import { createContext, useCallback, useContext, useMemo, useState, type Dispatch, type SetStateAction } from "react";
-import type { ExceptionStatus, ExceptionStatuses } from "@/lib/binder/build";
+import { stampStatus, statusDate, type ExceptionStatus, type ExceptionStatuses } from "@/lib/binder/status";
 import type { Finding, FindingCode, RecordRef } from "@/lib/engine/types";
 import { LiveThread, useWatch } from "../loop";
 import type { SourceInfo } from "@/lib/ramp/types";
@@ -288,7 +288,7 @@ export function useStatuses() {
   });
   const set = useCallback((id: string, s: ExceptionStatus) => {
     setStatuses((prev) => {
-      const next = { ...prev, [id]: s };
+      const next = { ...prev, [id]: stampStatus(prev[id], s) };
       try {
         localStorage.setItem(STATUS_KEY, JSON.stringify(next));
       } catch {
@@ -323,6 +323,7 @@ export function StatusControl({ id }: { id: string }) {
           aria-label="Status note"
         />
       )}
+      {statusDate(cur) && <span className="muted" style={{ fontSize: 12 }}>{cur.status === "waived" ? "Waived" : "Resolved"} {statusDate(cur)}</span>}
     </div>
   );
 }

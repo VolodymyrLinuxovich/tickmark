@@ -12,6 +12,9 @@ import type { RampSnapshot } from "../ramp/types";
 import type { RampSource } from "../ramp/source";
 import { TICKMARKS, type RequestResult } from "../engine/types";
 import { usd } from "../engine/run";
+import { STATUS_LABEL, statusDate, statusLine, type ExceptionStatuses } from "./status";
+
+export type { ExceptionStatus, ExceptionStatuses } from "./status";
 
 // pdf-lib's standard fonts only cover WinAnsi; keep text inside it.
 const clean = (s: string) =>
@@ -31,15 +34,6 @@ interface Ctx {
   sourceLabel: string;
   generatedAt: Date;
 }
-
-/** Where the finance team stands on one exception, set in the app before download. */
-export interface ExceptionStatus {
-  status: "open" | "resolved" | "waived";
-  note?: string;
-}
-export type ExceptionStatuses = Record<string, ExceptionStatus>;
-
-const STATUS_LABEL: Record<ExceptionStatus["status"], string> = { open: "Open", resolved: "Resolved", waived: "Waived" };
 
 /** Workpaper reference for the nth request in the binder: WP-01, WP-02, ... */
 const wpRef = (i: number) => `WP-${String(i + 1).padStart(2, "0")}`;
@@ -194,7 +188,7 @@ async function workpaper(r: RequestResult, ctx: Ctx, ref: string, statuses: Exce
       const st = statuses[f.id];
       w.text(`${i + 1}. [${f.severity.toUpperCase()}] ${f.title}`, { size: 9, bold: true, indent: 6, gap: 0 });
       w.text(f.detail, { size: 9, indent: 18, gap: 0 });
-      w.text(`Status: ${STATUS_LABEL[st?.status ?? "open"]}${st?.note ? `. ${st.note}` : ""}`, { size: 8.5, indent: 18, color: st?.status === "resolved" ? [0.1, 0.45, 0.25] : st?.status === "waived" ? [0.35, 0.35, 0.35] : [0.62, 0.32, 0], gap: 0 });
+      w.text(`Status: ${statusLine(st)}`, { size: 8.5, indent: 18, color: st?.status === "resolved" ? [0.1, 0.45, 0.25] : st?.status === "waived" ? [0.35, 0.35, 0.35] : [0.62, 0.32, 0], gap: 0 });
       if (f.records.length) {
         w.text(`Records: ${f.records.map((x) => `${x.label} (${x.type} ${x.id})`).join("; ")}`, { size: 7.5, indent: 18, color: [0.4, 0.4, 0.4], gap: 6 });
       }
@@ -263,6 +257,7 @@ export async function buildBinder(results: RequestResult[], snap: RampSnapshot, 
     { header: "Owner", width: 18 },
     { header: "Ramp record ids", width: 40 },
     { header: "Status", width: 10 },
+    { header: "Date", width: 14 },
     { header: "Note", width: 50 },
   ];
   fs.getRow(1).font = { bold: true };
@@ -275,7 +270,7 @@ export async function buildBinder(results: RequestResult[], snap: RampSnapshot, 
       }
       seen.add(f.id);
       const st = statuses[f.id];
-      fs.addRow([r.request.ref, f.severity, f.code, f.title, f.detail, f.owner?.name ?? "", f.records.map((x) => x.id).join(", "), STATUS_LABEL[st?.status ?? "open"], st?.note ?? ""]);
+      fs.addRow([r.request.ref, f.severity, f.code, f.title, f.detail, f.owner?.name ?? "", f.records.map((x) => x.id).join(", "), STATUS_LABEL[st?.status ?? "open"], statusDate(st), st?.note ?? ""]);
     }
   }
   for (const r of results.filter((x) => x.rows.length)) {
