@@ -30,4 +30,16 @@ describe("drafted follow-ups", () => {
       expect(f.records.map((r) => r.id)).toContain(f.comment!.object_id);
     }
   });
+
+  it("does not say there is no approval when Ramp has an open one with no named approver", () => {
+    const s: RampSnapshot = structuredClone(getFixture().snapshot);
+    const t = s.transactions.find((x) => x.state === "CLEARED")!;
+    s.approvals = s.approvals.filter((a) => a.entity_id !== t.id);
+    s.approvals.push({ entity_id: t.id, entity_type: "transaction", status: "PENDING", approval_history: [], next_approvers: [] });
+    const ix = buildIndex(s);
+    const findings = uniqueFindings(readinessRequests(FISCAL_YEAR.start, FISCAL_YEAR.end).map((r) => runRequest(r, ix)));
+    const f = findings.find((x) => x.code === "NOT_APPROVED" && x.records.some((r) => r.id === t.id))!;
+    expect(f.comment!.message).toContain("Its approval in Ramp is pending");
+    expect(f.comment!.message).not.toContain("has no approval");
+  });
 });

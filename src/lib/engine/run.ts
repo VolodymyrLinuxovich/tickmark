@@ -243,7 +243,10 @@ function checkTransaction(ix: Index, t: RampTransaction, opts: { approvals: bool
           : {
               object_type: "transactions" as const,
               object_id: t.id,
-              message: `Hi ${t.card_holder.first_name}, our auditors are testing this ${usd(cents)} charge at ${t.merchant_name} on ${shortDate(t.user_transaction_time)}. It is above the ${usd(POLICY.cardApprovalLimit)} pre-approval limit and Ramp has no approval for it. Could you get it approved by your manager, or add a note with who approved it? Thank you.`,
+              // An open approval with no named next approver is not "no approval": say what Ramp shows.
+              message: record
+                ? `Hi ${t.card_holder.first_name}, our auditors are testing this ${usd(cents)} charge at ${t.merchant_name} on ${shortDate(t.user_transaction_time)}. Its approval in Ramp is ${String(record.status ?? "not complete").toLowerCase()}. Could you check with your manager and get it completed, or add a note with who approved it? Thank you.`
+                : `Hi ${t.card_holder.first_name}, our auditors are testing this ${usd(cents)} charge at ${t.merchant_name} on ${shortDate(t.user_transaction_time)}. It is above the ${usd(POLICY.cardApprovalLimit)} pre-approval limit and Ramp has no approval for it. Could you get it approved by your manager, or add a note with who approved it? Thank you.`,
               mention_user_ids: [t.card_holder.user_id],
             },
       });
