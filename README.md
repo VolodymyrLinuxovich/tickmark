@@ -23,6 +23,8 @@ Ramp comment to the right person, sent only after you approve it.
 
 <img src="docs/third-place.svg" alt="3rd place at the BBS x Ramp Hackathon final, Ramp SF, November 19, 2026" width="520">
 
+<img src="docs/final-3rd-place.jpg" alt="Volodymyr Borysenko and Mert Ozkardes next to the winners screen at Ramp SF: Third place, Tickmark, $500" width="420">
+
 <br/>
 
 </div>
