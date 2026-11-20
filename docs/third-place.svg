@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="150" viewBox="0 0 520 150" role="img" aria-label="Bronze medal: 3rd place at the BBS x Ramp Hackathon final, Ramp SF, November 19, 2026">
+  <defs>
+    <linearGradient id="bronze" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E9A86A"/>
+      <stop offset="0.5" stop-color="#B8712F"/>
+      <stop offset="1" stop-color="#8A4F1C"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="1" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F3C38F"/>
+      <stop offset="1" stop-color="#7A4316"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#fff" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#fff" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="disc"><circle cx="0" cy="0" r="34"/></clipPath>
+  </defs>
+  <style>
+    .title { font: 700 26px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #B8712F; }
+    .sub { font: 400 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; fill: #8B8B85; }
+    .num { font: 800 30px Georgia, "Times New Roman", serif; fill: #FFF4E6; }
+    .medal { transform-origin: 70px 8px; animation: swing 3.2s ease-in-out infinite; }
+    .drop { animation: drop 0.9s cubic-bezier(.2,.9,.3,1.2) both; }
+    .sweep { animation: sweep 3.2s ease-in-out infinite; }
+    .spark { transform-box: fill-box; transform-origin: center; animation: twinkle 3.2s ease-in-out infinite; opacity: 0; }
+    .s2 { animation-delay: 0.6s; }
+    .s3 { animation-delay: 1.3s; }
+    .text { animation: fade 0.8s 0.4s ease-out both; }
+    @keyframes swing { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+    @keyframes drop { from { transform: translateY(-120px); } to { transform: translateY(0); } }
+    @keyframes sweep { 0%, 35% { transform: translateX(-80px); } 70%, 100% { transform: translateX(80px); } }
+    @keyframes twinkle { 0%, 60%, 100% { opacity: 0; transform: scale(0.3); } 75% { opacity: 1; transform: scale(1); } }
+    @keyframes fade { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+    @media (prefers-reduced-motion: reduce) {
+      .medal, .drop, .sweep, .spark, .text { animation: none; }
+      .spark { opacity: 0; }
+    }
+  </style>
+
+  <g class="drop">
+    <g class="medal">
+      <!-- ribbon -->
+      <path d="M52 4 L64 4 L80 70 L66 74 Z" fill="#17714A"/>
+      <path d="M88 4 L76 4 L60 70 L74 74 Z" fill="#1F8F5E"/>
+      <!-- disc -->
+      <g transform="translate(70 104)">
+        <circle r="38" fill="url(#rim)"/>
+        <circle r="34" fill="url(#bronze)"/>
+        <circle r="27" fill="none" stroke="#F3C38F" stroke-opacity="0.55" stroke-width="1.5"/>
+        <text class="num" x="0" y="11" text-anchor="middle">3</text>
+        <g clip-path="url(#disc)">
+          <rect class="sweep" x="-20" y="-40" width="22" height="80" fill="url(#shine)" transform="skewX(-20)"/>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <g fill="#E9A86A">
+    <path class="spark" d="M118 66 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3z"/>
+    <path class="spark s2" d="M24 84 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z"/>
+    <path class="spark s3" d="M110 130 l2 4 4 2 -4 2 -2 4 -2 -4 -4 -2 4 -2z"/>
+  </g>
+
+  <g class="text">
+    <text class="title" x="150" y="84">3rd place</text>
+    <text class="sub" x="150" y="108">BBS x Ramp Hackathon final, Ramp SF</text>
+    <text class="sub" x="150" y="128">November 19, 2026</text>
+  </g>
+</svg>

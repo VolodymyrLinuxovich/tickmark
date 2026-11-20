@@ -21,6 +21,10 @@ Ramp comment to the right person, sent only after you approve it.
 
 <br/>
 
+<img src="docs/third-place.svg" alt="3rd place at the BBS x Ramp Hackathon final, Ramp SF, November 19, 2026" width="520">
+
+<br/>
+
 </div>
 
 ---
@@ -28,6 +32,7 @@ Ramp comment to the right person, sent only after you approve it.
 **Hackathon:** BBS x Ramp Hackathon (Berkeley Business Society)<br/>
 **Challenge:** Pick an outdated financial workflow and rebuild it for 2026 with the newest AI tools<br/>
 **Track:** Build it<br/>
+**Result:** 3rd place at the final, Ramp SF, November 19, 2026<br/>
 **Team:** Volodymyr Borysenko, Mert Ozkardes<br/>
 **Live demo:** [tickmark-eta.vercel.app](https://tickmark-eta.vercel.app)
 
